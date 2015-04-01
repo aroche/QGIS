@@ -161,6 +161,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
 		self.cboPrimaryKey.clear()
 
 		m = self.fields.model()
+		self.cboPrimaryKey.addItem("")
 		for row in xrange(m.rowCount()):
 			name = m.data(m.index(row,0))
 			self.cboPrimaryKey.addItem(name)
@@ -289,7 +290,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
 
 		flds = m.getFields()
 		pk_index = self.cboPrimaryKey.currentIndex()
-		if pk_index >= 0:
+		if pk_index >= 1:
 			flds[ pk_index ].primaryKey = True
 
 		# commit to DB
