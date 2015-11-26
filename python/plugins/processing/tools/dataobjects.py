@@ -17,6 +17,7 @@
 ***************************************************************************
 """
 
+
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
@@ -25,24 +26,25 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from os import path
+import os
 import re
-from qgis.core import *
-from qgis.gui import *
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from qgis.core import QGis, QgsProject, QgsVectorFileWriter, QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsMapLayerRegistry, QgsCoordinateReferenceSystem
+from qgis.gui import QgsSublayersDialog
+from PyQt4.QtCore import QSettings
 from qgis.utils import iface
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.algs.gdal.GdalUtils import GdalUtils
-from processing.tools.system import *
+from processing.tools.system import getTempFilenameInTempFolder, getTempFilename, isWindows
 
 ALL_TYPES = [-1]
 
 _loadedLayers = {}
 
+
 def resetLoadedLayers():
     global _loadedLayers
     _loadedLayers = {}
+
 
 def getSupportedOutputVectorLayerExtensions():
     formats = QgsVectorFileWriter.supportedFiltersAndFormats()
@@ -80,7 +82,7 @@ def getRasterLayers(sorting=True):
             if mapLayer.providerType() == 'gdal':  # only gdal file-based layers
                 raster.append(mapLayer)
     if sorting:
-        return sorted(raster,  key=lambda layer: layer.name().lower())
+        return sorted(raster, key=lambda layer: layer.name().lower())
     else:
         return raster
 
@@ -90,12 +92,12 @@ def getVectorLayers(shapetype=[-1], sorting=True):
     vector = []
     for layer in layers:
         mapLayer = layer.layer()
-        if mapLayer.type() == QgsMapLayer.VectorLayer:
+        if mapLayer.type() == QgsMapLayer.VectorLayer and mapLayer.dataProvider().name() != "grass":
             if (mapLayer.hasGeometryType() and
                     (shapetype == ALL_TYPES or mapLayer.geometryType() in shapetype)):
                 vector.append(mapLayer)
     if sorting:
-        return sorted(vector,  key=lambda layer: layer.name().lower())
+        return sorted(vector, key=lambda layer: layer.name().lower())
     else:
         return vector
 
@@ -104,7 +106,7 @@ def getAllLayers():
     layers = []
     layers += getRasterLayers()
     layers += getVectorLayers()
-    return sorted(layers,  key=lambda layer: layer.name().lower())
+    return sorted(layers, key=lambda layer: layer.name().lower())
 
 
 def getTables(sorting=True):
@@ -115,7 +117,7 @@ def getTables(sorting=True):
         if mapLayer.type() == QgsMapLayer.VectorLayer:
             tables.append(mapLayer)
     if sorting:
-        return sorted(tables,  key=lambda table: table.name().lower())
+        return sorted(tables, key=lambda table: table.name().lower())
     else:
         return tables
 
@@ -141,7 +143,7 @@ def extent(layers):
     if first:
         return '0,0,0,0'
     else:
-        return str(xmin) + ',' + str(xmax) + ',' + str(ymin) + ',' + str(ymax)
+        return unicode(xmin) + ',' + unicode(xmax) + ',' + unicode(ymin) + ',' + unicode(ymax)
 
 
 def loadList(layers):
@@ -161,21 +163,18 @@ def load(fileName, name=None, crs=None, style=None):
         prjSetting = settings.value('/Projections/defaultBehaviour')
         settings.setValue('/Projections/defaultBehaviour', '')
     if name is None:
-        name = path.split(fileName)[1]
+        name = os.path.split(fileName)[1]
     qgslayer = QgsVectorLayer(fileName, name, 'ogr')
     if qgslayer.isValid():
         if crs is not None and qgslayer.crs() is None:
             qgslayer.setCrs(crs, False)
         if style is None:
-            if qgslayer.geometryType == 0:
-                style = ProcessingConfig.getSetting(
-                        ProcessingConfig.VECTOR_POINT_STYLE)
-            elif qgslayer.geometryType == 1:
-                style = ProcessingConfig.getSetting(
-                        ProcessingConfig.VECTOR_LINE_STYLE)
+            if qgslayer.geometryType() == QGis.Point:
+                style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_POINT_STYLE)
+            elif qgslayer.geometryType() == QGis.Line:
+                style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_LINE_STYLE)
             else:
-                style = ProcessingConfig.getSetting(
-                        ProcessingConfig.VECTOR_POLYGON_STYLE)
+                style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_POLYGON_STYLE)
         qgslayer.loadNamedStyle(style)
         QgsMapLayerRegistry.instance().addMapLayers([qgslayer])
     else:
@@ -184,17 +183,15 @@ def load(fileName, name=None, crs=None, style=None):
             if crs is not None and qgslayer.crs() is None:
                 qgslayer.setCrs(crs, False)
             if style is None:
-                style = ProcessingConfig.getSetting(
-                        ProcessingConfig.RASTER_STYLE)
+                style = ProcessingConfig.getSetting(ProcessingConfig.RASTER_STYLE)
             qgslayer.loadNamedStyle(style)
             QgsMapLayerRegistry.instance().addMapLayers([qgslayer])
             iface.legendInterface().refreshLayerSymbology(qgslayer)
         else:
             if prjSetting:
                 settings.setValue('/Projections/defaultBehaviour', prjSetting)
-            raise RuntimeError(
-                    'Could not load layer: ' + unicode(fileName)
-                    + '\nCheck the procesing framework log to look for errors')
+            raise RuntimeError('Could not load layer: ' + unicode(fileName)
+                               + '\nCheck the procesing framework log to look for errors')
     if prjSetting:
         settings.setValue('/Projections/defaultBehaviour', prjSetting)
 
@@ -215,8 +212,15 @@ def getObject(uriorname):
     return ret
 
 
+def normalizeLayerSource(source):
+    if isWindows():
+        source = source.replace('\\', '/')
+    source = source.replace('"', "'")
+    return source
+
+
 def getObjectFromUri(uri, forceLoad=True):
-    """Returns an object (layer/table) given a file location.
+    """Returns an object (layer/table) given a source definition.
 
     if forceLoad is true, it tries to load it if it is not currently open
     Otherwise, it will return the object only if it is loaded in QGIS.
@@ -228,15 +232,15 @@ def getObjectFromUri(uri, forceLoad=True):
         return _loadedLayers[uri]
     layers = getRasterLayers()
     for layer in layers:
-        if layer.source() == uri:
+        if normalizeLayerSource(layer.source()) == normalizeLayerSource(uri):
             return layer
     layers = getVectorLayers()
     for layer in layers:
-        if layer.source() == uri:
+        if normalizeLayerSource(layer.source()) == normalizeLayerSource(uri):
             return layer
     tables = getTables()
     for table in tables:
-        if table.source() == uri:
+        if normalizeLayerSource(table.source()) == normalizeLayerSource(uri):
             return table
     if forceLoad:
         settings = QSettings()
@@ -248,13 +252,19 @@ def getObjectFromUri(uri, forceLoad=True):
         if layer.isValid():
             if prjSetting:
                 settings.setValue('/Projections/defaultBehaviour', prjSetting)
-            _loadedLayers[layer.source()] = layer
+            _loadedLayers[normalizeLayerSource(layer.source())] = layer
+            return layer
+        layer = QgsVectorLayer(uri, uri, 'postgres')
+        if layer.isValid():
+            if prjSetting:
+                settings.setValue('/Projections/defaultBehaviour', prjSetting)
+            _loadedLayers[normalizeLayerSource(layer.source())] = layer
             return layer
         layer = QgsRasterLayer(uri, uri)
         if layer.isValid():
             if prjSetting:
                 settings.setValue('/Projections/defaultBehaviour', prjSetting)
-            _loadedLayers[layer.source()] = layer
+            _loadedLayers[normalizeLayerSource(layer.source())] = layer
             return layer
         if prjSetting:
             settings.setValue('/Projections/defaultBehaviour', prjSetting)
@@ -309,9 +319,11 @@ def exportVectorLayer(layer):
         except UnicodeEncodeError:
             isASCII = False
         if not unicode(layer.source()).endswith('shp') or not isASCII:
-            writer = QgsVectorFileWriter(output, systemEncoding,
-                    layer.pendingFields(), provider.geometryType(),
-                    layer.crs())
+            writer = QgsVectorFileWriter(
+                output, systemEncoding,
+                layer.pendingFields(), provider.geometryType(),
+                layer.crs()
+            )
             for feat in layer.getFeatures():
                 writer.addFeature(feat)
             del writer
@@ -376,13 +388,14 @@ def exportTable(table):
         else:
             return filename
 
+
 def getRasterSublayer(path, param):
 
     layer = QgsRasterLayer(path)
 
     try:
         # If the layer is a raster layer and has multiple sublayers, let the user chose one.
-#       # Based on QgisApp::askUserForGDALSublayers
+        # Based on QgisApp::askUserForGDALSublayers
         if layer and param.showSublayersDialog and layer.dataProvider().name() == "gdal" and len(layer.subLayers()) > 1:
             layers = []
             subLayerNum = 0
@@ -406,13 +419,13 @@ def getRasterSublayer(path, param):
                 if subLayer.endswith("\""):
                     subLayer = subLayer[:-1]
 
-                layers.append(str(subLayerNum)+"|"+subLayer)
+                layers.append(unicode(subLayerNum) + "|" + subLayer)
                 subLayerNum = subLayerNum + 1
 
             # Use QgsSublayersDialog
             # Would be good if QgsSublayersDialog had an option to allow only one sublayer to be selected
             chooseSublayersDialog = QgsSublayersDialog(QgsSublayersDialog.Gdal, "gdal")
-            chooseSublayersDialog.populateLayerTable( layers, "|" )
+            chooseSublayersDialog.populateLayerTable(layers, "|")
 
             if chooseSublayersDialog.exec_():
                 return layer.subLayers()[chooseSublayersDialog.selectionIndexes()[0]]

@@ -17,41 +17,81 @@
 #include "qgsspatialiteconnection.h"
 #include "qgsspatialiteconnpool.h"
 #include "qgsspatialiteprovider.h"
+#include "qgsspatialiteexpressioncompiler.h"
 
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
-
-
+#include <QSettings>
 
 QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeatureSource* source, bool ownSource, const QgsFeatureRequest& request )
     : QgsAbstractFeatureIteratorFromSource<QgsSpatiaLiteFeatureSource>( source, ownSource, request )
     , sqliteStatement( NULL )
+    , mExpressionCompiled( false )
 {
 
   mHandle = QgsSpatiaLiteConnPool::instance()->acquireConnection( mSource->mSqlitePath );
 
   mFetchGeometry = !mSource->mGeometryColumn.isNull() && !( mRequest.flags() & QgsFeatureRequest::NoGeometry );
+  mHasPrimaryKey = !mSource->mPrimaryKey.isEmpty();
+  mRowNumber = 0;
 
+  QStringList whereClauses;
   QString whereClause;
-  if ( request.filterType() == QgsFeatureRequest::FilterRect && !mSource->mGeometryColumn.isNull() )
+  if ( !request.filterRect().isNull() && !mSource->mGeometryColumn.isNull() )
   {
     // some kind of MBR spatial filtering is required
-    whereClause += whereClauseRect();
+    whereClause = whereClauseRect();
+    if ( ! whereClause.isEmpty() )
+    {
+      whereClauses.append( whereClause );
+    }
   }
 
   if ( request.filterType() == QgsFeatureRequest::FilterFid )
   {
-    whereClause += whereClauseFid();
+    whereClause = whereClauseFid();
+    if ( ! whereClause.isEmpty() )
+    {
+      whereClauses.append( whereClause );
+    }
+  }
+  else if ( request.filterType() == QgsFeatureRequest::FilterFids )
+  {
+    whereClause = whereClauseFids();
+    if ( ! whereClause.isEmpty() )
+    {
+      whereClauses.append( whereClause );
+    }
+  }
+  else if ( request.filterType() == QgsFeatureRequest::FilterExpression
+            && QSettings().value( "/qgis/compileExpressions", true ).toBool() )
+  {
+    QgsSpatiaLiteExpressionCompiler compiler = QgsSpatiaLiteExpressionCompiler( source );
+
+    QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
+
+    if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
+    {
+      whereClause = compiler.result();
+      if ( !whereClause.isEmpty() )
+      {
+        whereClauses.append( whereClause );
+        //if only partial success when compiling expression, we need to double-check results using QGIS' expressions
+        mExpressionCompiled = ( result == QgsSqlExpressionCompiler::Complete );
+      }
+    }
   }
 
   if ( !mSource->mSubsetString.isEmpty() )
   {
-    if ( !whereClause.isEmpty() )
+    whereClause = "( " + mSource->mSubsetString + ')';
+    if ( ! whereClause.isEmpty() )
     {
-      whereClause += " AND ";
+      whereClauses.append( whereClause );
     }
-    whereClause += "( " + mSource->mSubsetString + ")";
   }
+
+  whereClause = whereClauses.join( " AND " );
 
   // preparing the SQL statement
   if ( !prepareStatement( whereClause ) )
@@ -95,6 +135,14 @@ bool QgsSpatiaLiteFeatureIterator::fetchFeature( QgsFeature& feature )
   return true;
 }
 
+bool QgsSpatiaLiteFeatureIterator::nextFeatureFilterExpression( QgsFeature& f )
+{
+  if ( !mExpressionCompiled )
+    return QgsAbstractFeatureIterator::nextFeatureFilterExpression( f );
+  else
+    return fetchFeature( f );
+}
+
 
 bool QgsSpatiaLiteFeatureIterator::rewind()
 {
@@ -103,6 +151,7 @@ bool QgsSpatiaLiteFeatureIterator::rewind()
 
   if ( sqlite3_reset( sqliteStatement ) == SQLITE_OK )
   {
+    mRowNumber = 0;
     return true;
   }
   else
@@ -134,11 +183,14 @@ bool QgsSpatiaLiteFeatureIterator::close()
 ////
 
 
-bool QgsSpatiaLiteFeatureIterator::prepareStatement( QString whereClause )
+bool QgsSpatiaLiteFeatureIterator::prepareStatement( const QString& whereClause )
 {
+  if ( !mHandle )
+    return false;
+
   try
   {
-    QString sql = QString( "SELECT %1" ).arg( quotedPrimaryKey() );
+    QString sql = QString( "SELECT %1" ).arg( mHasPrimaryKey ? quotedPrimaryKey() : "0" );
     int colIdx = 1; // column 0 is primary key
 
     if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
@@ -146,7 +198,7 @@ bool QgsSpatiaLiteFeatureIterator::prepareStatement( QString whereClause )
       const QgsAttributeList& fetchAttributes = mRequest.subsetOfAttributes();
       for ( QgsAttributeList::const_iterator it = fetchAttributes.constBegin(); it != fetchAttributes.constEnd(); ++it )
       {
-        sql += "," + fieldName( mSource->mFields.field( *it ) );
+        sql += ',' + fieldName( mSource->mFields.field( *it ) );
         colIdx++;
       }
     }
@@ -155,7 +207,7 @@ bool QgsSpatiaLiteFeatureIterator::prepareStatement( QString whereClause )
       // fetch all attributes
       for ( int idx = 0; idx < mSource->mFields.count(); ++idx )
       {
-        sql += "," + fieldName( mSource->mFields[idx] );
+        sql += ',' + fieldName( mSource->mFields.at( idx ) );
         colIdx++;
       }
     }
@@ -173,7 +225,7 @@ bool QgsSpatiaLiteFeatureIterator::prepareStatement( QString whereClause )
     if ( sqlite3_prepare_v2( mHandle->handle(), sql.toUtf8().constData(), -1, &sqliteStatement, NULL ) != SQLITE_OK )
     {
       // some error occurred
-      QgsMessageLog::logMessage( QObject::tr( "SQLite error: %2\nSQL: %1" ).arg( sql ).arg( sqlite3_errmsg( mHandle->handle() ) ), QObject::tr( "SpatiaLite" ) );
+      QgsMessageLog::logMessage( QObject::tr( "SQLite error: %2\nSQL: %1" ).arg( sql, sqlite3_errmsg( mHandle->handle() ) ), QObject::tr( "SpatiaLite" ) );
       return false;
     }
   }
@@ -196,6 +248,21 @@ QString QgsSpatiaLiteFeatureIterator::whereClauseFid()
   return QString( "%1=%2" ).arg( quotedPrimaryKey() ).arg( mRequest.filterFid() );
 }
 
+QString QgsSpatiaLiteFeatureIterator::whereClauseFids()
+{
+  if ( mRequest.filterFids().isEmpty() )
+    return "";
+
+  QString expr = QString( "%1 IN (" ).arg( quotedPrimaryKey() ), delim;
+  Q_FOREACH ( const QgsFeatureId featureId, mRequest.filterFids() )
+  {
+    expr += delim + QString::number( featureId );
+    delim = ',';
+  }
+  expr += ')';
+  return expr;
+}
+
 QString QgsSpatiaLiteFeatureIterator::whereClauseRect()
 {
   QgsRectangle rect = mRequest.filterRect();
@@ -204,12 +271,12 @@ QString QgsSpatiaLiteFeatureIterator::whereClauseRect()
   if ( mRequest.flags() & QgsFeatureRequest::ExactIntersect )
   {
     // we are requested to evaluate a true INTERSECT relationship
-    whereClause += QString( "Intersects(%1, BuildMbr(%2)) AND " ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ) ).arg( mbr( rect ) );
+    whereClause += QString( "Intersects(%1, BuildMbr(%2)) AND " ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ), mbr( rect ) );
   }
   if ( mSource->mVShapeBased )
   {
     // handling a VirtualShape layer
-    whereClause += QString( "MbrIntersects(%1, BuildMbr(%2))" ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ) ).arg( mbr( rect ) );
+    whereClause += QString( "MbrIntersects(%1, BuildMbr(%2))" ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ), mbr( rect ) );
   }
   else if ( rect.isFinite() )
   {
@@ -220,30 +287,30 @@ QString QgsSpatiaLiteFeatureIterator::whereClauseRect()
       mbrFilter += QString( "xmax >= %1 AND " ).arg( qgsDoubleToString( rect.xMinimum() ) );
       mbrFilter += QString( "ymin <= %1 AND " ).arg( qgsDoubleToString( rect.yMaximum() ) );
       mbrFilter += QString( "ymax >= %1" ).arg( qgsDoubleToString( rect.yMinimum() ) );
-      QString idxName = QString( "idx_%1_%2" ).arg( mSource->mIndexTable ).arg( mSource->mIndexGeometry );
+      QString idxName = QString( "idx_%1_%2" ).arg( mSource->mIndexTable, mSource->mIndexGeometry );
       whereClause += QString( "%1 IN (SELECT pkid FROM %2 WHERE %3)" )
-                     .arg( quotedPrimaryKey() )
-                     .arg( QgsSpatiaLiteProvider::quotedIdentifier( idxName ) )
-                     .arg( mbrFilter );
+                     .arg( quotedPrimaryKey(),
+                           QgsSpatiaLiteProvider::quotedIdentifier( idxName ),
+                           mbrFilter );
     }
     else if ( mSource->spatialIndexMbrCache )
     {
       // using the MbrCache spatial index
-      QString idxName = QString( "cache_%1_%2" ).arg( mSource->mIndexTable ).arg( mSource->mIndexGeometry );
+      QString idxName = QString( "cache_%1_%2" ).arg( mSource->mIndexTable, mSource->mIndexGeometry );
       whereClause += QString( "%1 IN (SELECT rowid FROM %2 WHERE mbr = FilterMbrIntersects(%3))" )
-                     .arg( quotedPrimaryKey() )
-                     .arg( QgsSpatiaLiteProvider::quotedIdentifier( idxName ) )
-                     .arg( mbr( rect ) );
+                     .arg( quotedPrimaryKey(),
+                           QgsSpatiaLiteProvider::quotedIdentifier( idxName ),
+                           mbr( rect ) );
     }
     else
     {
       // using simple MBR filtering
-      whereClause += QString( "MbrIntersects(%1, BuildMbr(%2))" ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ) ).arg( mbr( rect ) );
+      whereClause += QString( "MbrIntersects(%1, BuildMbr(%2))" ).arg( QgsSpatiaLiteProvider::quotedIdentifier( mSource->mGeometryColumn ), mbr( rect ) );
     }
   }
   else
   {
-    whereClause = "1";
+    whereClause = '1';
   }
   return whereClause;
 }
@@ -252,10 +319,10 @@ QString QgsSpatiaLiteFeatureIterator::whereClauseRect()
 QString QgsSpatiaLiteFeatureIterator::mbr( const QgsRectangle& rect )
 {
   return QString( "%1, %2, %3, %4" )
-         .arg( qgsDoubleToString( rect.xMinimum() ) )
-         .arg( qgsDoubleToString( rect.yMinimum() ) )
-         .arg( qgsDoubleToString( rect.xMaximum() ) )
-         .arg( qgsDoubleToString( rect.yMaximum() ) );
+         .arg( qgsDoubleToString( rect.xMinimum() ),
+               qgsDoubleToString( rect.yMinimum() ),
+               qgsDoubleToString( rect.xMaximum() ),
+               qgsDoubleToString( rect.yMaximum() ) );
 }
 
 
@@ -297,7 +364,7 @@ bool QgsSpatiaLiteFeatureIterator::getFeature( sqlite3_stmt *stmt, QgsFeature &f
   }
 
   feature.initAttributes( mSource->mFields.count() );
-  feature.setFields( &mSource->mFields ); // allow name-based attribute lookups
+  feature.setFields( mSource->mFields ); // allow name-based attribute lookups
 
   int ic;
   int n_columns = sqlite3_column_count( stmt );
@@ -305,10 +372,19 @@ bool QgsSpatiaLiteFeatureIterator::getFeature( sqlite3_stmt *stmt, QgsFeature &f
   {
     if ( ic == 0 )
     {
-      // first column always contains the ROWID (or the primary key)
-      QgsFeatureId fid = sqlite3_column_int64( stmt, ic );
-      QgsDebugMsgLevel( QString( "fid=%1" ).arg( fid ), 3 );
-      feature.setFeatureId( fid );
+      if ( mHasPrimaryKey )
+      {
+        // first column always contains the ROWID (or the primary key)
+        QgsFeatureId fid = sqlite3_column_int64( stmt, ic );
+        QgsDebugMsgLevel( QString( "fid=%1" ).arg( fid ), 3 );
+        feature.setFeatureId( fid );
+      }
+      else
+      {
+        // autoincrement a row number
+        mRowNumber++;
+        feature.setFeatureId( mRowNumber );
+      }
     }
     else if ( mFetchGeometry && ic == mGeomColIdx )
     {
@@ -339,8 +415,16 @@ QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt* stmt, 
 {
   if ( sqlite3_column_type( stmt, ic ) == SQLITE_INTEGER )
   {
-    // INTEGER value
-    return sqlite3_column_int( stmt, ic );
+    if ( type == QVariant::Int )
+    {
+      // INTEGER value
+      return sqlite3_column_int( stmt, ic );
+    }
+    else
+    {
+      // INTEGER value
+      return ( qint64 ) sqlite3_column_int64( stmt, ic );
+    }
   }
 
   if ( sqlite3_column_type( stmt, ic ) == SQLITE_FLOAT )

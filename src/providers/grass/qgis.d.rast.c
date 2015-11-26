@@ -29,6 +29,7 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include <limits.h>
 #ifdef WIN32
 #include <fcntl.h>
 #include <io.h>
@@ -78,7 +79,6 @@ int main( int argc, char **argv )
   G_gisinit( argv[0] );
 
   module = G_define_module();
-  module->keywords = ( "display, raster" );
   module->description = ( "Output raster map layers in a format suitable for display in QGIS" );
 
   map = G_define_standard_option( G_OPT_R_MAP );
@@ -200,6 +200,7 @@ static int cell_draw( char *name,
   set = G_malloc( ncols );
 
   /* some buggy C libraries require BOTH setmode() and fdopen(bin) */
+  // Do not use Q_OS_WIN, we are in C file, no Qt headers
 #ifdef WIN32
   if ( _setmode( _fileno( stdout ), _O_BINARY ) == -1 )
     G_fatal_error( "Cannot set stdout mode" );
@@ -256,7 +257,7 @@ static int cell_draw( char *name,
           if ( data_type == CELL_TYPE )
           {
             //int nul = -2000000000;
-            int nul = -2147483648;
+            int nul = INT_MIN;
             fwrite( &nul, 4, 1, fo );
           }
           else if ( data_type == DCELL_TYPE )
@@ -280,5 +281,7 @@ static int cell_draw( char *name,
   }
 
   G_close_cell( cellfile );
+  fclose( fo );
+
   return ( 0 );
 }

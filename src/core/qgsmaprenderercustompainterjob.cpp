@@ -15,16 +15,21 @@
 
 #include "qgsmaprenderercustompainterjob.h"
 
+#include "qgslabelingenginev2.h"
 #include "qgslogger.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsmaplayerrenderer.h"
 #include "qgspallabeling.h"
+#include "qgsvectorlayer.h"
+#include "qgsrendererv2.h"
 
+#define LABELING_V2
 
 QgsMapRendererCustomPainterJob::QgsMapRendererCustomPainterJob( const QgsMapSettings& settings, QPainter* painter )
     : QgsMapRendererJob( settings )
     , mPainter( painter )
     , mLabelingEngine( 0 )
+    , mLabelingEngineV2( 0 )
     , mActive( false )
     , mRenderSynchronously( false )
 {
@@ -39,6 +44,9 @@ QgsMapRendererCustomPainterJob::~QgsMapRendererCustomPainterJob()
 
   delete mLabelingEngine;
   mLabelingEngine = 0;
+
+  delete mLabelingEngineV2;
+  mLabelingEngineV2 = 0;
 }
 
 void QgsMapRendererCustomPainterJob::start()
@@ -71,14 +79,23 @@ void QgsMapRendererCustomPainterJob::start()
   delete mLabelingEngine;
   mLabelingEngine = 0;
 
+  delete mLabelingEngineV2;
+  mLabelingEngineV2 = 0;
+
   if ( mSettings.testFlag( QgsMapSettings::DrawLabeling ) )
   {
+#ifdef LABELING_V2
+    mLabelingEngineV2 = new QgsLabelingEngineV2();
+    mLabelingEngineV2->readSettingsFromProject();
+    mLabelingEngineV2->setMapSettings( mSettings );
+#else
     mLabelingEngine = new QgsPalLabeling;
     mLabelingEngine->loadEngineSettings();
     mLabelingEngine->init( mSettings );
+#endif
   }
 
-  mLayerJobs = prepareJobs( mPainter, mLabelingEngine );
+  mLayerJobs = prepareJobs( mPainter, mLabelingEngine, mLabelingEngineV2 );
 
   QgsDebugMsg( "Rendering prepared in (seconds): " + QString( "%1" ).arg( prepareTime.elapsed() / 1000.0 ) );
 
@@ -151,11 +168,16 @@ bool QgsMapRendererCustomPainterJob::isActive() const
 
 QgsLabelingResults* QgsMapRendererCustomPainterJob::takeLabelingResults()
 {
-  return mLabelingEngine ? mLabelingEngine->takeResults() : 0;
+  if ( mLabelingEngine )
+    return mLabelingEngine->takeResults();
+  else if ( mLabelingEngineV2 )
+    return mLabelingEngineV2->takeResults();
+  else
+    return 0;
 }
 
 
-void QgsMapRendererCustomPainterJob::waitForFinishedWithEventLoop( QEventLoop::ProcessEventsFlags flags )
+void QgsMapRendererCustomPainterJob::waitForFinishedWithEventLoop( const QEventLoop::ProcessEventsFlags& flags )
 {
   QEventLoop loop;
   connect( &mFutureWatcher, SIGNAL( finished() ), &loop, SLOT( quit() ) );
@@ -239,13 +261,13 @@ void QgsMapRendererCustomPainterJob::doRender()
   QgsDebugMsg( "Done rendering map layers" );
 
   if ( mSettings.testFlag( QgsMapSettings::DrawLabeling ) && !mLabelingRenderContext.renderingStopped() )
-    drawLabeling( mSettings, mLabelingRenderContext, mLabelingEngine, mPainter );
+    drawLabeling( mSettings, mLabelingRenderContext, mLabelingEngine, mLabelingEngineV2, mPainter );
 
   QgsDebugMsg( "Rendering completed in (seconds): " + QString( "%1" ).arg( renderTime.elapsed() / 1000.0 ) );
 }
 
 
-void QgsMapRendererJob::drawLabeling( const QgsMapSettings& settings, QgsRenderContext& renderContext, QgsPalLabeling* labelingEngine, QPainter* painter )
+void QgsMapRendererJob::drawLabeling( const QgsMapSettings& settings, QgsRenderContext& renderContext, QgsPalLabeling* labelingEngine, QgsLabelingEngineV2* labelingEngine2, QPainter* painter )
 {
   QgsDebugMsg( "Draw labeling start" );
 
@@ -264,6 +286,15 @@ void QgsMapRendererJob::drawLabeling( const QgsMapSettings& settings, QgsRenderC
   drawOldLabeling( settings, renderContext );
 
   drawNewLabeling( settings, renderContext, labelingEngine );
+
+  if ( labelingEngine2 )
+  {
+    // set correct extent
+    renderContext.setExtent( settings.visibleExtent() );
+    renderContext.setCoordinateTransform( NULL );
+
+    labelingEngine2->run( renderContext );
+  }
 
   QgsDebugMsg( QString( "Draw labeling took (seconds): %1" ).arg( t.elapsed() / 1000. ) );
 }
@@ -300,7 +331,7 @@ void QgsMapRendererJob::drawOldLabeling( const QgsMapSettings& settings, QgsRend
     {
       ct = settings.layerTransform( ml );
       if ( ct )
-        reprojectToLayerExtent( ct, ml->crs().geographicFlag(), r1, r2 );
+        reprojectToLayerExtent( ml, ct, r1, r2 );
     }
 
     renderContext.setCoordinateTransform( ct );
@@ -326,7 +357,7 @@ void QgsMapRendererJob::drawNewLabeling( const QgsMapSettings& settings, QgsRend
 
 void QgsMapRendererJob::updateLayerGeometryCaches()
 {
-  foreach ( QString id, mGeometryCaches.keys() )
+  Q_FOREACH ( const QString& id, mGeometryCaches.keys() )
   {
     const QgsGeometryCache& cache = mGeometryCaches[id];
     if ( QgsVectorLayer* vl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( id ) ) )
@@ -338,13 +369,22 @@ void QgsMapRendererJob::updateLayerGeometryCaches()
 
 bool QgsMapRendererJob::needTemporaryImage( QgsMapLayer* ml )
 {
-  if ( mSettings.testFlag( QgsMapSettings::UseAdvancedEffects ) && ml->type() == QgsMapLayer::VectorLayer )
+  if ( ml->type() == QgsMapLayer::VectorLayer )
   {
     QgsVectorLayer* vl = qobject_cast<QgsVectorLayer *>( ml );
-    if ((( vl->blendMode() != QPainter::CompositionMode_SourceOver )
-         || ( vl->featureBlendMode() != QPainter::CompositionMode_SourceOver )
-         || ( vl->layerTransparency() != 0 ) ) )
+    if ( vl->rendererV2() && vl->rendererV2()->forceRasterRender() )
+    {
+      //raster rendering is forced for this layer
       return true;
+    }
+    if ( mSettings.testFlag( QgsMapSettings::UseAdvancedEffects ) &&
+         (( vl->blendMode() != QPainter::CompositionMode_SourceOver )
+          || ( vl->featureBlendMode() != QPainter::CompositionMode_SourceOver )
+          || ( vl->layerTransparency() != 0 ) ) )
+    {
+      //layer properties require rasterisation
+      return true;
+    }
   }
 
   return false;

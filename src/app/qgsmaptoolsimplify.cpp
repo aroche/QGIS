@@ -20,6 +20,7 @@
 #include "qgsrubberband.h"
 #include "qgsvectorlayer.h"
 #include "qgstolerance.h"
+#include "qgisapp.h"
 
 #include <QMouseEvent>
 
@@ -46,6 +47,11 @@ void QgsSimplifyDialog::updateStatusText()
   labelStatus->setText( mTool->statusText() );
 }
 
+void QgsSimplifyDialog::enableOkButton( bool enabled )
+{
+  okButton->setEnabled( enabled );
+}
+
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -56,10 +62,11 @@ QgsMapToolSimplify::QgsMapToolSimplify( QgsMapCanvas* canvas )
     , mDragging( false )
     , mOriginalVertexCount( 0 )
     , mReducedVertexCount( 0 )
+    , mReducedHasErrors( false )
 {
   QSettings settings;
   mTolerance = settings.value( "/digitizing/simplify_tolerance", 1 ).toDouble();
-  mToleranceUnits = ( ToleranceUnits ) settings.value( "/digitizing/simplify_tolerance_units", 0 ).toInt();
+  mToleranceUnits = ( QgsTolerance::UnitType ) settings.value( "/digitizing/simplify_tolerance_units", 0 ).toInt();
 
   mSimplifyDialog = new QgsSimplifyDialog( this, canvas->topLevelWidget() );
 }
@@ -84,7 +91,7 @@ void QgsMapToolSimplify::setTolerance( double tolerance )
 
 void QgsMapToolSimplify::setToleranceUnits( int units )
 {
-  mToleranceUnits = ( ToleranceUnits ) units;
+  mToleranceUnits = ( QgsTolerance::UnitType ) units;
 
   QSettings settings;
   settings.setValue( "/digitizing/simplify_tolerance_units", units );
@@ -97,23 +104,29 @@ void QgsMapToolSimplify::updateSimplificationPreview()
 {
   QgsVectorLayer* vl = currentVectorLayer();
 
+  double layerTolerance = QgsTolerance::toleranceInMapUnits( mTolerance, vl, mCanvas->mapSettings(), mToleranceUnits );
+  mReducedHasErrors = false;
   mReducedVertexCount = 0;
   int i = 0;
-  foreach ( const QgsFeature& fSel, mSelectedFeatures )
+  Q_FOREACH ( const QgsFeature& fSel, mSelectedFeatures )
   {
-    // create a copy of selected feature and do the simplification
-    QgsFeature f = fSel;
-    QgsSimplifyFeature::simplify( f, mTolerance, mToleranceUnits, mCanvas->mapSettings().layerTransform( vl ) );
-    mReducedVertexCount += vertexCount( f.geometry() );
-    mRubberBands[i]->setToGeometry( f.geometry(), vl );
+    if ( QgsGeometry* g = fSel.constGeometry()->simplify( layerTolerance ) )
+    {
+      mReducedVertexCount += vertexCount( g );
+      mRubberBands[i]->setToGeometry( g, vl );
+      delete g;
+    }
+    else
+      mReducedHasErrors = true;
     ++i;
   }
 
   mSimplifyDialog->updateStatusText();
+  mSimplifyDialog->enableOkButton( !mReducedHasErrors );
 }
 
 
-int QgsMapToolSimplify::vertexCount( QgsGeometry* g ) const
+int QgsMapToolSimplify::vertexCount( const QgsGeometry* g ) const
 {
   switch ( g->type() )
   {
@@ -122,7 +135,7 @@ int QgsMapToolSimplify::vertexCount( QgsGeometry* g ) const
       int count = 0;
       if ( g->isMultipart() )
       {
-        foreach ( const QgsPolyline& polyline, g->asMultiPolyline() )
+        Q_FOREACH ( const QgsPolyline& polyline, g->asMultiPolyline() )
           count += polyline.count();
       }
       else
@@ -134,13 +147,13 @@ int QgsMapToolSimplify::vertexCount( QgsGeometry* g ) const
       int count = 0;
       if ( g->isMultipart() )
       {
-        foreach ( const QgsPolygon& polygon, g->asMultiPolygon() )
-          foreach ( const QgsPolyline& ring, polygon )
+        Q_FOREACH ( const QgsPolygon& polygon, g->asMultiPolygon() )
+          Q_FOREACH ( const QgsPolyline& ring, polygon )
             count += ring.count();
       }
       else
       {
-        foreach ( const QgsPolyline& ring, g->asPolygon() )
+        Q_FOREACH ( const QgsPolyline& ring, g->asPolygon() )
           count += ring.count();
       }
       return count;
@@ -154,13 +167,16 @@ int QgsMapToolSimplify::vertexCount( QgsGeometry* g ) const
 void QgsMapToolSimplify::storeSimplified()
 {
   QgsVectorLayer * vlayer = currentVectorLayer();
+  double layerTolerance = QgsTolerance::toleranceInMapUnits( mTolerance, vlayer, mCanvas->mapSettings(), mToleranceUnits );
 
   vlayer->beginEditCommand( tr( "Geometry simplified" ) );
-  foreach ( const QgsFeature& feat, mSelectedFeatures )
+  Q_FOREACH ( const QgsFeature& feat, mSelectedFeatures )
   {
-    QgsFeature f = feat;
-    QgsSimplifyFeature::simplify( f, mTolerance, mToleranceUnits, mCanvas->mapSettings().layerTransform( vlayer ) );
-    vlayer->changeGeometry( f.id(), f.geometry() );
+    if ( QgsGeometry* g = feat.constGeometry()->simplify( layerTolerance ) )
+    {
+      vlayer->changeGeometry( feat.id(), g );
+      delete g;
+    }
   }
   vlayer->endEditCommand();
 
@@ -171,7 +187,7 @@ void QgsMapToolSimplify::storeSimplified()
 
 
 
-void QgsMapToolSimplify::canvasPressEvent( QMouseEvent * e )
+void QgsMapToolSimplify::canvasPressEvent( QgsMapMouseEvent* e )
 {
   if ( e->button() != Qt::LeftButton )
     return;
@@ -189,7 +205,7 @@ void QgsMapToolSimplify::canvasPressEvent( QMouseEvent * e )
 }
 
 
-void QgsMapToolSimplify::canvasMoveEvent( QMouseEvent * e )
+void QgsMapToolSimplify::canvasMoveEvent( QgsMapMouseEvent* e )
 {
   if ( !( e->buttons() & Qt::LeftButton ) )
     return;
@@ -213,9 +229,12 @@ void QgsMapToolSimplify::canvasMoveEvent( QMouseEvent * e )
 }
 
 
-void QgsMapToolSimplify::canvasReleaseEvent( QMouseEvent * e )
+void QgsMapToolSimplify::canvasReleaseEvent( QgsMapMouseEvent* e )
 {
   if ( e->button() != Qt::LeftButton )
+    return;
+
+  if ( !currentVectorLayer() )
     return;
 
   delete mSelectionRubberBand;
@@ -240,9 +259,9 @@ void QgsMapToolSimplify::canvasReleaseEvent( QMouseEvent * e )
 
   // count vertices, prepare rubber bands
   mOriginalVertexCount = 0;
-  foreach ( const QgsFeature& f, mSelectedFeatures )
+  Q_FOREACH ( const QgsFeature& f, mSelectedFeatures )
   {
-    mOriginalVertexCount += vertexCount( f.geometry() );
+    mOriginalVertexCount += vertexCount( f.constGeometry() );
 
     QgsRubberBand* rb = new QgsRubberBand( mCanvas );
     rb->setColor( QColor( 255, 0, 0, 65 ) );
@@ -273,7 +292,7 @@ void QgsMapToolSimplify::selectOneFeature( const QPoint& canvasPoint )
   QgsFeature f;
   while ( fit.nextFeature( f ) )
   {
-    currentDistance = geometry->distance( *( f.geometry() ) );
+    currentDistance = geometry->distance( *( f.constGeometry() ) );
     if ( currentDistance < minDistance )
     {
       minDistance = currentDistance;
@@ -329,186 +348,9 @@ void QgsMapToolSimplify::deactivate()
 QString QgsMapToolSimplify::statusText() const
 {
   int percent = mOriginalVertexCount ? ( 100 * mReducedVertexCount / mOriginalVertexCount ) : 0;
-  return tr( "%1 feature(s): %2 to %3 vertices (%4%)" )
-         .arg( mSelectedFeatures.count() ).arg( mOriginalVertexCount ).arg( mReducedVertexCount ).arg( percent );
+  QString txt = tr( "%1 feature(s): %2 to %3 vertices (%4%)" )
+                .arg( mSelectedFeatures.count() ).arg( mOriginalVertexCount ).arg( mReducedVertexCount ).arg( percent );
+  if ( mReducedHasErrors )
+    txt += '\n' + tr( "Simplification failed!" );
+  return txt;
 }
-
-
-////////////////////////////////////////////////////////////////////////////
-
-
-bool QgsSimplifyFeature::simplify( QgsFeature& feature, double tolerance, QgsMapToolSimplify::ToleranceUnits units, const QgsCoordinateTransform* ctLayerToMap )
-{
-  if ( tolerance <= 0 )
-    return false;
-
-  QgsGeometry* g = feature.geometry();
-  if ( g->type() == QGis::Line )
-  {
-    if ( g->isMultipart() )
-    {
-      QgsMultiPolyline poly;
-      foreach ( const QgsPolyline& ring, g->asMultiPolyline() )
-        poly << simplifyPoints( ring, tolerance, units, ctLayerToMap );
-      feature.setGeometry( QgsGeometry::fromMultiPolyline( poly ) );
-    }
-    else
-    {
-      QgsPolyline resultPoints = simplifyPoints( g->asPolyline(), tolerance, units, ctLayerToMap );
-      feature.setGeometry( QgsGeometry::fromPolyline( resultPoints ) );
-    }
-    return true;
-  }
-  else if ( g->type() == QGis::Polygon )
-  {
-    if ( g->isMultipart() )
-    {
-      QgsMultiPolygon mpoly;
-      foreach ( const QgsPolygon& polygon, g->asMultiPolygon() )
-      {
-        QgsPolygon poly;
-        foreach ( const QgsPolyline& ring, polygon )
-          poly << simplifyPoints( ring, tolerance, units, ctLayerToMap );
-        mpoly << poly;
-      }
-      feature.setGeometry( QgsGeometry::fromMultiPolygon( mpoly ) );
-    }
-    else
-    {
-      QgsPolygon poly;
-      foreach ( const QgsPolyline& ring, g->asPolygon() )
-        poly << simplifyPoints( ring, tolerance, units, ctLayerToMap );
-      feature.setGeometry( QgsGeometry::fromPolygon( poly ) );
-    }
-    return true;
-  }
-  else
-    return false;
-}
-
-
-QVector<QgsPoint> QgsSimplifyFeature::simplifyPoints( const QVector<QgsPoint>& pts, double tolerance, QgsMapToolSimplify::ToleranceUnits units, const QgsCoordinateTransform* ctLayerToMap )
-{
-  if ( tolerance < 0 )
-    return pts;
-
-  // if using map units, we transform coordinates to map units and, run simplification on transformed points
-  // and use indices with original coordinates. This will ensure that we do not modify coordinate values
-  // by transforming them back and forth.
-  QVector<QgsPoint> ptsForAlg;
-  bool transform = ( units == QgsMapToolSimplify::MapUnits && ctLayerToMap );
-  if ( transform )
-  {
-    foreach ( const QgsPoint& pt, pts )
-      ptsForAlg << ctLayerToMap->transform( pt );
-  }
-
-  QList<int> indices = QgsSimplifyFeature::simplifyPointsIndices( transform ? ptsForAlg : pts, tolerance );
-
-  QVector<QgsPoint> result;
-  foreach ( int index, indices )
-    result.append( pts[index] );
-  return result;
-}
-
-
-QList<int> QgsSimplifyFeature::simplifyPointsIndices( const QVector<QgsPoint>& pts, double tolerance )
-{
-  // Douglas-Peucker simplification algorithm
-
-  int anchor  = 0;
-  int floater = pts.size() - 1;
-
-  QList<StackEntry> stack;
-  StackEntry temporary;
-  StackEntry entry = {anchor, floater};
-  stack.append( entry );
-
-  QSet<int> keep;
-  double anchorX;
-  double anchorY;
-  double seg_len;
-  double max_dist;
-  int farthest;
-  double dist_to_seg;
-  double vecX;
-  double vecY;
-
-  while ( !stack.empty() )
-  {
-    temporary = stack.takeLast();
-    anchor = temporary.anchor;
-    floater = temporary.floater;
-    // initialize line segment
-    if ( pts[floater] != pts[anchor] )
-    {
-      anchorX = pts[floater].x() - pts[anchor].x();
-      anchorY = pts[floater].y() - pts[anchor].y();
-      seg_len = sqrt( anchorX * anchorX + anchorY * anchorY );
-      // get the unit vector
-      anchorX /= seg_len;
-      anchorY /= seg_len;
-    }
-    else
-    {
-      anchorX = anchorY = seg_len = 0.0;
-    }
-    // inner loop:
-    max_dist = 0.0;
-    farthest = anchor + 1;
-    for ( int i = anchor + 1; i < floater; i++ )
-    {
-      dist_to_seg = 0.0;
-      // compare to anchor
-      vecX = pts[i].x() - pts[anchor].x();
-      vecY = pts[i].y() - pts[anchor].y();
-      seg_len = sqrt( vecX * vecX + vecY * vecY );
-      // dot product:
-      double proj = vecX * anchorX + vecY * anchorY;
-      if ( proj < 0.0 )
-      {
-        dist_to_seg = seg_len;
-      }
-      else
-      {
-        // compare to floater
-        vecX = pts[i].x() - pts[floater].x();
-        vecY = pts[i].y() - pts[floater].y();
-        seg_len = sqrt( vecX * vecX + vecY * vecY );
-        // dot product:
-        proj = vecX * ( -anchorX ) + vecY * ( -anchorY );
-        if ( proj < 0.0 )
-        {
-          dist_to_seg = seg_len;
-        }
-        else
-        {  // calculate perpendicular distance to line (pythagorean theorem):
-          dist_to_seg = sqrt( qAbs( seg_len * seg_len - proj * proj ) );
-        }
-        if ( max_dist < dist_to_seg )
-        {
-          max_dist = dist_to_seg;
-          farthest = i;
-        }
-      }
-    }
-    if ( max_dist <= tolerance )
-    { // # use line segment
-      keep.insert( anchor );
-      keep.insert( floater );
-    }
-    else
-    {
-      StackEntry s = {anchor, farthest};
-      stack.append( s );
-
-      StackEntry r = {farthest, floater};
-      stack.append( r );
-    }
-  }
-
-  QList<int> keep2 = keep.toList();
-  qSort( keep2 );
-  return keep2;
-}
-

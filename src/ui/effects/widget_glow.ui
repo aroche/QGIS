@@ -135,7 +135,11 @@
          </widget>
         </item>
         <item row="4" column="1" colspan="2">
+<<<<<<< HEAD
          <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0,0">
+=======
+         <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0">
+>>>>>>> upstream/master
           <item>
            <widget class="QgsColorRampComboBox" name="mRampComboBox"/>
           </item>
@@ -152,6 +156,7 @@
             </property>
            </widget>
           </item>
+<<<<<<< HEAD
           <item>
            <widget class="QCheckBox" name="mInvertCheckBox">
             <property name="text">
@@ -159,6 +164,8 @@
             </property>
            </widget>
           </item>
+=======
+>>>>>>> upstream/master
          </layout>
         </item>
         <item row="5" column="1" colspan="2">
@@ -261,10 +268,16 @@
    <header>qgsdoublespinbox.h</header>
   </customwidget>
   <customwidget>
+<<<<<<< HEAD
    <class>QgsUnitSelectionWidget</class>
    <extends>QWidget</extends>
    <header>qgsunitselectionwidget.h</header>
    <container>1</container>
+=======
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+>>>>>>> upstream/master
   </customwidget>
   <customwidget>
    <class>QgsBlendModeComboBox</class>
@@ -272,6 +285,7 @@
    <header>qgsblendmodecombobox.h</header>
   </customwidget>
   <customwidget>
+<<<<<<< HEAD
    <class>QgsSpinBox</class>
    <extends>QSpinBox</extends>
    <header>qgsspinbox.h</header>
@@ -287,6 +301,38 @@
    <header>qgseffectdrawmodecombobox.h</header>
   </customwidget>
  </customwidgets>
+=======
+   <class>QgsEffectDrawModeComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgseffectdrawmodecombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsUnitSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsunitselectionwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsColorRampComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgscolorrampcombobox.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>mSpreadSpnBx</tabstop>
+  <tabstop>mSpreadUnitWidget</tabstop>
+  <tabstop>mBlurRadiusSpnBx</tabstop>
+  <tabstop>mTranspSlider</tabstop>
+  <tabstop>mTranspSpnBx</tabstop>
+  <tabstop>radioSingleColor</tabstop>
+  <tabstop>mColorBtn</tabstop>
+  <tabstop>radioColorRamp</tabstop>
+  <tabstop>mRampComboBox</tabstop>
+  <tabstop>mButtonEditRamp</tabstop>
+  <tabstop>mBlendCmbBx</tabstop>
+  <tabstop>mDrawModeComboBox</tabstop>
+ </tabstops>
+>>>>>>> upstream/master
  <resources/>
  <connections>
   <connection>
@@ -337,6 +383,7 @@
     </hint>
    </hints>
   </connection>
+<<<<<<< HEAD
   <connection>
    <sender>radioColorRamp</sender>
    <signal>toggled(bool)</signal>
@@ -353,5 +400,7 @@
     </hint>
    </hints>
   </connection>
+=======
+>>>>>>> upstream/master
  </connections>
 </ui>

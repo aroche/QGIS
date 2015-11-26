@@ -27,7 +27,11 @@
 #include "qgsapplication.h"
 #include "qgslogger.h"
 
+<<<<<<< HEAD
 static bool _initWidgetFunction( QString name, QgsPaintEffectWidgetFunc f )
+=======
+static bool _initWidgetFunction( const QString& name, QgsPaintEffectWidgetFunc f )
+>>>>>>> upstream/master
 {
   QgsPaintEffectRegistry* registry = QgsPaintEffectRegistry::instance();
 
@@ -91,7 +95,11 @@ void QgsPaintEffectPropertiesWidget::populateEffectTypes()
   QgsPaintEffectRegistry* registry = QgsPaintEffectRegistry::instance();
   QStringList types = registry->effects();
 
+<<<<<<< HEAD
   foreach ( QString type, types )
+=======
+  Q_FOREACH ( const QString& type, types )
+>>>>>>> upstream/master
   {
     //don't show stack effect
     if ( type == "effectStack" )

@@ -13,8 +13,6 @@ Email                : sherman at mrcc dot com
  *                                                                         *
  ***************************************************************************/
 #include <QtTest/QtTest>
-#include <iostream>
-
 #include <QPixmap>
 
 #define CPL_SUPRESS_CPLUSPLUS
@@ -45,7 +43,7 @@ void TestQgsApplication::initTestCase()
   QgsApplication::init();
   QgsApplication::initQgis();
   qDebug( "%s", QgsApplication::showSettings().toUtf8().constData() );
-};
+}
 
 void TestQgsApplication::cleanupTestCase()
 {
@@ -58,7 +56,7 @@ void TestQgsApplication::checkPaths()
   qDebug( "Checking authors file exists:" );
   qDebug( "%s", myPath.toLocal8Bit().constData() );
   QVERIFY( !myPath.isEmpty() );
-};
+}
 
 void TestQgsApplication::checkGdalSkip()
 {
@@ -71,4 +69,3 @@ void TestQgsApplication::checkGdalSkip()
 
 QTEST_MAIN( TestQgsApplication )
 #include "testqgsapplication.moc"
-

@@ -178,7 +178,11 @@ QgsDropShadowEffect::~QgsDropShadowEffect()
 
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsDropShadowEffect::clone() const
+=======
+QgsDropShadowEffect* QgsDropShadowEffect::clone() const
+>>>>>>> upstream/master
 {
   return new QgsDropShadowEffect( *this );
 }
@@ -206,7 +210,11 @@ QgsInnerShadowEffect::~QgsInnerShadowEffect()
 
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsInnerShadowEffect::clone() const
+=======
+QgsInnerShadowEffect* QgsInnerShadowEffect::clone() const
+>>>>>>> upstream/master
 {
   return new QgsInnerShadowEffect( *this );
 }

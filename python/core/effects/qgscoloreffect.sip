@@ -11,7 +11,11 @@ class QgsColorEffect : QgsPaintEffect
 %TypeHeaderCode
 #include <qgscoloreffect.h>
 %End
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> upstream/master
   public:
 
     /** Creates a new QgsColorEffect effect from a properties string map.
@@ -26,7 +30,11 @@ class QgsColorEffect : QgsPaintEffect
     virtual QString type() const;
     virtual QgsStringMap properties() const;
     virtual void readProperties( const QgsStringMap& props );
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const /Factory/;
+=======
+    virtual QgsColorEffect* clone() const /Factory/;
+>>>>>>> upstream/master
 
     /** Sets the brightness modification for the effect.
      * @param brightness Valid values are between -255 and 255, where 0 represents

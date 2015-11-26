@@ -29,6 +29,7 @@ from LAStoolsAlgorithm import LAStoolsAlgorithm
 
 from processing.core.parameters import ParameterFile
 
+
 class lasmerge(LAStoolsAlgorithm):
 
     FILE2 = "FILE2"
@@ -39,8 +40,8 @@ class lasmerge(LAStoolsAlgorithm):
     FILE7 = "FILE7"
 
     def defineCharacteristics(self):
-        self.name = "lasmerge"
-        self.group = "LAStools"
+        self.name, self.i18n_name = self.trAlgorithm('lasmerge')
+        self.group, self.i18n_group = self.trAlgorithm('LAStools')
         self.addParametersVerboseGUI()
         self.addParametersFilesAreFlightlinesGUI()
         self.addParametersApplyFileSourceIdGUI()
@@ -59,31 +60,31 @@ class lasmerge(LAStoolsAlgorithm):
         self.addParametersVerboseCommands(commands)
         self.addParametersPointInputCommands(commands)
         file2 = self.getParameterValue(lasmerge.FILE2)
-        if file2 != None:
+        if file2 is not None:
             commands.append("-i")
             commands.append(file2)
         file3 = self.getParameterValue(lasmerge.FILE3)
-        if file3 != None:
+        if file3 is not None:
             commands.append("-i")
             commands.append(file3)
         file4 = self.getParameterValue(lasmerge.FILE4)
-        if file4 != None:
+        if file4 is not None:
             commands.append("-i")
             commands.append(file4)
         file5 = self.getParameterValue(lasmerge.FILE5)
-        if file5 != None:
+        if file5 is not None:
             commands.append("-i")
             commands.append(file5)
         file6 = self.getParameterValue(lasmerge.FILE6)
-        if file6 != None:
+        if file6 is not None:
             commands.append("-i")
             commands.append(file6)
         file7 = self.getParameterValue(lasmerge.FILE7)
-        if file7 != None:
+        if file7 is not None:
             commands.append("-i")
             commands.append(file7)
         self.addParametersFilesAreFlightlinesCommands(commands)
-        self.addParametersApplyFileSourceIdsCommands(commands)
+        self.addParametersApplyFileSourceIdCommands(commands)
         self.addParametersPointOutputCommands(commands)
         self.addParametersAdditionalCommands(commands)
 

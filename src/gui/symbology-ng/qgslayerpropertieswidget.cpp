@@ -19,6 +19,7 @@
 #include <QStandardItem>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include <QPicture>
 
 #include "qgssymbollayerv2.h"
 #include "qgssymbollayerv2registry.h"
@@ -31,7 +32,7 @@
 #include "qgsvectorfieldsymbollayerwidget.h"
 #include "qgssymbolv2.h" //for the unit
 
-static bool _initWidgetFunction( QString name, QgsSymbolLayerV2WidgetFunc f )
+static bool _initWidgetFunction( const QString& name, QgsSymbolLayerV2WidgetFunc f )
 {
   QgsSymbolLayerV2Registry* reg = QgsSymbolLayerV2Registry::instance();
 
@@ -81,6 +82,8 @@ static void _initWidgetFunctions()
 
 QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayerV2* layer, const QgsSymbolV2* symbol, const QgsVectorLayer* vl, QWidget* parent )
     : QWidget( parent )
+    , mPresetExpressionContext( 0 )
+    , mMapCanvas( 0 )
 {
 
   mLayer = layer;
@@ -109,6 +112,26 @@ QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayerV2* layer, con
   // set the corresponding widget
   updateSymbolLayerWidget( layer );
   connect( cboLayerType, SIGNAL( currentIndexChanged( int ) ), this, SLOT( layerTypeChanged() ) );
+
+  connect( mEffectWidget, SIGNAL( changed() ), this, SLOT( emitSignalChanged() ) );
+  mEffectWidget->setPaintEffect( mLayer->paintEffect() );
+}
+
+void QgsLayerPropertiesWidget::setMapCanvas( QgsMapCanvas *canvas )
+{
+  mMapCanvas = canvas;
+  QgsSymbolLayerV2Widget* w = dynamic_cast< QgsSymbolLayerV2Widget* >( stackedWidget->currentWidget() );
+  if ( w )
+    w->setMapCanvas( mMapCanvas );
+}
+
+void QgsLayerPropertiesWidget::setExpressionContext( QgsExpressionContext *context )
+{
+  mPresetExpressionContext = context;
+
+  QgsSymbolLayerV2Widget* w = dynamic_cast< QgsSymbolLayerV2Widget* >( stackedWidget->currentWidget() );
+  if ( w )
+    w->setExpressionContext( mPresetExpressionContext );
 }
 
 void QgsLayerPropertiesWidget::populateLayerTypes()
@@ -150,6 +173,9 @@ void QgsLayerPropertiesWidget::updateSymbolLayerWidget( QgsSymbolLayerV2* layer 
     if ( w )
     {
       w->setSymbolLayer( layer );
+      w->setExpressionContext( mPresetExpressionContext );
+      if ( mMapCanvas )
+        w->setMapCanvas( mMapCanvas );
       stackedWidget->addWidget( w );
       stackedWidget->setCurrentWidget( w );
       // start receiving updates from widget
@@ -189,4 +215,7 @@ void QgsLayerPropertiesWidget::layerTypeChanged()
 void QgsLayerPropertiesWidget::emitSignalChanged()
 {
   emit changed();
+
+  // also update paint effect preview
+  mEffectWidget->setPreviewPicture( QgsSymbolLayerV2Utils::symbolLayerPreviewPicture( mLayer, QgsSymbolV2::MM, QSize( 80, 80 ) ) );
 }

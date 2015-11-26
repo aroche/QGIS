@@ -25,9 +25,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-import os.path
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+import os
+
+from PyQt4.QtGui import QIcon
+
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
 from processing.core.ProcessingLog import ProcessingLog
@@ -40,6 +41,8 @@ from processing.modeler.DeleteModelAction import DeleteModelAction
 from processing.modeler.AddModelFromFileAction import AddModelFromFileAction
 from processing.gui.GetScriptsAndModels import GetModelsAction
 
+pluginPath = os.path.split(os.path.dirname(__file__))[0]
+
 
 class ModelerAlgorithmProvider(AlgorithmProvider):
 
@@ -51,8 +54,8 @@ class ModelerAlgorithmProvider(AlgorithmProvider):
     def initializeSettings(self):
         AlgorithmProvider.initializeSettings(self)
         ProcessingConfig.addSetting(Setting(self.getDescription(),
-            ModelerUtils.MODELS_FOLDER, self.tr('Models folder', 'ModelerAlgorithmProvider'),
-            ModelerUtils.modelsFolder()))
+                                            ModelerUtils.MODELS_FOLDER, self.tr('Models folder', 'ModelerAlgorithmProvider'),
+                                            ModelerUtils.modelsFolder(), valuetype=Setting.FOLDER))
 
     def setAlgsList(self, algs):
         ModelerUtils.allAlgs = algs
@@ -67,7 +70,7 @@ class ModelerAlgorithmProvider(AlgorithmProvider):
         return 'model'
 
     def getIcon(self):
-        return QIcon(os.path.dirname(__file__) + '/../images/model.png')
+        return QIcon(os.path.join(pluginPath, 'images', 'model.png'))
 
     def _loadAlgorithms(self):
         folder = ModelerUtils.modelsFolder()
@@ -88,7 +91,7 @@ class ModelerAlgorithmProvider(AlgorithmProvider):
                             self.algs.append(alg)
                         else:
                             ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                self.tr('Could not load model %s', 'ModelerAlgorithmProvider') % descriptionFile)
-                    except WrongModelException, e:
+                                                   self.tr('Could not load model %s', 'ModelerAlgorithmProvider') % descriptionFile)
+                    except WrongModelException as e:
                         ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                            self.tr('Could not load model %s\n%s', 'ModelerAlgorithmProvider') % (descriptionFile, e.msg))
+                                               self.tr('Could not load model %s\n%s', 'ModelerAlgorithmProvider') % (descriptionFile, e.msg))

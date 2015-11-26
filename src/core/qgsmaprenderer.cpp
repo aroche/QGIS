@@ -175,7 +175,7 @@ void QgsMapRenderer::adjustExtentToSize()
   if ( !myWidth || !myHeight )
   {
     mScale = 1.0;
-    newCoordXForm.setParameters( 0, 0, 0, 0 );
+    newCoordXForm.setParameters( 1, 0, 0, 0, 0, 0 );
     return;
   }
 
@@ -205,9 +205,9 @@ void QgsMapRenderer::adjustExtentToSize()
     dymax = mExtent.yMaximum() + whitespace;
   }
 
-  QgsDebugMsg( QString( "Map units per pixel (x,y) : %1, %2" ).arg( qgsDoubleToString( mapUnitsPerPixelX ) ).arg( qgsDoubleToString( mapUnitsPerPixelY ) ) );
-  QgsDebugMsg( QString( "Pixmap dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( myWidth ) ).arg( qgsDoubleToString( myHeight ) ) );
-  QgsDebugMsg( QString( "Extent dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() ) ).arg( qgsDoubleToString( mExtent.height() ) ) );
+  QgsDebugMsg( QString( "Map units per pixel (x,y) : %1, %2" ).arg( qgsDoubleToString( mapUnitsPerPixelX ), qgsDoubleToString( mapUnitsPerPixelY ) ) );
+  QgsDebugMsg( QString( "Pixmap dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( myWidth ), qgsDoubleToString( myHeight ) ) );
+  QgsDebugMsg( QString( "Extent dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() ), qgsDoubleToString( mExtent.height() ) ) );
   QgsDebugMsg( mExtent.toString() );
 
   // update extent
@@ -216,16 +216,18 @@ void QgsMapRenderer::adjustExtentToSize()
   mExtent.setYMinimum( dymin );
   mExtent.setYMaximum( dymax );
 
-  QgsDebugMsg( QString( "Adjusted map units per pixel (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() / myWidth ) ).arg( qgsDoubleToString( mExtent.height() / myHeight ) ) );
+  QgsDebugMsg( QString( "Adjusted map units per pixel (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() / myWidth ), qgsDoubleToString( mExtent.height() / myHeight ) ) );
 
-  QgsDebugMsg( QString( "Recalced pixmap dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() / mMapUnitsPerPixel ) ).arg( qgsDoubleToString( mExtent.height() / mMapUnitsPerPixel ) ) );
+  QgsDebugMsg( QString( "Recalced pixmap dimensions (x,y) : %1, %2" ).arg( qgsDoubleToString( mExtent.width() / mMapUnitsPerPixel ), qgsDoubleToString( mExtent.height() / mMapUnitsPerPixel ) ) );
 
   // update the scale
   updateScale();
 
   QgsDebugMsg( QString( "Scale (assuming meters as map units) = 1:%1" ).arg( qgsDoubleToString( mScale ) ) );
 
+  Q_NOWARN_DEPRECATED_PUSH
   newCoordXForm.setParameters( mMapUnitsPerPixel, dxmin, dymin, myHeight );
+  Q_NOWARN_DEPRECATED_POP
   mRenderContext.setMapToPixel( newCoordXForm );
   mRenderContext.setExtent( mExtent );
 }
@@ -452,7 +454,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
                                           mRenderContext.painter()->device()->height(), QImage::Format_ARGB32 );
           if ( mypFlattenedImage->isNull() )
           {
-            QgsDebugMsg( "insufficient memory for image " + QString::number( mRenderContext.painter()->device()->width() ) + "x" + QString::number( mRenderContext.painter()->device()->height() ) );
+            QgsDebugMsg( "insufficient memory for image " + QString::number( mRenderContext.painter()->device()->width() ) + 'x' + QString::number( mRenderContext.painter()->device()->height() ) );
             emit drawError( ml );
             painter->end(); // drawError is not caught by anyone, so we end painting to notify caller
             return;
@@ -485,7 +487,9 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
         bk_mapToPixel = mRenderContext.mapToPixel();
         rasterMapToPixel = mRenderContext.mapToPixel();
         rasterMapToPixel.setMapUnitsPerPixel( mRenderContext.mapToPixel().mapUnitsPerPixel() / rasterScaleFactor );
+        Q_NOWARN_DEPRECATED_PUSH
         rasterMapToPixel.setYMaximum( mSize.height() * rasterScaleFactor );
+        Q_NOWARN_DEPRECATED_POP
         mRenderContext.setMapToPixel( rasterMapToPixel );
         mRenderContext.painter()->save();
         mRenderContext.painter()->scale( 1.0 / rasterScaleFactor, 1.0 / rasterScaleFactor );
@@ -684,7 +688,14 @@ void QgsMapRenderer::setDestinationCrs( const QgsCoordinateReferenceSystem& crs,
     if ( transformExtent && !mExtent.isEmpty() )
     {
       QgsCoordinateTransform transform( *mDestCRS, crs );
-      rect = transform.transformBoundingBox( mExtent );
+      try
+      {
+        rect = transform.transformBoundingBox( mExtent );
+      }
+      catch ( QgsCsException &e )
+      {
+        QgsDebugMsg( QString( "Transform error caught: %1" ).arg( e.what() ) );
+      }
     }
 
     QgsDebugMsg( "Setting DistArea CRS to " + QString::number( crs.srsid() ) );
@@ -1111,7 +1122,7 @@ const QgsCoordinateTransform *QgsMapRenderer::transformation( const QgsMapLayer 
        || ctIt->destAuthId == mDestCRS->authid()
      )
   {
-    return QgsCoordinateTransformCache::instance()->transform( layer->crs().authid(), mDestCRS->authid(), -1, -1 );
+    return QgsCoordinateTransformCache::instance()->transform( layer->crs().authid(), mDestCRS->authid() );
   }
   return QgsCoordinateTransformCache::instance()->transform( ctIt->srcAuthId, ctIt->destAuthId, ctIt->srcDatumTransform, ctIt->destDatumTransform );
 }

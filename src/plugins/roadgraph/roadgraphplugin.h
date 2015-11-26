@@ -48,7 +48,7 @@ class RoadGraphPlugin: public QObject, public QgisPlugin
      * QGIS when it attempts to instantiate the plugin.
      * @param theQgisInterface Pointer to the QgisInterface object.
      */
-    RoadGraphPlugin( QgisInterface * theQgisInterface );
+    explicit RoadGraphPlugin( QgisInterface * theQgisInterface );
     //! Destructor
     virtual ~RoadGraphPlugin();
     /**
@@ -114,7 +114,6 @@ class RoadGraphPlugin: public QObject, public QgisPlugin
     // MANDATORY PLUGIN PROPERTY DECLARATIONS  .....
     //
     ////////////////////////////////////////////////////////////////////
-    int mPluginType;
 
     //! Pointer to the QGIS interface object
     QgisInterface *mQGisIface;

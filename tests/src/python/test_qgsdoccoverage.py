@@ -13,6 +13,7 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 __revision__ = '$Format:%H$'
 
 import os
+<<<<<<< HEAD
 import glob
 
 from utilities import (TestCase,
@@ -22,11 +23,18 @@ try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
+=======
+from utilities import (TestCase,
+                       unittest,
+                       printImportant,
+                       DoxygenParser)
+>>>>>>> upstream/master
 
 from PyQt4.QtCore import qDebug
 
 # DOCUMENTATION THRESHOLD
 #
+<<<<<<< HEAD
 # The minimum coverage of public/protected member functions in QGIS api
 #
 # DON'T LOWER THIS THRESHOLD UNLESS MEMBERS HAVE BEEN REMOVED FROM THE API
@@ -117,6 +125,37 @@ class TestQgsDocCoverage(TestCase):
 
         assert coverage >= ACCEPTABLE_COVERAGE, 'Minimum coverage: %f\nActual coverage: %f\n' % (ACCEPTABLE_COVERAGE, coverage)
 
+=======
+# The minimum number of undocumented public/protected member functions in QGIS api
+#
+# DON'T RAISE THIS THRESHOLD!!!
+# (changes which lower this threshold are welcomed though!)
+
+ACCEPTABLE_MISSING_DOCS = 3907
+
+
+class TestQgsDocCoverage(TestCase):
+
+    def testCoverage(self):
+        print 'CTEST_FULL_OUTPUT'
+        prefixPath = os.environ['QGIS_PREFIX_PATH']
+        docPath = os.path.join(prefixPath, '..', 'doc', 'api', 'xml')
+        parser = DoxygenParser(docPath)
+
+        coverage = 100.0 * parser.documented_members / parser.documentable_members
+        missing = parser.documentable_members - parser.documented_members
+
+        print "---------------------------------"
+        printImportant("{} total documentable members".format(parser.documentable_members))
+        printImportant("{} total contain valid documentation".format(parser.documented_members))
+        printImportant("Total documentation coverage {}%".format(coverage))
+        printImportant("---------------------------------")
+        printImportant("{} members missing documentation, out of {} allowed".format(missing, ACCEPTABLE_MISSING_DOCS))
+        print "---------------------------------"
+        print parser.undocumented_string
+
+        assert missing <= ACCEPTABLE_MISSING_DOCS, 'FAIL: new undocumented members have been introduced, please add documentation for these members'
+>>>>>>> upstream/master
 
 if __name__ == '__main__':
     unittest.main()

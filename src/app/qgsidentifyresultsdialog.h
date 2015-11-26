@@ -27,10 +27,10 @@
 #include "qgsmaptoolidentify.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsmaplayeractionregistry.h"
+#include "qgswebview.h"
 
 #include <QWidget>
 #include <QList>
-#include <QWebView>
 
 class QCloseEvent;
 class QTreeWidgetItem;
@@ -49,7 +49,7 @@ class QwtPlotCurve;
  *@author Gary E.Sherman
  */
 
-class APP_EXPORT QgsIdentifyResultsWebView : public QWebView
+class APP_EXPORT QgsIdentifyResultsWebView : public QgsWebView
 {
     Q_OBJECT
   public:
@@ -59,7 +59,7 @@ class APP_EXPORT QgsIdentifyResultsWebView : public QWebView
     void print( void );
   protected:
     void contextMenuEvent( QContextMenuEvent* ) override;
-    QWebView *createWindow( QWebPage::WebWindowType type ) override;
+    QgsWebView *createWindow( QWebPage::WebWindowType type ) override;
 };
 
 class APP_EXPORT QgsIdentifyResultsFeatureItem: public QTreeWidgetItem
@@ -126,7 +126,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     /** Add add feature from other layer */
     void addFeature( QgsRasterLayer * layer,
-                     QString label,
+                     const QString& label,
                      const QMap< QString, QString > &attributes,
                      const QMap< QString, QString > &derivedAttributes,
                      const QgsFields &fields = QgsFields(),
@@ -134,12 +134,12 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
                      const QMap<QString, QVariant> &params = ( QMap<QString, QVariant>() ) );
 
     /** Add feature from identify results */
-    void addFeature( QgsMapToolIdentify::IdentifyResult result );
+    void addFeature( const QgsMapToolIdentify::IdentifyResult& result );
 
-    /** map tool was deactivated */
+    /** Map tool was deactivated */
     void deactivate();
 
-    /** map tool was activated */
+    /** Map tool was activated */
     void activate();
 
   signals:
@@ -199,14 +199,14 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     void on_cmbViewMode_currentIndexChanged( int index );
 
-    void on_mExpandNewToolButton_toggled( bool checked );
+    void on_mExpandNewAction_triggered( bool checked );
 
     void on_cbxAutoFeatureForm_toggled( bool checked );
 
-    void on_mExpandToolButton_clicked( bool checked ) { Q_UNUSED( checked ); expandAll(); }
-    void on_mCollapseToolButton_clicked( bool checked ) { Q_UNUSED( checked ); collapseAll(); }
+    void on_mExpandAction_triggered( bool checked ) { Q_UNUSED( checked ); expandAll(); }
+    void on_mCollapseAction_triggered( bool checked ) { Q_UNUSED( checked ); collapseAll(); }
 
-    void on_mCopyToolButton_clicked( bool checked );
+    void on_mActionCopy_triggered( bool checked );
 
     void formatChanged( int index );
 

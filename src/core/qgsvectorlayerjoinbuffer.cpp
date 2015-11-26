@@ -34,7 +34,7 @@ QgsVectorLayerJoinBuffer::~QgsVectorLayerJoinBuffer()
 static QList<QgsVectorLayer*> _outEdges( QgsVectorLayer* vl )
 {
   QList<QgsVectorLayer*> lst;
-  foreach ( const QgsVectorJoinInfo& info, vl->vectorJoins() )
+  Q_FOREACH ( const QgsVectorJoinInfo& info, vl->vectorJoins() )
   {
     if ( QgsVectorLayer* joinVl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( info.joinLayerId ) ) )
       lst << joinVl;
@@ -49,7 +49,7 @@ static bool _hasCycleDFS( QgsVectorLayer* n, QHash<QgsVectorLayer*, int>& mark )
   if ( mark.value( n ) == 0 ) // not visited
   {
     mark[n] = 1; // temporary
-    foreach ( QgsVectorLayer* m, _outEdges( n ) )
+    Q_FOREACH ( QgsVectorLayer* m, _outEdges( n ) )
     {
       if ( _hasCycleDFS( m, mark ) )
         return true;
@@ -123,9 +123,9 @@ void QgsVectorLayerJoinBuffer::cacheJoinLayer( QgsVectorJoinInfo& joinInfo )
     if ( joinInfo.joinFieldName.isEmpty() )
       joinFieldIndex = joinInfo.joinFieldIndex;   //for compatibility with 1.x
     else
-      joinFieldIndex = cacheLayer->pendingFields().indexFromName( joinInfo.joinFieldName );
+      joinFieldIndex = cacheLayer->fields().indexFromName( joinInfo.joinFieldName );
 
-    if ( joinFieldIndex < 0 || joinFieldIndex >= cacheLayer->pendingFields().count() )
+    if ( joinFieldIndex < 0 || joinFieldIndex >= cacheLayer->fields().count() )
       return;
 
     joinInfo.cachedAttributes.clear();
@@ -152,13 +152,13 @@ void QgsVectorLayerJoinBuffer::cacheJoinLayer( QgsVectorJoinInfo& joinInfo )
     QgsFeature f;
     while ( fit.nextFeature( f ) )
     {
-      const QgsAttributes& attrs = f.attributes();
-      QString key = attrs[joinFieldIndex].toString();
+      QgsAttributes attrs = f.attributes();
+      QString key = attrs.at( joinFieldIndex ).toString();
       if ( hasSubset )
       {
         QgsAttributes subsetAttrs( subsetIndices.count() );
         for ( int i = 0; i < subsetIndices.count(); ++i )
-          subsetAttrs[i] = attrs[ subsetIndices[i] ];
+          subsetAttrs[i] = attrs.at( subsetIndices.at( i ) );
         joinInfo.cachedAttributes.insert( key, subsetAttrs );
       }
       else
@@ -175,7 +175,7 @@ void QgsVectorLayerJoinBuffer::cacheJoinLayer( QgsVectorJoinInfo& joinInfo )
 QVector<int> QgsVectorLayerJoinBuffer::joinSubsetIndices( QgsVectorLayer* joinLayer, const QStringList& joinFieldsSubset )
 {
   QVector<int> subsetIndices;
-  const QgsFields& fields = joinLayer->pendingFields();
+  const QgsFields& fields = joinLayer->fields();
   for ( int i = 0; i < joinFieldsSubset.count(); ++i )
   {
     QString joinedFieldName = joinFieldsSubset.at( i );
@@ -206,7 +206,7 @@ void QgsVectorLayerJoinBuffer::updateFields( QgsFields& fields )
       continue;
     }
 
-    const QgsFields& joinFields = joinLayer->pendingFields();
+    const QgsFields& joinFields = joinLayer->fields();
     QString joinFieldName;
     if ( joinIt->joinFieldName.isEmpty() && joinIt->joinFieldIndex >= 0 && joinIt->joinFieldIndex < joinFields.count() )
       joinFieldName = joinFields.field( joinIt->joinFieldIndex ).name();  //for compatibility with 1.x
@@ -223,7 +223,7 @@ void QgsVectorLayerJoinBuffer::updateFields( QgsFields& fields )
 
     if ( joinIt->prefix.isNull() )
     {
-      prefix = joinLayer->name() + "_";
+      prefix = joinLayer->name() + '_';
     }
     else
     {
@@ -237,7 +237,8 @@ void QgsVectorLayerJoinBuffer::updateFields( QgsFields& fields )
         continue;
 
       //skip the join field to avoid double field names (fields often have the same name)
-      if ( joinFields[idx].name() != joinFieldName )
+      // when using subset of field, use all the selected fields
+      if ( hasSubset || joinFields[idx].name() != joinFieldName )
       {
         QgsField f = joinFields[idx];
         f.setName( prefix + f.name() );
@@ -281,12 +282,12 @@ void QgsVectorLayerJoinBuffer::writeXml( QDomNode& layer_node, QDomDocument& doc
     else
       joinElem.setAttribute( "joinFieldName", joinIt->joinFieldName );
 
-    joinElem.setAttribute( "memoryCache", !joinIt->cachedAttributes.isEmpty() );
+    joinElem.setAttribute( "memoryCache", joinIt->memoryCache );
 
     if ( joinIt->joinFieldNamesSubset() )
     {
       QDomElement subsetElem = document.createElement( "joinFieldsSubset" );
-      foreach ( QString fieldName, *joinIt->joinFieldNamesSubset() )
+      Q_FOREACH ( const QString& fieldName, *joinIt->joinFieldNamesSubset() )
       {
         QDomElement fieldElem = document.createElement( "field" );
         fieldElem.setAttribute( "name", fieldName );

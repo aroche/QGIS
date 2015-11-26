@@ -67,12 +67,12 @@ const QString GPX_KEY = "gpx";
 const QString GPX_DESCRIPTION = QObject::tr( "GPS eXchange format provider" );
 
 
-QgsGPXProvider::QgsGPXProvider( QString uri )
+QgsGPXProvider::QgsGPXProvider( const QString& uri )
     : QgsVectorDataProvider( uri )
+    , data( 0 )
+    , mFeatureType( WaypointType )
+    , mValid( false ) // assume that it won't work
 {
-  // assume that it won't work
-  mValid = false;
-
   // we always use UTF-8
   mEncoding = QTextCodec::codecForName( "utf8" );
 
@@ -215,11 +215,11 @@ bool QgsGPXProvider::addFeatures( QgsFeatureList & flist )
 
 bool QgsGPXProvider::addFeature( QgsFeature& f )
 {
-  const unsigned char* geo = f.geometry()->asWkb();
-  QGis::WkbType wkbType = f.geometry()->wkbType();
+  const unsigned char* geo = f.constGeometry()->asWkb();
+  QGis::WkbType wkbType = f.constGeometry()->wkbType();
   bool success = false;
   QgsGPSObject* obj = NULL;
-  const QgsAttributes& attrs = f.attributes();
+  QgsAttributes attrs = f.attributes();
   QgsAttributeMap::const_iterator it;
 
   // is it a waypoint?
@@ -237,13 +237,13 @@ bool QgsGPXProvider::addFeature( QgsFeature& f )
       if ( indexToAttr[i] == EleAttr )
       {
         bool eleIsOK;
-        double ele = attrs[i].toDouble( &eleIsOK );
+        double ele = attrs.at( i ).toDouble( &eleIsOK );
         if ( eleIsOK )
           wpt.ele = ele;
       }
       else if ( indexToAttr[i] == SymAttr )
       {
-        wpt.sym = attrs[i].toString();
+        wpt.sym = attrs.at( i ).toString();
       }
     }
 
@@ -288,7 +288,7 @@ bool QgsGPXProvider::addFeature( QgsFeature& f )
       if ( indexToAttr[i] == NumAttr )
       {
         bool numIsOK;
-        long num = attrs[i].toInt( &numIsOK );
+        long num = attrs.at( i ).toInt( &numIsOK );
         if ( numIsOK )
           rte.number = num;
       }
@@ -336,7 +336,7 @@ bool QgsGPXProvider::addFeature( QgsFeature& f )
       if ( indexToAttr[i] == NumAttr )
       {
         bool numIsOK;
-        long num = attrs[i].toInt( &numIsOK );
+        long num = attrs.at( i ).toInt( &numIsOK );
         if ( numIsOK )
           trk.number = num;
       }
@@ -356,12 +356,12 @@ bool QgsGPXProvider::addFeature( QgsFeature& f )
     {
       switch ( indexToAttr[i] )
       {
-        case NameAttr:    obj->name    = attrs[i].toString(); break;
-        case CmtAttr:     obj->cmt     = attrs[i].toString(); break;
-        case DscAttr:     obj->desc    = attrs[i].toString(); break;
-        case SrcAttr:     obj->src     = attrs[i].toString(); break;
-        case URLAttr:     obj->url     = attrs[i].toString(); break;
-        case URLNameAttr: obj->urlname = attrs[i].toString(); break;
+        case NameAttr:    obj->name    = attrs.at( i ).toString(); break;
+        case CmtAttr:     obj->cmt     = attrs.at( i ).toString(); break;
+        case DscAttr:     obj->desc    = attrs.at( i ).toString(); break;
+        case SrcAttr:     obj->src     = attrs.at( i ).toString(); break;
+        case URLAttr:     obj->url     = attrs.at( i ).toString(); break;
+        case URLNameAttr: obj->urlname = attrs.at( i ).toString(); break;
       }
     }
   }

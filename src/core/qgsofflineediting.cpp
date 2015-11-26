@@ -29,6 +29,7 @@
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayereditbuffer.h"
 #include "qgsvectorlayerjoinbuffer.h"
+#include "qgsslconnect.h"
 
 #include <QDir>
 #include <QDomDocument>
@@ -74,9 +75,8 @@ bool QgsOfflineEditing::convertToOfflineProject( const QString& offlineDataPath,
   QString dbPath = QDir( offlineDataPath ).absoluteFilePath( offlineDbFile );
   if ( createSpatialiteDB( dbPath ) )
   {
-    spatialite_init( 0 );
     sqlite3* db;
-    int rc = sqlite3_open( dbPath.toUtf8().constData(), &db );
+    int rc = QgsSLConnect::sqlite3_open( dbPath.toUtf8().constData(), &db );
     if ( rc != SQLITE_OK )
     {
       showWarning( tr( "Could not open the spatialite database" ) );
@@ -109,7 +109,7 @@ bool QgsOfflineEditing::convertToOfflineProject( const QString& offlineDataPath,
             QgsVectorLayer* vl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer(( *it ).joinLayerId ) );
 
             if ( vl )
-              ( *it ).prefix = vl->name() + "_";
+              ( *it ).prefix = vl->name() + '_';
           }
           ++it;
         }
@@ -156,7 +156,7 @@ bool QgsOfflineEditing::convertToOfflineProject( const QString& offlineDataPath,
 
       emit progressStopped();
 
-      sqlite3_close( db );
+      QgsSLConnect::sqlite3_close( db );
 
       // save offline project
       QString projectTitle = QgsProject::instance()->title();
@@ -165,7 +165,7 @@ bool QgsOfflineEditing::convertToOfflineProject( const QString& offlineDataPath,
         projectTitle = QFileInfo( QgsProject::instance()->fileName() ).fileName();
       }
       projectTitle += " (offline)";
-      QgsProject::instance()->title( projectTitle );
+      QgsProject::instance()->setTitle( projectTitle );
 
       QgsProject::instance()->writeEntry( PROJECT_ENTRY_SCOPE_OFFLINE, PROJECT_ENTRY_KEY_OFFLINE_DB_PATH, dbPath );
 
@@ -233,12 +233,12 @@ void QgsOfflineEditing::synchronize()
 
       QgsVectorLayer* offlineLayer = qobject_cast<QgsVectorLayer*>( layer );
 
-      // copy style
-      copySymbology( offlineLayer, remoteLayer );
-
       // register this layer with the central layers registry
       QgsMapLayerRegistry::instance()->addMapLayers(
         QList<QgsMapLayer *>() << remoteLayer, true );
+
+      // copy style
+      copySymbology( offlineLayer, remoteLayer );
 
       // apply layer edit log
       QString qgisLayerId = layer->id();
@@ -295,7 +295,7 @@ void QgsOfflineEditing::synchronize()
       // disable offline project
       QString projectTitle = QgsProject::instance()->title();
       projectTitle.remove( QRegExp( " \\(offline\\)$" ) );
-      QgsProject::instance()->title( projectTitle );
+      QgsProject::instance()->setTitle( projectTitle );
       QgsProject::instance()->removeEntry( PROJECT_ENTRY_SCOPE_OFFLINE, PROJECT_ENTRY_KEY_OFFLINE_DB_PATH );
       remoteLayer->reload(); //update with other changes
     }
@@ -334,10 +334,10 @@ void QgsOfflineEditing::initializeSpatialMetadata( sqlite3 *sqlite_handle )
   if ( ret == SQLITE_OK && rows == 1 && columns == 1 )
   {
     QString version = QString::fromUtf8( results[1] );
-    QStringList parts = version.split( " ", QString::SkipEmptyParts );
+    QStringList parts = version.split( ' ', QString::SkipEmptyParts );
     if ( parts.size() >= 1 )
     {
-      QStringList verparts = parts[0].split( ".", QString::SkipEmptyParts );
+      QStringList verparts = parts[0].split( '.', QString::SkipEmptyParts );
       above41 = verparts.size() >= 2 && ( verparts[0].toInt() > 4 || ( verparts[0].toInt() == 4 && verparts[1].toInt() >= 1 ) );
     }
   }
@@ -380,8 +380,7 @@ bool QgsOfflineEditing::createSpatialiteDB( const QString& offlineDbPath )
 
   // creating/opening the new database
   QString dbPath = newDb.fileName();
-  spatialite_init( 0 );
-  ret = sqlite3_open_v2( dbPath.toUtf8().constData(), &sqlite_handle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL );
+  ret = QgsSLConnect::sqlite3_open_v2( dbPath.toUtf8().constData(), &sqlite_handle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL );
   if ( ret )
   {
     // an error occurred
@@ -397,13 +396,13 @@ bool QgsOfflineEditing::createSpatialiteDB( const QString& offlineDbPath )
   {
     showWarning( tr( "Unable to activate FOREIGN_KEY constraints" ) );
     sqlite3_free( errMsg );
-    sqlite3_close( sqlite_handle );
+    QgsSLConnect::sqlite3_close( sqlite_handle );
     return false;
   }
   initializeSpatialMetadata( sqlite_handle );
 
   // all done: closing the DB connection
-  sqlite3_close( sqlite_handle );
+  QgsSLConnect::sqlite3_close( sqlite_handle );
 
   return true;
 }
@@ -485,13 +484,13 @@ QgsVectorLayer* QgsOfflineEditing::copyVectorLayer( QgsVectorLayer* layer, sqlit
     }
     else
     {
-      showWarning( tr( "%1: Unknown data type %2. Not using type affinity for the field." ).arg( fields[idx].name() ).arg( QVariant::typeToName( type ) ) );
+      showWarning( tr( "%1: Unknown data type %2. Not using type affinity for the field." ).arg( fields[idx].name(), QVariant::typeToName( type ) ) );
     }
 
-    sql += delim + QString( "'%1' %2" ).arg( fields[idx].name() ).arg( dataType );
-    delim = ",";
+    sql += delim + QString( "'%1' %2" ).arg( fields[idx].name(), dataType );
+    delim = ',';
   }
-  sql += ")";
+  sql += ')';
 
   int rc = sqlExec( db, sql );
 
@@ -545,8 +544,8 @@ QgsVectorLayer* QgsOfflineEditing::copyVectorLayer( QgsVectorLayer* layer, sqlit
   {
     // add new layer
     QgsVectorLayer* newLayer = new QgsVectorLayer( QString( "dbname='%1' table='%2'%3 sql=" )
-        .arg( offlineDbPath )
-        .arg( tableName ).arg( layer->hasGeometryType() ? "(Geometry)" : "" ),
+        .arg( offlineDbPath,
+              tableName, layer->hasGeometryType() ? "(Geometry)" : "" ),
         layer->name() + " (offline)", "spatialite" );
     if ( newLayer->isValid() )
     {
@@ -557,32 +556,40 @@ QgsVectorLayer* QgsOfflineEditing::copyVectorLayer( QgsVectorLayer* layer, sqlit
       newLayer->setCustomProperty( CUSTOM_PROPERTY_REMOTE_SOURCE, layer->source() );
       newLayer->setCustomProperty( CUSTOM_PROPERTY_REMOTE_PROVIDER, layer->providerType() );
 
+      // register this layer with the central layers registry
+      QgsMapLayerRegistry::instance()->addMapLayers(
+        QList<QgsMapLayer *>() << newLayer );
+
       // copy style
+      Q_NOWARN_DEPRECATED_PUSH
       bool hasLabels = layer->hasLabelsEnabled();
+      Q_NOWARN_DEPRECATED_POP
       if ( !hasLabels )
       {
         // NOTE: copy symbology before adding the layer so it is displayed correctly
         copySymbology( layer, newLayer );
       }
 
-      // register this layer with the central layers registry
-      QgsMapLayerRegistry::instance()->addMapLayers(
-        QList<QgsMapLayer *>() << newLayer );
-
       QgsLayerTreeGroup* layerTreeRoot = QgsProject::instance()->layerTreeRoot();
       // Find the parent group of the original layer
       QgsLayerTreeLayer* layerTreeLayer = layerTreeRoot->findLayer( layer->id() );
-      QgsLayerTreeGroup* parentTreeGroup = qobject_cast<QgsLayerTreeGroup*>( layerTreeLayer->parent() );
-      if ( parentTreeGroup )
+      if ( layerTreeLayer )
       {
-        int index = parentTreeGroup->children().indexOf( layerTreeLayer );
-        // Move the new layer from the root group to the new group
-        QgsLayerTreeLayer* newLayerTreeLayer = layerTreeRoot->findLayer( newLayer->id() );
-        QgsLayerTreeNode* newLayerTreeLayerClone = newLayerTreeLayer->clone();
-        QgsLayerTreeGroup* grp = qobject_cast<QgsLayerTreeGroup*>( newLayerTreeLayer->parent() );
-        parentTreeGroup->insertChildNode( index, newLayerTreeLayerClone );
-        if ( grp )
-          grp->removeChildNode( newLayerTreeLayer );
+        QgsLayerTreeGroup* parentTreeGroup = qobject_cast<QgsLayerTreeGroup*>( layerTreeLayer->parent() );
+        if ( parentTreeGroup )
+        {
+          int index = parentTreeGroup->children().indexOf( layerTreeLayer );
+          // Move the new layer from the root group to the new group
+          QgsLayerTreeLayer* newLayerTreeLayer = layerTreeRoot->findLayer( newLayer->id() );
+          if ( newLayerTreeLayer )
+          {
+            QgsLayerTreeNode* newLayerTreeLayerClone = newLayerTreeLayer->clone();
+            QgsLayerTreeGroup* grp = qobject_cast<QgsLayerTreeGroup*>( newLayerTreeLayer->parent() );
+            parentTreeGroup->insertChildNode( index, newLayerTreeLayerClone );
+            if ( grp )
+              grp->removeChildNode( newLayerTreeLayer );
+          }
+        }
       }
 
       if ( hasLabels )
@@ -596,7 +603,7 @@ QgsVectorLayer* QgsOfflineEditing::copyVectorLayer( QgsVectorLayer* layer, sqlit
       QgsFeature f;
 
       // NOTE: force feature recount for PostGIS layer, else only visible features are counted, before iterating over all features (WORKAROUND)
-      layer->setSubsetString( "" );
+      layer->setSubsetString( layer->subsetString() );
 
       QgsFeatureIterator fit = layer->dataProvider()->getFeatures();
 
@@ -615,7 +622,7 @@ QgsVectorLayer* QgsOfflineEditing::copyVectorLayer( QgsVectorLayer* layer, sqlit
         QgsAttributes newAttrs( attrs.count() );
         for ( int it = 0; it < attrs.count(); ++it )
         {
-          newAttrs[column++] = attrs[it];
+          newAttrs[column++] = attrs.at( it );
         }
         f.setAttributes( newAttrs );
 
@@ -705,7 +712,7 @@ void QgsOfflineEditing::applyFeaturesAdded( QgsVectorLayer* offlineLayer, QgsVec
   QList<int> newFeatureIds = sqlQueryInts( db, sql );
 
   // get default value for each field
-  const QgsFields& remoteFlds = remoteLayer->pendingFields();
+  const QgsFields& remoteFlds = remoteLayer->fields();
   QVector<QVariant> defaultValues( remoteFlds.count() );
   for ( int i = 0; i < remoteFlds.count(); ++i )
   {
@@ -728,7 +735,7 @@ void QgsOfflineEditing::applyFeaturesAdded( QgsVectorLayer* offlineLayer, QgsVec
   emit progressModeSet( QgsOfflineEditing::AddFeatures, features.size() );
 
   int i = 1;
-  int newAttrsCount = remoteLayer->pendingFields().count();
+  int newAttrsCount = remoteLayer->fields().count();
   for ( QgsFeatureList::iterator it = features.begin(); it != features.end(); ++it )
   {
     QgsFeature f = *it;
@@ -740,15 +747,15 @@ void QgsOfflineEditing::applyFeaturesAdded( QgsVectorLayer* offlineLayer, QgsVec
     QgsAttributes attrs = f.attributes();
     for ( int it = 0; it < attrs.count(); ++it )
     {
-      newAttrs[ attrLookup[ it ] ] = attrs[ it ];
+      newAttrs[ attrLookup[ it ] ] = attrs.at( it );
     }
 
     // try to use default value from the provider
     // (important especially e.g. for postgis primary key generated from a sequence)
     for ( int k = 0; k < newAttrs.count(); ++k )
     {
-      if ( newAttrs[k].isNull() && !defaultValues[k].isNull() )
-        newAttrs[k] = defaultValues[k];
+      if ( newAttrs.at( k ).isNull() && !defaultValues.at( k ).isNull() )
+        newAttrs[k] = defaultValues.at( k );
     }
 
     f.setAttributes( newAttrs );
@@ -876,8 +883,8 @@ void QgsOfflineEditing::copySymbology( QgsVectorLayer* sourceLayer, QgsVectorLay
 // NOTE: use this to map column indices in case the remote geometry column is not last
 QMap<int, int> QgsOfflineEditing::attributeLookup( QgsVectorLayer* offlineLayer, QgsVectorLayer* remoteLayer )
 {
-  const QgsAttributeList& offlineAttrs = offlineLayer->pendingAllAttributesList();
-  const QgsAttributeList& remoteAttrs = remoteLayer->pendingAllAttributesList();
+  const QgsAttributeList& offlineAttrs = offlineLayer->attributeList();
+  const QgsAttributeList& remoteAttrs = remoteLayer->attributeList();
 
   QMap < int /*offline attr*/, int /*remote attr*/ > attrLookup;
   // NOTE: use size of remoteAttrs, as offlineAttrs can have new attributes not yet synced

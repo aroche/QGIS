@@ -32,28 +32,15 @@ __version__ = "3.8"
 
 import copy
 
-try:
-    import processing
-except ImportError, e:
-    raise Exception("Processing must be installed and available in PYTHONPATH")
-
-try:
-    import otbApplication
-except ImportError, e:
-    raise Exception("OTB python plugins must be installed and available in PYTHONPATH")
-
-from processing.core.ProcessingLog import ProcessingLog
-from processing.core.ProcessingConfig import ProcessingConfig
-
 from processing.algs.otb.OTBUtils import (renameValueField,
-                                    remove_dependant_choices,
-                                    remove_other_choices,
-                                    remove_parameter_by_key,
-                                    defaultSplit,
-                                    split_by_choice,
-                                    defaultWrite,
-                                    remove_choice,
-                                    remove_independant_choices )
+                                          remove_dependant_choices,
+                                          remove_other_choices,
+                                          remove_parameter_by_key,
+                                          defaultSplit,
+                                          split_by_choice,
+                                          defaultWrite,
+                                          remove_choice,
+                                          remove_independant_choices)
 
 
 def getBinaryMorphologicalOperation(available_app, original_dom_document):
@@ -68,7 +55,6 @@ def getBinaryMorphologicalOperation(available_app, original_dom_document):
     remove_other_choices(the_root, 'structype', 'ball')
     remove_dependant_choices(the_root, 'filter', 'dilate')
     remove_parameter_by_key(the_root, 'structype.ball.yradius')
-    #defaultWrite(available_app, the_root)
     the_list = defaultSplit(available_app, the_root, 'filter')
     return the_list
 
@@ -142,9 +128,6 @@ def getOrthoRectification(available_app, original_dom_document):
     remove_independant_choices(the_root, 'outputs.mode', 'orthofit')
     merged = copy.deepcopy(the_root)
 
-
-
-
     split = split_by_choice(the_root, 'map')
     the_list = []
 
@@ -168,7 +151,6 @@ def getOrthoRectification(available_app, original_dom_document):
     remove_parameter_by_key(merged, 'map.utm.zone')
     old_app_name = merged.find('key').text
     merged.find('key').text = '%s-%s' % (old_app_name, 'lambert-WGS84')
-    old_longname = merged.find('longname').text
     merged.find('longname').text = '%s (%s)' % (old_app_name, 'lambert-WGS84')
     defaultWrite('%s-%s' % (available_app, 'lambert-WGS84'), merged)
     the_list.append(merged)
@@ -183,7 +165,6 @@ def getOrthoRectification(available_app, original_dom_document):
     remove_independant_choices(emptyMap, 'outputs.mode', 'autospacing')
     old_app_name = emptyMap.find('key').text
     emptyMap.find('key').text = '%s-%s' % (old_app_name, 'fit-to-ortho')
-    old_longname = emptyMap.find('longname').text
     emptyMap.find('longname').text = '%s (%s)' % (old_app_name, 'fit-to-ortho')
     defaultWrite('%s-%s' % (available_app, 'fit-to-ortho'), emptyMap)
     the_list.append(emptyMap)
@@ -415,6 +396,7 @@ def getSmoothing(available_app, original_dom_document):
     #    the_list.append(split[key])
     #return the_list
 
+
 def getColorMapping(available_app, original_dom_document):
     """
     Remove the option colortolabel
@@ -470,7 +452,6 @@ def getColorMapping(available_app, original_dom_document):
     return the_list
 
 
-
 def getFusionOfClassifications(available_app, original_dom_document):
     """
     Split by method of fusion of classification (dempstershafer, majorityvoting)
@@ -500,7 +481,6 @@ def getTrainImagesClassifier(available_app, original_dom_document):
     return the_list
 
 
-
 def getLineSegmentDetection(available_app, original_dom_document):
     """
     Delete GEOID and DEM parameter as they are not updated at the creation of the otb algorithms when you launch QGIS.
@@ -512,7 +492,6 @@ def getLineSegmentDetection(available_app, original_dom_document):
     remove_parameter_by_key(the_root, 'elev.dem')
     defaultWrite(available_app, the_root)
     return [the_root]
-
 
 
 def getImageEnvelope(available_app, original_dom_document):
@@ -569,7 +548,6 @@ def getReadImageInfo(available_app, original_dom_document):
     return [the_root]
 
 
-
 def getComputeModulusAndPhase(available_app, original_dom_document):
     """
     Split the application according the field nbinput.
@@ -583,15 +561,13 @@ def getComputeModulusAndPhase(available_app, original_dom_document):
             the_doc = split[key]
             old_app_name = the_doc.find('key').text
             the_doc.find('key').text = '%s-%s' % (old_app_name, 'OneEntry')
-            old_longname = the_doc.find('longname').text
             the_doc.find('longname').text = '%s (%s)' % (old_app_name, 'OneEntry')
             defaultWrite('%s-%s' % (available_app, 'OneEntry'), the_doc)
             the_list.append(the_doc)
-        else :
+        else:
             the_doc = split[key]
             old_app_name = the_doc.find('key').text
             the_doc.find('key').text = '%s-%s' % (old_app_name, 'TwoEntries')
-            old_longname = the_doc.find('longname').text
             the_doc.find('longname').text = '%s (%s)' % (old_app_name, 'TwoEntries')
             defaultWrite('%s-%s' % (available_app, 'TwoEntries'), the_doc)
             the_list.append(the_doc)
@@ -628,7 +604,7 @@ def getConnectedComponentSegmentation(available_app, original_dom_document):
     The values are picked from the settings.
     """
     the_root = original_dom_document
-    deleteGeoidSrtm( the_root )
+    deleteGeoidSrtm(the_root)
     defaultWrite(available_app, the_root)
     return [the_root]
 
@@ -639,7 +615,7 @@ def getKmzExport(available_app, original_dom_document):
     The values are picked from the settings.
     """
     the_root = original_dom_document
-    deleteGeoidSrtm( the_root )
+    deleteGeoidSrtm(the_root)
     defaultWrite(available_app, the_root)
     return [the_root]
 
@@ -650,7 +626,7 @@ def getSuperimpose(available_app, original_dom_document):
     The values are picked from the settings.
     """
     the_root = original_dom_document
-    deleteGeoidSrtm( the_root )
+    deleteGeoidSrtm(the_root)
     defaultWrite(available_app, the_root)
     return [the_root]
 
@@ -661,13 +637,89 @@ def getStereoFramework(available_app, original_dom_document):
     The values are picked from the settings.
     """
     the_root = original_dom_document
-    deleteGeoidSrtm( the_root )
+    deleteGeoidSrtm(the_root)
     defaultWrite(available_app, the_root)
     return [the_root]
 
 
+def getRasterization(available_app, original_dom_document):
+    """
+    Let only rasterization with an reference image
+    Let only mode auto.
+    Remove all parameters which should be updated once the input file given.
+    Split by SRS : EPSG, fit to ortho, lambert-wgs84 and UTM.
+    Each of these SRS have their own parameters modified in this fonction.
+    Delete GEOID and DEM parameter as they are not updated at the creation of the otb algorithms when you launch QGIS.
+    The values are picked from the settings.
+    """
+    the_list = []
+    rasterization_image = original_dom_document
 
-def deleteGeoidSrtm(doc) :
+    import copy
+    rasterization_manual = copy.deepcopy(original_dom_document)
+
+    old_app_name = rasterization_image.find('key').text
+
+    remove_parameter_by_key(rasterization_image, 'szx')
+    remove_parameter_by_key(rasterization_image, 'szy')
+    remove_parameter_by_key(rasterization_image, 'epsg')
+    remove_parameter_by_key(rasterization_image, 'orx')
+    remove_parameter_by_key(rasterization_image, 'ory')
+    remove_parameter_by_key(rasterization_image, 'spx')
+    remove_parameter_by_key(rasterization_image, 'spy')
+
+    remove_parameter_by_key(rasterization_manual, 'im')
+
+    # set a new name according to the choice
+    rasterization_image.find('key').text = '%s-%s' % (old_app_name, "image")
+    rasterization_image.find('longname').text = '%s (%s)' % (old_app_name, "image")
+    defaultWrite('%s-%s' % (old_app_name, "image"), rasterization_image)
+    rasterization_manual.find('key').text = '%s-%s' % (old_app_name, "manual")
+    rasterization_manual.find('longname').text = '%s (%s)' % (old_app_name, "manual")
+    defaultWrite('%s-%s' % (old_app_name, "manual"), rasterization_manual)
+    return [rasterization_image, rasterization_manual]
+
+
+def getVectorDataExtractROI(available_app, original_dom_document):
+    """
+    Delete GEOID and DEM parameter as they are not updated at the creation of the otb algorithms when you launch QGIS.
+    The values are picked from the settings.
+    """
+    the_root = original_dom_document
+    deleteGeoidSrtm(the_root)
+    defaultWrite(available_app, the_root)
+    return [the_root]
+
+
+def getVectorDataReprojection(available_app, original_dom_document):
+    """
+    """
+    the_root = original_dom_document
+    deleteGeoidSrtm(the_root)
+    the_list = defaultSplit(available_app, the_root, 'out.proj')
+    return the_list
+
+
+def getComputePolylineFeatureFromImage(available_app, original_dom_document):
+    """
+    Delete GEOID and DEM parameter as they are not updated at the creation of the otb algorithms when you launch QGIS.
+    The values are picked from the settings.
+    """
+    the_root = original_dom_document
+    deleteGeoidSrtm(the_root)
+    defaultWrite(available_app, the_root)
+    return [the_root]
+
+
+def getDespeckle(available_app, original_dom_document):
+    """
+    """
+    the_root = original_dom_document
+    the_list = defaultSplit(available_app, the_root, 'filter')
+    return the_list
+
+
+def deleteGeoidSrtm(doc):
     """
     Delete GEOID and DEM parameter as they are not updated at the creation of the otb algorithms when you launch QGIS.
     The values are picked from the settings.

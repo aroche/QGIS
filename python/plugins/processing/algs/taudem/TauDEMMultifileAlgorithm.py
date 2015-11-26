@@ -79,9 +79,15 @@ class TauDEMMultifileAlgorithm(GeoAlgorithm):
                 else:
                     self.addOutput(getOutputFromString(line))
                 line = lines.readline().strip('\n').strip()
+<<<<<<< HEAD
             except Exception, e:
                 ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
                     self.tr('Could not load TauDEM algorithm: %s\n%s' % (self.descriptionFile, line)))
+=======
+            except Exception as e:
+                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
+                                       self.tr('Could not load TauDEM algorithm: %s\n%s' % (self.descriptionFile, line)))
+>>>>>>> upstream/master
                 raise e
         lines.close()
 
@@ -96,7 +102,11 @@ class TauDEMMultifileAlgorithm(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
+<<<<<<< HEAD
         commands.append(str(processNum))
+=======
+        commands.append(unicode(processNum))
+>>>>>>> upstream/master
         commands.append(os.path.join(TauDEMUtils.taudemMultifilePath(), self.cmdName))
 
         for param in self.parameters:
@@ -104,16 +114,28 @@ class TauDEMMultifileAlgorithm(GeoAlgorithm):
                 continue
             if isinstance(param, ParameterNumber):
                 commands.append(param.name)
+<<<<<<< HEAD
                 commands.append(str(param.value))
+=======
+                commands.append(unicode(param.value))
+>>>>>>> upstream/master
             if isinstance(param, (ParameterFile, ParameterVector)):
                 commands.append(param.name)
                 commands.append(param.value)
             elif isinstance(param, ParameterBoolean):
+<<<<<<< HEAD
                 if param.value and str(param.value).lower() == 'false':
                     commands.append(param.name)
             elif isinstance(param, ParameterString):
                 commands.append(param.name)
                 commands.append(str(param.value))
+=======
+                if param.value and unicode(param.value).lower() == 'false':
+                    commands.append(param.name)
+            elif isinstance(param, ParameterString):
+                commands.append(param.name)
+                commands.append(unicode(param.value))
+>>>>>>> upstream/master
 
         for out in self.outputs:
             commands.append(out.name)

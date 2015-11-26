@@ -7,7 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>505</width>
+<<<<<<< HEAD
     <height>393</height>
+=======
+    <height>395</height>
+>>>>>>> upstream/master
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,11 +26,15 @@
     </widget>
    </item>
    <item row="0" column="1">
+<<<<<<< HEAD
     <widget class="QgsMapLayerComboBox" name="mJoinLayerComboBox">
      <property name="filters">
       <set>QgsMapLayerProxyModel::VectorLayer</set>
      </property>
     </widget>
+=======
+    <widget class="QgsMapLayerComboBox" name="mJoinLayerComboBox"/>
+>>>>>>> upstream/master
    </item>
    <item row="1" column="0">
     <widget class="QLabel" name="mJoinFieldLabel">
@@ -59,7 +67,11 @@
      <property name="checked">
       <bool>false</bool>
      </property>
+<<<<<<< HEAD
      <property name="collapsed">
+=======
+     <property name="collapsed" stdset="0">
+>>>>>>> upstream/master
       <bool>true</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
@@ -80,7 +92,11 @@
      <property name="checked">
       <bool>false</bool>
      </property>
+<<<<<<< HEAD
      <property name="collapsed">
+=======
+     <property name="collapsed" stdset="0">
+>>>>>>> upstream/master
       <bool>true</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
@@ -151,13 +167,22 @@
   </customwidget>
  </customwidgets>
  <tabstops>
+<<<<<<< HEAD
+=======
+  <tabstop>mJoinLayerComboBox</tabstop>
+  <tabstop>mJoinFieldComboBox</tabstop>
+  <tabstop>mTargetFieldComboBox</tabstop>
+>>>>>>> upstream/master
   <tabstop>mCacheInMemoryCheckBox</tabstop>
   <tabstop>mCreateIndexCheckBox</tabstop>
   <tabstop>mUseJoinFieldsSubset</tabstop>
   <tabstop>mJoinFieldsSubsetView</tabstop>
   <tabstop>mUseCustomPrefix</tabstop>
   <tabstop>mCustomPrefix</tabstop>
+<<<<<<< HEAD
   <tabstop>buttonBox</tabstop>
+=======
+>>>>>>> upstream/master
  </tabstops>
  <resources/>
  <connections>

@@ -16,6 +16,8 @@ class QgsPointLocator : QObject
 
     enum Type { Invalid, Vertex, Edge, Area, All };
 
+    typedef QFlags<QgsPointLocator::Type> Types;
+
     /** Prepare the index for queries. Does nothing if the index already exists.
      * If the number of features is greater than the value of maxFeaturesToIndex, creation of index is stopped
      * to make sure we do not run out of memory. If maxFeaturesToIndex is -1, no limits are used. Returns
@@ -33,6 +35,7 @@ class QgsPointLocator : QObject
       Match( QgsPointLocator::Type t, QgsVectorLayer* vl, QgsFeatureId fid, double dist, const QgsPoint& pt, int vertexIndex = 0 );
 
       QgsPointLocator::Type type() const;
+
 
       bool isValid() const;
       bool hasVertex() const;
@@ -66,6 +69,7 @@ class QgsPointLocator : QObject
     //! Implement the interface and pass its instance to QgsPointLocator or QgsSnappingUtils methods.
     struct MatchFilter
     {
+      virtual ~MatchFilter();
       virtual bool acceptMatch( const QgsPointLocator::Match& match ) = 0;
     };
 
@@ -90,4 +94,7 @@ class QgsPointLocator : QObject
     MatchList pointInPolygon( const QgsPoint& point );
 
 
+  protected:
+    bool rebuildIndex( int maxFeaturesToIndex = -1 );
+    void destroyIndex();
 };

@@ -37,8 +37,13 @@ class CORE_EXPORT QgsBlurEffect : public QgsPaintEffect
     /** Available blur methods (algorithms) */
     enum BlurMethod
     {
+<<<<<<< HEAD
       StackBlur, /*< stack blur, a fast but low quality blur. Valid blur level values are between 0 - 16.*/
       GaussianBlur /*< Gaussian blur, a slower but high quality blur. Blur level values are the distance in pixels for the blur operation. */
+=======
+      StackBlur, /*!< stack blur, a fast but low quality blur. Valid blur level values are between 0 - 16.*/
+      GaussianBlur /*!< Gaussian blur, a slower but high quality blur. Blur level values are the distance in pixels for the blur operation. */
+>>>>>>> upstream/master
     };
 
     /** Creates a new QgsBlurEffect effect from a properties string map.
@@ -53,7 +58,11 @@ class CORE_EXPORT QgsBlurEffect : public QgsPaintEffect
     virtual QString type() const override { return QString( "blur" ); }
     virtual QgsStringMap properties() const override;
     virtual void readProperties( const QgsStringMap& props ) override;
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsBlurEffect* clone() const override;
+>>>>>>> upstream/master
 
     /** Sets blur level (strength)
      * @param level blur level. Depending on the current @link blurMethod @endlink, this parameter

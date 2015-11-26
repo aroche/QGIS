@@ -24,8 +24,6 @@
 #include <QNetworkProxy>
 #include <QNetworkRequest>
 
-#include "qgssingleton.h"
-
 /*
  * \class QgsNetworkAccessManager
  * \brief network access manager for QGIS
@@ -43,11 +41,15 @@
  * that the fallback proxy should not be used for, then no proxy will be used.
  *
  */
-class CORE_EXPORT QgsNetworkAccessManager : public QNetworkAccessManager, public QgsSingleton<QgsNetworkAccessManager>
+class CORE_EXPORT QgsNetworkAccessManager : public QNetworkAccessManager
 {
     Q_OBJECT
 
   public:
+    //! returns a pointer to the single instance
+    // and creates that instance on the first call.
+    static QgsNetworkAccessManager* instance();
+
     QgsNetworkAccessManager( QObject *parent = 0 );
 
     //! destructor
@@ -82,10 +84,29 @@ class CORE_EXPORT QgsNetworkAccessManager : public QNetworkAccessManager, public
 
     bool useSystemProxy() { return mUseSystemProxy; }
 
+  public slots:
+    /** Send GET request, calls get().
+     * Emits requestSent().
+     * @param request request to be sent
+     */
+    void sendGet( const QNetworkRequest & request );
+    /** Abort and delete reply. This slot may be used to abort reply created by instance of this class
+     * (and which was not moved to another thread) from a different thread. Such reply cannot
+     * be aborted directly from a different thread. The reply must be also deleted
+     * in this slot, otherwise it could happen that abort signal comes after the reply was deleted.
+     * @param reply reply to be aborted.
+     */
+    void deleteReply( QNetworkReply * reply );
+
   signals:
     void requestAboutToBeCreated( QNetworkAccessManager::Operation, const QNetworkRequest &, QIODevice * );
     void requestCreated( QNetworkReply * );
     void requestTimedOut( QNetworkReply * );
+    /** Emitted when request was sent by request()
+     * @param reply request reply
+     * @param sender the object which called request() slot.
+     */
+    void requestSent( QNetworkReply * reply, QObject *sender );
 
   private slots:
     void abortRequest();

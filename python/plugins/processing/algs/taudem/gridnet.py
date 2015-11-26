@@ -27,10 +27,9 @@ __revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.ProcessingLog import ProcessingLog
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.GeoAlgorithmExecutionException import \
     GeoAlgorithmExecutionException
@@ -39,8 +38,6 @@ from processing.core.parameters import ParameterRaster
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputRaster
-
-from processing.tools.system import *
 
 from TauDEMUtils import TauDEMUtils
 
@@ -60,26 +57,26 @@ class GridNet(GeoAlgorithm):
         return QIcon(os.path.dirname(__file__) + '/../../images/taudem.png')
 
     def defineCharacteristics(self):
-        self.name = 'Grid Network'
+        self.name, self.i18n_name = self.trAlgorithm('Grid Network')
         self.cmdName = 'gridnet'
-        self.group = 'Basic Grid Analysis tools'
+        self.group, self.i18n_group = self.trAlgorithm('Basic Grid Analysis tools')
 
         self.addParameter(ParameterRaster(self.D8_FLOW_DIR_GRID,
-            self.tr('D8 Flow Direction Grid'), False))
+                                          self.tr('D8 Flow Direction Grid'), False))
         self.addParameter(ParameterVector(self.OUTLETS_SHAPE,
-            self.tr('Outlets Shapefile'),
-            [ParameterVector.VECTOR_TYPE_POINT], True))
+                                          self.tr('Outlets Shapefile'),
+                                          [ParameterVector.VECTOR_TYPE_POINT], True))
         self.addParameter(ParameterRaster(self.MASK_GRID,
-            self.tr('Mask Grid'), True))
+                                          self.tr('Mask Grid'), True))
         self.addParameter(ParameterNumber(self.THRESHOLD,
-            self.tr('Mask Threshold'), 0, None, 100))
+                                          self.tr('Mask Threshold'), 0, None, 100))
 
         self.addOutput(OutputRaster(self.LONGEST_LEN_GRID,
-            self.tr('Longest Upslope Length Grid')))
+                                    self.tr('Longest Upslope Length Grid')))
         self.addOutput(OutputRaster(self.TOTAL_LEN_GRID,
-            self.tr('Total Upslope Length Grid')))
+                                    self.tr('Total Upslope Length Grid')))
         self.addOutput(OutputRaster(self.STRAHLER_GRID,
-            self.tr('Strahler Network Order Grid')))
+                                    self.tr('Strahler Network Order Grid')))
 
     def processAlgorithm(self, progress):
         commands = []
@@ -92,7 +89,7 @@ class GridNet(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
-        commands.append(str(processNum))
+        commands.append(unicode(processNum))
         commands.append(os.path.join(TauDEMUtils.taudemPath(), self.cmdName))
         commands.append('-p')
         commands.append(self.getParameterValue(self.D8_FLOW_DIR_GRID))

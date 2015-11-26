@@ -62,10 +62,10 @@ class QgsMssqlConnectionItem : public QgsDataCollectionItem
     virtual bool handleDrop( const QMimeData * data, Qt::DropAction action ) override;
     void refresh() override;
 
-    QString connInfo() const { return mConnInfo; };
+    QString connInfo() const { return mConnInfo; }
 
   signals:
-    void addGeometryColumn( QgsMssqlLayerProperty );
+    void addGeometryColumn( const QgsMssqlLayerProperty& );
 
   public slots:
     void editConnection();
@@ -98,7 +98,7 @@ class QgsMssqlSchemaItem : public QgsDataCollectionItem
     QVector<QgsDataItem*> createChildren() override;
 
     QgsMssqlLayerItem* addLayer( QgsMssqlLayerProperty layerProperty, bool refresh );
-    void refresh() override {}; // do not refresh directly
+    void refresh() override {} // do not refresh directly
     void addLayers( QgsDataItem* newLayers );
 };
 
@@ -113,7 +113,6 @@ class QgsMssqlLayerItem : public QgsLayerItem
     QString createUri();
 
     QgsMssqlLayerItem* createClone();
-    bool Used;
 
   private:
     QgsMssqlLayerProperty mLayerProperty;

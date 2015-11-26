@@ -64,7 +64,6 @@ void QgsComposerLegendItem::writeXMLChildren( QDomElement& elem, QDomDocument& d
 
 ////////////////QgsComposerSymbolV2Item
 
-#include "qgssymbolv2.h"
 
 QgsComposerSymbolV2Item::QgsComposerSymbolV2Item(): QgsComposerLegendItem( QgsComposerLegendStyle::Symbol ), mSymbolV2( 0 )
 {
@@ -286,7 +285,7 @@ void QgsComposerLayerItem::readXML( const QDomElement& itemElem, bool xServerAva
   }
 }
 
-void QgsComposerLayerItem::setDefaultStyle( double scaleDenominator, QString rule )
+void QgsComposerLayerItem::setDefaultStyle( double scaleDenominator, const QString& rule )
 {
   // set default style according to number of symbols
   QgsVectorLayer* vLayer = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( layerID() ) );

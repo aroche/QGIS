@@ -21,7 +21,11 @@
 #include "ui_qgsjoindialogbase.h"
 
 class QgsVectorLayer;
+<<<<<<< HEAD
 class QgsVectorJoinInfo;
+=======
+struct QgsVectorJoinInfo;
+>>>>>>> upstream/master
 
 class APP_EXPORT QgsJoinDialog: public QDialog, private Ui::QgsJoinDialogBase
 {
@@ -43,7 +47,11 @@ class APP_EXPORT QgsJoinDialog: public QDialog, private Ui::QgsJoinDialogBase
     void joinedLayerChanged( QgsMapLayer* layer );
 
   private:
+<<<<<<< HEAD
     /**Target layer*/
+=======
+    /** Target layer*/
+>>>>>>> upstream/master
     QgsVectorLayer* mLayer;
 };
 

@@ -59,9 +59,10 @@ class CORE_EXPORT QgsRasterBandStats
       elementCount = 0;
       width = 0;
       height = 0;
+      bandNumber = 1;
     }
 
-    /*! Compares region, size etc. not collected statistics */
+    /** Compares region, size etc. not collected statistics */
     bool contains( const QgsRasterBandStats &s ) const
     {
       return ( s.bandNumber == bandNumber &&

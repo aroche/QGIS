@@ -26,8 +26,7 @@ __copyright__ = '(C) 2013, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import math
-from PyQt4.QtCore import *
-from qgis.core import *
+
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterRaster
 from processing.core.outputs import OutputNumber
@@ -102,8 +101,8 @@ class RasterLayerStatistics(GeoAlgorithm):
         self.setOutputValue(self.STD_DEV, stddev)
 
     def defineCharacteristics(self):
-        self.name = 'Raster layer statistics'
-        self.group = 'Raster tools'
+        self.name, self.i18n_name = self.trAlgorithm('Raster layer statistics')
+        self.group, self.i18n_group = self.trAlgorithm('Raster tools')
         self.addParameter(ParameterRaster(self.INPUT, self.tr('Input layer')))
         self.addOutput(OutputHTML(self.OUTPUT_HTML_FILE, self.tr('Statistics')))
         self.addOutput(OutputNumber(self.MIN, self.tr('Minimum value')))
@@ -117,5 +116,5 @@ class RasterLayerStatistics(GeoAlgorithm):
     def createHTML(self, outputFile, algData):
         f = open(outputFile, 'w')
         for s in algData:
-            f.write('<p>' + str(s) + '</p>')
+            f.write('<p>' + unicode(s) + '</p>')
         f.close()

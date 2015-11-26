@@ -57,9 +57,15 @@ class CORE_EXPORT QgsPaintEffect
     */
     enum DrawMode
     {
+<<<<<<< HEAD
       Modifier, /*< the result of the effect is not rendered, but is passed on to following effects in the stack */
       Render, /*< the result of the effect is rendered on the destination, but does not affect subsequent effects in the stack */
       ModifyAndRender /*< the result of the effect is both rendered and passed on to subsequent effects in the stack */
+=======
+      Modifier, /*!< the result of the effect is not rendered, but is passed on to following effects in the stack */
+      Render, /*!< the result of the effect is rendered on the destination, but does not affect subsequent effects in the stack */
+      ModifyAndRender /*!< the result of the effect is both rendered and passed on to subsequent effects in the stack */
+>>>>>>> upstream/master
     };
 
     QgsPaintEffect();
@@ -161,6 +167,10 @@ class CORE_EXPORT QgsPaintEffect
 
     bool mEnabled;
     DrawMode mDrawMode;
+<<<<<<< HEAD
+=======
+    bool requiresQPainterDpiFix;
+>>>>>>> upstream/master
 
     /** Handles drawing of the effect's result on to the specified render context.
      * Derived classes must reimplement this method to apply any transformations to
@@ -188,7 +198,11 @@ class CORE_EXPORT QgsPaintEffect
 
     /** Returns the source QPicture rendered to a new QImage. The @link draw @endlink member can
      * utilise this when drawing the effect. The image will be padded or cropped from the original
+<<<<<<< HEAD
      * source QPicture by the results of the @link boundingRectFor @endlink member.
+=======
+     * source QPicture by the results of the @link boundingRect @endlink method.
+>>>>>>> upstream/master
      * The result is cached to speed up subsequent calls to sourceAsImage.
      * @returns source QPicture rendered to an image
      * @see drawSource
@@ -216,6 +230,16 @@ class CORE_EXPORT QgsPaintEffect
      */
     virtual QRectF boundingRect( const QRectF& rect, const QgsRenderContext& context ) const;
 
+<<<<<<< HEAD
+=======
+    /** Applies a workaround to a QPainter to avoid an issue with incorrect scaling
+     * when drawing QPictures. This may need to be called by derived classes prior
+     * to rendering results onto a painter.
+     * @param painter destination painter
+     */
+    void fixQPictureDpi( QPainter* painter ) const;
+
+>>>>>>> upstream/master
   private:
 
     const QPicture* mPicture;
@@ -228,6 +252,11 @@ class CORE_EXPORT QgsPaintEffect
 
     QRectF imageBoundingRect( const QgsRenderContext& context ) const;
 
+<<<<<<< HEAD
+=======
+    friend class QgsEffectStack;
+
+>>>>>>> upstream/master
 };
 
 /** \ingroup core
@@ -256,7 +285,11 @@ class CORE_EXPORT QgsDrawSourceEffect : public QgsPaintEffect
     static QgsPaintEffect* create( const QgsStringMap& map );
 
     virtual QString type() const override { return QString( "drawSource" ); }
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsDrawSourceEffect* clone() const override;
+>>>>>>> upstream/master
     virtual QgsStringMap properties() const override;
     virtual void readProperties( const QgsStringMap& props ) override;
 

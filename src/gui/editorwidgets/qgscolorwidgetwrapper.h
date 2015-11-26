@@ -3,7 +3,7 @@
      --------------------------------------
     Date                 : 5.1.2014
     Copyright            : (C) 2014 Matthias Kuhn
-    Email                : matthias dot kuhn at gmx dot ch
+    Email                : matthias at opengis dot ch
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,7 +23,7 @@
 
 /**
  * Wraps a color widget. Users will be able to choose a color.
- *
+ * \note not available in Python bindings
  */
 
 class GUI_EXPORT  QgsColorWidgetWrapper : public QgsEditorWidgetWrapper
@@ -34,11 +34,12 @@ class GUI_EXPORT  QgsColorWidgetWrapper : public QgsEditorWidgetWrapper
 
     // QgsEditorWidgetWrapper interface
   public:
-    QVariant value() override;
+    QVariant value() const override;
 
   protected:
     QWidget* createWidget( QWidget* parent ) override;
     void initWidget( QWidget* editor ) override;
+    bool valid() const override;
 
   public slots:
     void setValue( const QVariant& value ) override;

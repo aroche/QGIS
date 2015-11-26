@@ -17,6 +17,7 @@
 ***************************************************************************
 """
 
+
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
@@ -30,9 +31,8 @@ import time
 import sys
 import uuid
 
-from PyQt4.QtCore import *
-
-from qgis.core import *
+from PyQt4.QtCore import QFileInfo, QDir
+from qgis.core import QgsApplication
 
 numExported = 1
 
@@ -46,6 +46,15 @@ def userFolder():
     return unicode(QDir.toNativeSeparators(userDir))
 
 
+def defaultOutputFolder():
+    folder = os.path.join(os.path.dirname(QgsApplication.qgisUserDbFilePath()),
+                          "processing", "outputs")
+    if not QDir(folder).exists():
+        QDir().mkpath(folder)
+
+    return unicode(QDir.toNativeSeparators(folder))
+
+
 def isWindows():
     return os.name == 'nt'
 
@@ -53,9 +62,11 @@ def isWindows():
 def isMac():
     return sys.platform == 'darwin'
 
+_tempFolderSuffix = unicode(uuid.uuid4()).replace('-', '')
+
 
 def tempFolder():
-    tempDir = os.path.join(unicode(QDir.tempPath()), 'processing')
+    tempDir = os.path.join(unicode(QDir.tempPath()), 'processing' + _tempFolderSuffix)
     if not QDir(tempDir).exists():
         QDir().mkpath(tempDir)
 
@@ -70,14 +81,14 @@ def setTempOutput(out, alg):
         out.value = getTempFilenameInTempFolder(out.name + '.' + ext)
 
 
-def getTempFilename(ext = None):
+def getTempFilename(ext=None):
     path = tempFolder()
     if ext is None:
-        filename = path + os.sep + str(time.time()) \
-            + str(getNumExportedLayers())
+        filename = path + os.sep + unicode(time.time()) \
+            + unicode(getNumExportedLayers())
     else:
-        filename = path + os.sep + str(time.time()) \
-            + str(getNumExportedLayers()) + '.' + ext
+        filename = path + os.sep + unicode(time.time()) \
+            + unicode(getNumExportedLayers()) + '.' + ext
     return filename
 
 
@@ -87,7 +98,7 @@ def getTempFilenameInTempFolder(basename):
     """
 
     path = tempFolder()
-    path = os.path.join(path, str(uuid.uuid4()).replace('-', ''))
+    path = os.path.join(path, unicode(uuid.uuid4()).replace('-', ''))
     mkdir(path)
     basename = removeInvalidChars(basename)
     filename = os.path.join(path, basename)
@@ -99,7 +110,7 @@ def getTempDirInTempFolder():
     """
 
     path = tempFolder()
-    path = os.path.join(path, str(uuid.uuid4()).replace('-', ''))
+    path = os.path.join(path, unicode(uuid.uuid4()).replace('-', ''))
     mkdir(path)
     return path
 

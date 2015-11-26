@@ -25,8 +25,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QgsFeature, QgsGeometry, QgsFeatureRequest, QgsWKBTypes
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.parameters import ParameterVector
@@ -41,24 +40,24 @@ class Clip(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Clip'
-        self.group = 'Vector overlay tools'
+        self.name, self.i18n_name = self.trAlgorithm('Clip')
+        self.group, self.i18n_group = self.trAlgorithm('Vector overlay tools')
         self.addParameter(ParameterVector(Clip.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterVector(Clip.OVERLAY,
-            self.tr('Clip layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Clip layer'), [ParameterVector.VECTOR_TYPE_POLYGON]))
         self.addOutput(OutputVector(Clip.OUTPUT, self.tr('Clipped')))
 
     def processAlgorithm(self, progress):
         layerA = dataobjects.getObjectFromUri(
-                self.getParameterValue(Clip.INPUT))
+            self.getParameterValue(Clip.INPUT))
         layerB = dataobjects.getObjectFromUri(
-                self.getParameterValue(Clip.OVERLAY))
+            self.getParameterValue(Clip.OVERLAY))
 
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
-                layerA.pendingFields(),
-                layerA.dataProvider().geometryType(),
-                layerA.dataProvider().crs())
+            layerA.pendingFields(),
+            layerA.dataProvider().geometryType(),
+            layerA.dataProvider().crs())
 
         inFeatA = QgsFeature()
         inFeatB = QgsFeature()
@@ -80,8 +79,8 @@ class Clip(GeoAlgorithm):
             if len(intersects) > 0:
                 for i in intersects:
                     layerB.getFeatures(
-                            QgsFeatureRequest().setFilterFid(i)).nextFeature(
-                                    inFeatB)
+                        QgsFeatureRequest().setFilterFid(i)).nextFeature(
+                            inFeatB)
                     tmpGeom = QgsGeometry(inFeatB.geometry())
                     if tmpGeom.intersects(geom):
                         found = True
@@ -92,19 +91,19 @@ class Clip(GeoAlgorithm):
                             try:
                                 cur_geom = QgsGeometry(outFeat.geometry())
                                 new_geom = QgsGeometry(
-                                        cur_geom.combine(tmpGeom))
+                                    cur_geom.combine(tmpGeom))
                                 outFeat.setGeometry(QgsGeometry(new_geom))
                             except:
                                 ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                    self.tr('GEOS geoprocessing error: One or '
-                                            'more input features have invalid '
-                                            'geometry.'))
+                                                       self.tr('GEOS geoprocessing error: One or '
+                                                               'more input features have invalid '
+                                                               'geometry.'))
                                 break
                 if found:
                     try:
                         cur_geom = QgsGeometry(outFeat.geometry())
                         new_geom = QgsGeometry(geom.intersection(cur_geom))
-                        if new_geom.wkbType() == 0:
+                        if new_geom.wkbType() == QGis.WKBUnknown or QgsWKBTypes.flatType(new_geom.geometry().wkbType()) == QgsWKBTypes.GeometryCollection:
                             int_com = QgsGeometry(geom.combine(cur_geom))
                             int_sym = QgsGeometry(geom.symDifference(cur_geom))
                             new_geom = QgsGeometry(int_com.difference(int_sym))
@@ -114,14 +113,14 @@ class Clip(GeoAlgorithm):
                             writer.addFeature(outFeat)
                         except:
                             ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                                self.tr('Feature geometry error: One or more '
-                                        'output features ignored due to '
-                                        'invalid geometry.'))
+                                                   self.tr('Feature geometry error: One or more '
+                                                           'output features ignored due to '
+                                                           'invalid geometry.'))
                             continue
                     except:
                         ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                            self.tr('GEOS geoprocessing error: One or more '
-                                    'input features have invalid geometry.'))
+                                               self.tr('GEOS geoprocessing error: One or more '
+                                                       'input features have invalid geometry.'))
                         continue
 
             current += 1

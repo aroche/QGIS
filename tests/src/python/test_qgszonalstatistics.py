@@ -13,11 +13,12 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 __revision__ = '$Format:%H$'
 
 import qgis
-
 import os
-from PyQt4.QtCore import *
-from qgis.core import *
-from qgis.analysis import *
+
+from PyQt4.QtCore import QDir, QFile
+from qgis.core import QgsVectorLayer, QgsFeature, QgsFeatureRequest
+from qgis.analysis import QgsZonalStatistics
+
 from utilities import (
     unitTestDataPath,
     getQgisTestApp,
@@ -28,13 +29,13 @@ QGISAPP, CANVAS, IFACE, PARENT = getQgisTestApp()
 
 
 class TestQgsZonalStatistics(TestCase):
+
     """Tests for zonal stats class."""
 
     def testStatistics(self):
         """Test zonal stats"""
-        sep = os.sep
-        TEST_DATA_DIR = unitTestDataPath() + sep + "zonalstatistics" + sep
-        myTempPath = QDir.tempPath() + sep
+        TEST_DATA_DIR = unitTestDataPath() + "/zonalstatistics/"
+        myTempPath = QDir.tempPath() + "/"
         testDir = QDir(TEST_DATA_DIR)
         for f in testDir.entryList(QDir.Files):
             QFile.remove(myTempPath + f)

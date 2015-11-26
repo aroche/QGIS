@@ -23,28 +23,74 @@
 
 class QgsSymbolLayerV2;
 class QgsVectorLayer;
+class QgsMapCanvas;
 
 class GUI_EXPORT QgsSymbolLayerV2Widget : public QWidget
 {
     Q_OBJECT
 
   public:
-    QgsSymbolLayerV2Widget( QWidget* parent, const QgsVectorLayer* vl = 0 ) : QWidget( parent ), mVectorLayer( vl ) {}
+    QgsSymbolLayerV2Widget( QWidget* parent, const QgsVectorLayer* vl = 0 ) : QWidget( parent ), mVectorLayer( vl ), mPresetExpressionContext( 0 ), mMapCanvas( 0 ) {}
     virtual ~QgsSymbolLayerV2Widget() {}
 
     virtual void setSymbolLayer( QgsSymbolLayerV2* layer ) = 0;
     virtual QgsSymbolLayerV2* symbolLayer() = 0;
 
+    /** Returns the expression context used for the widget, if set. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the layer widget.
+     * @note added in QGIS 2.12
+     * @see setExpressionContext()
+     */
+    QgsExpressionContext* expressionContext() const { return mPresetExpressionContext; }
+
+    /** Sets the map canvas associated with the widget. This allows the widget to retrieve the current
+     * map scale and other properties from the canvas.
+     * @param canvas map canvas
+     * @see mapCanvas()
+     * @note added in QGIS 2.12
+     */
+    virtual void setMapCanvas( QgsMapCanvas* canvas );
+
+    /** Returns the map canvas associated with the widget.
+     * @see setMapCanvas
+     * @note added in QGIS 2.12
+     */
+    const QgsMapCanvas* mapCanvas() const;
+
+    /** Returns the vector layer associated with the widget.
+     * @note added in QGIS 2.12
+     */
+    const QgsVectorLayer* vectorLayer() const { return mVectorLayer; }
+
+  public slots:
+
+    /** Sets the optional expression context used for the widget. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the layer widget.
+     * @param context expression context pointer. Ownership is not transferred and the object must
+     * be kept alive for the lifetime of the layer widget.
+     * @note added in QGIS 2.12
+     * @see expressionContext()
+     */
+    void setExpressionContext( QgsExpressionContext* context ) { mPresetExpressionContext = context; }
+
   protected:
     const QgsVectorLayer* mVectorLayer;
+
+    //! Optional preset expression context
+    QgsExpressionContext* mPresetExpressionContext;
+
+    QgsMapCanvas* mMapCanvas;
 
     void registerDataDefinedButton( QgsDataDefinedButton * button, const QString & propertyName, QgsDataDefinedButton::DataType type, const QString & description );
 
     /** Get label for data defined entry.
      * Implemented only for 'size' of marker symbols
      * @note added in 2.1
+     * @deprecated no longer used
      */
-    virtual QString dataDefinedPropertyLabel( const QString &entryName );
+    Q_DECL_DEPRECATED virtual QString dataDefinedPropertyLabel( const QString &entryName );
 
   signals:
     void changed();
@@ -65,6 +111,8 @@ class GUI_EXPORT QgsSimpleLineSymbolLayerV2Widget : public QgsSymbolLayerV2Widge
 
   public:
     QgsSimpleLineSymbolLayerV2Widget( const QgsVectorLayer* vl, QWidget* parent = NULL );
+
+    ~QgsSimpleLineSymbolLayerV2Widget();
 
     static QgsSymbolLayerV2Widget* create( const QgsVectorLayer* vl ) { return new QgsSimpleLineSymbolLayerV2Widget( vl ); }
 
@@ -89,6 +137,15 @@ class GUI_EXPORT QgsSimpleLineSymbolLayerV2Widget : public QgsSymbolLayerV2Widge
 
     //creates a new icon for the 'change pattern' button
     void updatePatternIcon();
+
+  private slots:
+
+    void updateAssistantSymbol();
+
+  private:
+
+    QgsLineSymbolV2* mAssistantPreviewSymbol;
+
 };
 
 ///////////
@@ -103,6 +160,7 @@ class GUI_EXPORT QgsSimpleMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Wid
 
   public:
     QgsSimpleMarkerSymbolLayerV2Widget( const QgsVectorLayer* vl, QWidget* parent = NULL );
+    ~QgsSimpleMarkerSymbolLayerV2Widget();
 
     static QgsSymbolLayerV2Widget* create( const QgsVectorLayer* vl ) { return new QgsSimpleMarkerSymbolLayerV2Widget( vl ); }
 
@@ -127,6 +185,14 @@ class GUI_EXPORT QgsSimpleMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Wid
 
   protected:
     QgsSimpleMarkerSymbolLayerV2* mLayer;
+
+  private slots:
+
+    void updateAssistantSymbol();
+
+  private:
+
+    QgsMarkerSymbolV2* mAssistantPreviewSymbol;
 };
 
 ///////////
@@ -186,7 +252,6 @@ class GUI_EXPORT QgsGradientFillSymbolLayerV2Widget : public QgsSymbolLayerV2Wid
     void setColor( const QColor& color );
     void setColor2( const QColor& color );
     void applyColorRamp();
-    void on_mButtonEditRamp_clicked();
     void setGradientType( int index );
     void setCoordinateMode( int index );
     void setGradientSpread( int index );
@@ -228,7 +293,6 @@ class GUI_EXPORT QgsShapeburstFillSymbolLayerV2Widget : public QgsSymbolLayerV2W
     void on_mDistanceUnitWidget_changed();
     void on_mRadioUseWholeShape_toggled( bool value );
     void applyColorRamp();
-    void on_mButtonEditRamp_clicked();
     void offsetChanged();
     void on_mOffsetUnitWidget_changed();
     void on_mIgnoreRingsCheckBox_stateChanged( int state );
@@ -285,6 +349,7 @@ class GUI_EXPORT QgsSvgMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Widget
 
   public:
     QgsSvgMarkerSymbolLayerV2Widget( const QgsVectorLayer* vl, QWidget* parent = NULL );
+    ~QgsSvgMarkerSymbolLayerV2Widget();
 
     static QgsSymbolLayerV2Widget* create( const QgsVectorLayer* vl ) { return new QgsSvgMarkerSymbolLayerV2Widget( vl ); }
 
@@ -318,6 +383,15 @@ class GUI_EXPORT QgsSvgMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Widget
     void setGuiForSvg( const QgsSvgMarkerSymbolLayerV2* layer );
 
     QgsSvgMarkerSymbolLayerV2* mLayer;
+
+  private slots:
+
+    void updateAssistantSymbol();
+
+  private:
+
+    QgsMarkerSymbolV2* mAssistantPreviewSymbol;
+
 };
 
 ///////////
@@ -379,7 +453,7 @@ class GUI_EXPORT QgsSVGFillSymbolLayerWidget : public QgsSymbolLayerV2Widget, pr
   protected:
     QgsSVGFillSymbolLayer* mLayer;
     void insertIcons();
-    /**Enables or disables svg fill color, border color and border width based on whether the
+    /** Enables or disables svg fill color, border color and border width based on whether the
      * svg file supports custom parameters.
      * @param resetValues set to true to overwrite existing layer fill color, border color and border width
      * with default values from svg file
@@ -475,6 +549,8 @@ class GUI_EXPORT QgsFontMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Widge
   public:
     QgsFontMarkerSymbolLayerV2Widget( const QgsVectorLayer* vl, QWidget* parent = NULL );
 
+    ~QgsFontMarkerSymbolLayerV2Widget();
+
     static QgsSymbolLayerV2Widget* create( const QgsVectorLayer* vl ) { return new QgsFontMarkerSymbolLayerV2Widget( vl ); }
 
     // from base class
@@ -496,6 +572,15 @@ class GUI_EXPORT QgsFontMarkerSymbolLayerV2Widget : public QgsSymbolLayerV2Widge
   protected:
     QgsFontMarkerSymbolLayerV2* mLayer;
     CharacterWidget* widgetChar;
+
+  private slots:
+
+    void updateAssistantSymbol();
+
+  private:
+
+    QgsMarkerSymbolV2* mAssistantPreviewSymbol;
+
 };
 
 //////////
@@ -518,11 +603,12 @@ class GUI_EXPORT QgsCentroidFillSymbolLayerV2Widget : public QgsSymbolLayerV2Wid
     virtual void setSymbolLayer( QgsSymbolLayerV2* layer ) override;
     virtual QgsSymbolLayerV2* symbolLayer() override;
 
-  public slots:
-    void on_mDrawInsideCheckBox_stateChanged( int state );
-
   protected:
     QgsCentroidFillSymbolLayerV2* mLayer;
+
+  private slots:
+    void on_mDrawInsideCheckBox_stateChanged( int state );
+
 };
 
 

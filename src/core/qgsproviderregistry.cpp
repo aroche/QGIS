@@ -29,6 +29,7 @@
 #include "qgsmessagelog.h"
 #include "qgsprovidermetadata.h"
 #include "qgsvectorlayer.h"
+#include "qgsmaplayerregistry.h"
 
 
 // typedefs for provider plugin functions of interest
@@ -45,7 +46,7 @@ typedef QString protocolDrivers_t();
 
 
 
-QgsProviderRegistry *QgsProviderRegistry::instance( QString pluginPath )
+QgsProviderRegistry *QgsProviderRegistry::instance( const QString& pluginPath )
 {
   static QgsProviderRegistry* sInstance( new QgsProviderRegistry( pluginPath ) );
   return sInstance;
@@ -53,7 +54,7 @@ QgsProviderRegistry *QgsProviderRegistry::instance( QString pluginPath )
 
 
 
-QgsProviderRegistry::QgsProviderRegistry( QString pluginPath )
+QgsProviderRegistry::QgsProviderRegistry( const QString& pluginPath )
 {
   // At startup, examine the libs in the qgis/lib dir and store those that
   // are a provider shared lib
@@ -71,7 +72,7 @@ QgsProviderRegistry::QgsProviderRegistry( QString pluginPath )
   mLibraryDirectory.setSorting( QDir::Name | QDir::IgnoreCase );
   mLibraryDirectory.setFilter( QDir::Files | QDir::NoSymLinks );
 
-#if defined(WIN32) || defined(__CYGWIN__)
+#if defined(Q_OS_WIN) || defined(__CYGWIN__)
   mLibraryDirectory.setNameFilters( QStringList( "*.dll" ) );
 #elif ANDROID
   mLibraryDirectory.setNameFilters( QStringList( "*provider.so" ) );
@@ -93,15 +94,32 @@ QgsProviderRegistry::QgsProviderRegistry( QString pluginPath )
     return;
   }
 
+  // provider file regex pattern, only files matching the pattern are loaded if the variable is defined
+  QString filePattern = getenv( "QGIS_PROVIDER_FILE" );
+  QRegExp fileRegexp;
+  if ( !filePattern.isEmpty() )
+  {
+    fileRegexp.setPattern( filePattern );
+  }
+
   QListIterator<QFileInfo> it( mLibraryDirectory.entryInfoList() );
   while ( it.hasNext() )
   {
     QFileInfo fi( it.next() );
 
+    if ( !fileRegexp.isEmpty() )
+    {
+      if ( fileRegexp.indexIn( fi.fileName() ) == -1 )
+      {
+        QgsDebugMsg( "provider " + fi.fileName() + " skipped because doesn't match pattern " + filePattern );
+        continue;
+      }
+    }
+
     QLibrary myLib( fi.filePath() );
     if ( !myLib.load() )
     {
-      QgsDebugMsg( QString( "Checking %1: ...invalid (lib not loadable): %2" ).arg( myLib.fileName() ).arg( myLib.errorString() ) );
+      QgsDebugMsg( QString( "Checking %1: ...invalid (lib not loadable): %2" ).arg( myLib.fileName(), myLib.errorString() ) );
       continue;
     }
 
@@ -204,11 +222,13 @@ typedef void cleanupProviderFunction_t();
 
 QgsProviderRegistry::~QgsProviderRegistry()
 {
+  QgsMapLayerRegistry::instance()->removeAllMapLayers();
+
   Providers::const_iterator it = mProviders.begin();
 
   while ( it != mProviders.end() )
   {
-    QgsDebugMsg( QString( "cleanup: %1" ).arg( it->first ) );
+    QgsDebugMsg( QString( "cleanup:%1" ).arg( it->first ) );
     QString lib = it->second->library();
     QLibrary myLib( lib );
     if ( myLib.isLoaded() )
@@ -217,12 +237,13 @@ QgsProviderRegistry::~QgsProviderRegistry()
       if ( cleanupFunc )
         cleanupFunc();
     }
+    delete it->second;
     ++it;
   }
 }
 
 
-/** convenience function for finding any existing data providers that match "providerKey"
+/** Convenience function for finding any existing data providers that match "providerKey"
 
   Necessary because [] map operator will create a QgsProviderMetadata
   instance.  Also you cannot use the map [] operator in const members for that
@@ -281,7 +302,7 @@ QString QgsProviderRegistry::pluginList( bool asHTML ) const
     if ( asHTML )
       list + "<br></li>";
     else
-      list += "\n";
+      list += '\n';
 
     ++it;
   }
@@ -348,7 +369,7 @@ QgsDataProvider *QgsProviderRegistry::provider( QString const & providerKey, QSt
   QgsDebugMsg( "Library name is " + myLib.fileName() );
   if ( !myLib.load() )
   {
-    QgsMessageLog::logMessage( QObject::tr( "Failed to load %1: %2" ).arg( lib ).arg( myLib.errorString() ) );
+    QgsMessageLog::logMessage( QObject::tr( "Failed to load %1: %2" ).arg( lib, myLib.errorString() ) );
     return 0;
   }
 
@@ -392,7 +413,7 @@ int QgsProviderRegistry::providerCapabilities( const QString &providerKey ) cons
 typedef QWidget * selectFactoryFunction_t( QWidget * parent, Qt::WindowFlags fl );
 
 QWidget* QgsProviderRegistry::selectWidget( const QString & providerKey,
-    QWidget * parent, Qt::WindowFlags fl )
+    QWidget * parent, const Qt::WindowFlags& fl )
 {
   selectFactoryFunction_t * selectFactory =
     ( selectFactoryFunction_t * ) cast_to_fptr( function( providerKey, "selectWidget" ) );
@@ -461,7 +482,7 @@ void QgsProviderRegistry::registerGuis( QWidget *parent )
 {
   typedef void registerGui_function( QWidget * parent );
 
-  foreach ( const QString &provider, providerList() )
+  Q_FOREACH ( const QString &provider, providerList() )
   {
     registerGui_function *registerGui = ( registerGui_function * ) cast_to_fptr( function( provider, "registerGui" ) );
 

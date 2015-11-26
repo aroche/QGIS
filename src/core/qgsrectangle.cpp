@@ -77,6 +77,9 @@ void QgsRectangle::set( double xmin_, double ymin_, double xmax_, double ymax_ )
 
 void QgsRectangle::normalize()
 {
+  if ( isNull() )
+    return;
+
   if ( xmin > xmax )
   {
     std::swap( xmin, xmax );
@@ -121,6 +124,26 @@ void QgsRectangle::scale( double scaleFactor, double centerX, double centerY )
   xmax = centerX + newWidth / 2.0;
   ymin = centerY - newHeight / 2.0;
   ymax = centerY + newHeight / 2.0;
+}
+
+void QgsRectangle::grow( double delta )
+{
+  xmin -= delta;
+  xmax += delta;
+  ymin -= delta;
+  ymax += delta;
+}
+
+void QgsRectangle::include( const QgsPoint &p )
+{
+  if ( p.x() < xMinimum() )
+    setXMinimum( p.x() );
+  else if ( p.x() > xMaximum() )
+    setXMaximum( p.x() );
+  if ( p.y() < yMinimum() )
+    setYMinimum( p.y() );
+  if ( p.y() > yMaximum() )
+    setYMaximum( p.y() );
 }
 
 QgsRectangle QgsRectangle::buffer( double width )
@@ -206,8 +229,8 @@ bool QgsRectangle::isNull() const
 QString QgsRectangle::asWktCoordinates() const
 {
   QString rep =
-    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) + ", " +
-    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymax );
+    qgsDoubleToString( xmin ) + ' ' + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + ' ' + qgsDoubleToString( ymax );
 
   return rep;
 }
@@ -216,11 +239,11 @@ QString QgsRectangle::asWktPolygon() const
 {
   QString rep =
     QString( "POLYGON((" ) +
-    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) + ", " +
-    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymin ) + ", " +
-    qgsDoubleToString( xmax ) + " " + qgsDoubleToString( ymax ) + ", " +
-    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymax ) + ", " +
-    qgsDoubleToString( xmin ) + " " + qgsDoubleToString( ymin ) +
+    qgsDoubleToString( xmin ) + ' ' + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + ' ' + qgsDoubleToString( ymin ) + ", " +
+    qgsDoubleToString( xmax ) + ' ' + qgsDoubleToString( ymax ) + ", " +
+    qgsDoubleToString( xmin ) + ' ' + qgsDoubleToString( ymax ) + ", " +
+    qgsDoubleToString( xmin ) + ' ' + qgsDoubleToString( ymin ) +
     QString( "))" );
 
   return rep;
@@ -285,11 +308,11 @@ QString QgsRectangle::asPolygon() const
   // NOTE: a polygon isn't a polygon unless its closed. In the case of
   //       a rectangle, that means 5 points (last == first)
   foo
-  << xmin << " " << ymin << ", "
-  << xmin << " " << ymax << ", "
-  << xmax << " " << ymax << ", "
-  << xmax << " " << ymin << ", "
-  << xmin << " " << ymin;
+  << xmin << ' ' << ymin << ", "
+  << xmin << ' ' << ymax << ", "
+  << xmax << ' ' << ymax << ", "
+  << xmax << ' ' << ymin << ", "
+  << xmin << ' ' << ymin;
 
   return rep;
 
@@ -355,4 +378,21 @@ void QgsRectangle::invert()
   double tmp;
   tmp = xmin; xmin = ymin; ymin = tmp;
   tmp = xmax; xmax = ymax; ymax = tmp;
+}
+
+QDataStream& operator<<( QDataStream& out, const QgsRectangle& rectangle )
+{
+  out << rectangle.xMinimum() << rectangle.yMinimum() << rectangle.xMaximum() << rectangle.yMaximum();
+  return out;
+}
+
+QDataStream& operator>>( QDataStream& in, QgsRectangle& rectangle )
+{
+  double xmin, ymin, xmax, ymax;
+  in >> xmin >> ymin >> xmax >> ymax;
+  rectangle.setXMinimum( xmin );
+  rectangle.setYMinimum( ymin );
+  rectangle.setXMaximum( xmax );
+  rectangle.setYMaximum( ymax );
+  return in;
 }

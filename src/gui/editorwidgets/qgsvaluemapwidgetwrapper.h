@@ -3,7 +3,7 @@
      --------------------------------------
     Date                 : 5.1.2014
     Copyright            : (C) 2014 Matthias Kuhn
-    Email                : matthias dot kuhn at gmx dot ch
+    Email                : matthias at opengis dot ch
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -30,7 +30,7 @@
  * </ul>
  *
  * Any option will be treated as entry in the value map.
- *
+ * \note not available in Python bindings
  */
 
 class GUI_EXPORT QgsValueMapWidgetWrapper : public QgsEditorWidgetWrapper
@@ -41,11 +41,12 @@ class GUI_EXPORT QgsValueMapWidgetWrapper : public QgsEditorWidgetWrapper
 
     // QgsEditorWidgetWrapper interface
   public:
-    QVariant value() override;
+    QVariant value() const override;
 
   protected:
     QWidget* createWidget( QWidget* parent ) override;
     void initWidget( QWidget* editor ) override;
+    bool valid() const override;
 
   public slots:
     void setValue( const QVariant& value ) override;

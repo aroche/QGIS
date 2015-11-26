@@ -42,6 +42,7 @@
 */
 eVisEventIdTool::eVisEventIdTool( QgsMapCanvas* theCanvas )
     : QgsMapTool( theCanvas )
+    , mBrowser( NULL )
 {
   //set cursor
   QPixmap myIdentifyQPixmap = QPixmap(( const char ** ) identify_cursor );
@@ -58,7 +59,7 @@ eVisEventIdTool::eVisEventIdTool( QgsMapCanvas* theCanvas )
 * Mouse release, i.e., select, event
 * @param theMouseEvent - Pointer to a QMouseEvent
 */
-void eVisEventIdTool::canvasReleaseEvent( QMouseEvent* theMouseEvent )
+void eVisEventIdTool::canvasReleaseEvent( QgsMapMouseEvent* theMouseEvent )
 {
   if ( 0 == mCanvas || 0 == theMouseEvent )
     return;
@@ -86,7 +87,7 @@ void eVisEventIdTool::canvasReleaseEvent( QMouseEvent* theMouseEvent )
 * Selection routine called by the mouse release event
 * @param thePoint = QgsPoint representing the x, y coordinates of the mouse release event
 */
-void eVisEventIdTool::select( QgsPoint thePoint )
+void eVisEventIdTool::select( const QgsPoint& thePoint )
 {
 
   if ( 0 == mCanvas )

@@ -53,13 +53,26 @@ QgsPaintEffectRegistry::QgsPaintEffectRegistry()
 
 QgsPaintEffectRegistry::~QgsPaintEffectRegistry()
 {
+<<<<<<< HEAD
   foreach ( QString name, mMetadata.keys() )
+=======
+  Q_FOREACH ( const QString& name, mMetadata.keys() )
+>>>>>>> upstream/master
   {
     delete mMetadata[name];
   }
   mMetadata.clear();
 }
 
+<<<<<<< HEAD
+=======
+QgsPaintEffectRegistry* QgsPaintEffectRegistry::instance()
+{
+  static QgsPaintEffectRegistry sInstance;
+  return &sInstance;
+}
+
+>>>>>>> upstream/master
 QgsPaintEffectAbstractMetadata *QgsPaintEffectRegistry::effectMetadata( const QString &name ) const
 {
   if ( mMetadata.contains( name ) )
@@ -113,3 +126,57 @@ QStringList QgsPaintEffectRegistry::effects() const
   }
   return lst;
 }
+<<<<<<< HEAD
+=======
+
+QgsPaintEffect* QgsPaintEffectRegistry::defaultStack()
+{
+  //NOTE - also remember to update isDefaultStack below if making changes to this list
+  QgsEffectStack* stack = new QgsEffectStack();
+  QgsDropShadowEffect* dropShadow = new QgsDropShadowEffect();
+  dropShadow->setEnabled( false );
+  stack->appendEffect( dropShadow );
+  QgsOuterGlowEffect* outerGlow = new QgsOuterGlowEffect();
+  outerGlow->setEnabled( false );
+  stack->appendEffect( outerGlow );
+  stack->appendEffect( new QgsDrawSourceEffect() );
+  QgsInnerShadowEffect* innerShadow = new QgsInnerShadowEffect();
+  innerShadow->setEnabled( false );
+  stack->appendEffect( innerShadow );
+  QgsInnerGlowEffect* innerGlow = new QgsInnerGlowEffect();
+  innerGlow->setEnabled( false );
+  stack->appendEffect( innerGlow );
+  return stack;
+}
+
+bool QgsPaintEffectRegistry::isDefaultStack( QgsPaintEffect* effect )
+{
+  QgsEffectStack* effectStack = dynamic_cast< QgsEffectStack* >( effect );
+  if ( !effectStack )
+    return false;
+
+  if ( effectStack->count() != 5 )
+    return false;
+
+  for ( int i = 0; i < 5; ++i )
+  {
+    //only the third effect should be enabled
+    if ( effectStack->effect( i )->enabled() != ( i == 2 ) )
+      return false;
+  }
+
+  if ( !dynamic_cast< QgsDropShadowEffect* >( effectStack->effect( 0 ) ) )
+    return false;
+  if ( !dynamic_cast< QgsOuterGlowEffect* >( effectStack->effect( 1 ) ) )
+    return false;
+  if ( !dynamic_cast< QgsDrawSourceEffect* >( effectStack->effect( 2 ) ) )
+    return false;
+  if ( !dynamic_cast< QgsInnerShadowEffect* >( effectStack->effect( 3 ) ) )
+    return false;
+  if ( !dynamic_cast< QgsInnerGlowEffect* >( effectStack->effect( 4 ) ) )
+    return false;
+
+  //we don't go as far as to check the individual effect's properties
+  return true;
+}
+>>>>>>> upstream/master

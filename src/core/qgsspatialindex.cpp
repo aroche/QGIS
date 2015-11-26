@@ -31,11 +31,11 @@ using namespace SpatialIndex;
 class QgisVisitor : public SpatialIndex::IVisitor
 {
   public:
-    QgisVisitor( QList<QgsFeatureId> & list )
+    explicit QgisVisitor( QList<QgsFeatureId> & list )
         : mList( list ) {}
 
     void visitNode( const INode& n ) override
-    { Q_UNUSED( n ); }
+      { Q_UNUSED( n ); }
 
     void visitData( const IData& d ) override
     {
@@ -43,7 +43,7 @@ class QgisVisitor : public SpatialIndex::IVisitor
     }
 
     void visitData( std::vector<const IData*>& v ) override
-    { Q_UNUSED( v ); }
+      { Q_UNUSED( v ); }
 
   private:
     QList<QgsFeatureId>& mList;
@@ -52,11 +52,11 @@ class QgisVisitor : public SpatialIndex::IVisitor
 class QgsSpatialIndexCopyVisitor : public SpatialIndex::IVisitor
 {
   public:
-    QgsSpatialIndexCopyVisitor( SpatialIndex::ISpatialIndex* newIndex )
+    explicit QgsSpatialIndexCopyVisitor( SpatialIndex::ISpatialIndex* newIndex )
         : mNewIndex( newIndex ) {}
 
     void visitNode( const INode& n ) override
-    { Q_UNUSED( n ); }
+      { Q_UNUSED( n ); }
 
     void visitData( const IData& d ) override
     {
@@ -67,7 +67,7 @@ class QgsSpatialIndexCopyVisitor : public SpatialIndex::IVisitor
     }
 
     void visitData( std::vector<const IData*>& v ) override
-    { Q_UNUSED( v ); }
+      { Q_UNUSED( v ); }
 
   private:
     SpatialIndex::ISpatialIndex* mNewIndex;
@@ -79,7 +79,9 @@ class QgsFeatureIteratorDataStream : public IDataStream
 {
   public:
     //! constructor - needs to load all data to a vector for later access when bulk loading
-    QgsFeatureIteratorDataStream( const QgsFeatureIterator& fi ) : mFi( fi ), mNextData( 0 )
+    explicit QgsFeatureIteratorDataStream( const QgsFeatureIterator& fi )
+        : mFi( fi )
+        , mNextData( 0 )
     {
       readNextEntry();
     }
@@ -186,7 +188,7 @@ class QgsSpatialIndexData : public QSharedData
                                         leafCapacity, dimension, variant, indexId );
     }
 
-    /** storage manager */
+    /** Storage manager */
     SpatialIndex::IStorageManager* mStorage;
 
     /** R-tree containing spatial index */
@@ -222,7 +224,7 @@ QgsSpatialIndex& QgsSpatialIndex::operator=( const QgsSpatialIndex & other )
   return *this;
 }
 
-Region QgsSpatialIndex::rectToRegion( QgsRectangle rect )
+Region QgsSpatialIndex::rectToRegion( const QgsRectangle& rect )
 {
   double pt1[2], pt2[2];
   pt1[0] = rect.xMinimum();
@@ -234,12 +236,13 @@ Region QgsSpatialIndex::rectToRegion( QgsRectangle rect )
 
 bool QgsSpatialIndex::featureInfo( const QgsFeature& f, SpatialIndex::Region& r, QgsFeatureId &id )
 {
-  QgsGeometry *g = f.geometry();
-  if ( !g )
+  if ( !f.constGeometry() )
     return false;
 
+  QgsGeometry g( *f.constGeometry() );
+
   id = f.id();
-  r = rectToRegion( g->boundingBox() );
+  r = rectToRegion( g.boundingBox() );
   return true;
 }
 
@@ -286,7 +289,7 @@ bool QgsSpatialIndex::deleteFeature( const QgsFeature& f )
   return d->mRTree->deleteData( r, FID_TO_NUMBER( id ) );
 }
 
-QList<QgsFeatureId> QgsSpatialIndex::intersects( QgsRectangle rect ) const
+QList<QgsFeatureId> QgsSpatialIndex::intersects( const QgsRectangle& rect ) const
 {
   QList<QgsFeatureId> list;
   QgisVisitor visitor( list );
@@ -298,7 +301,7 @@ QList<QgsFeatureId> QgsSpatialIndex::intersects( QgsRectangle rect ) const
   return list;
 }
 
-QList<QgsFeatureId> QgsSpatialIndex::nearestNeighbor( QgsPoint point, int neighbors ) const
+QList<QgsFeatureId> QgsSpatialIndex::nearestNeighbor( const QgsPoint& point, int neighbors ) const
 {
   QList<QgsFeatureId> list;
   QgisVisitor visitor( list );

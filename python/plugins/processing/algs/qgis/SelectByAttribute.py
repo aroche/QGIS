@@ -25,11 +25,10 @@ __copyright__ = '(C) 2010, Michael Minn'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from PyQt4.QtCore import QVariant
+from qgis.core import QgsExpression, QgsFeatureRequest
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTableField
 from processing.core.parameters import ParameterSelection
@@ -53,25 +52,34 @@ class SelectByAttribute(GeoAlgorithm):
                  '<=',
                  'begins with',
                  'contains'
-                ]
+                 ]
 
     def defineCharacteristics(self):
-        self.name = 'Select by attribute'
-        self.group = 'Vector selection tools'
+        self.name, self.i18n_name = self.trAlgorithm('Select by attribute')
+        self.group, self.i18n_group = self.trAlgorithm('Vector selection tools')
+
+        self.i18n_operators = ['=',
+                               '!=',
+                               '>',
+                               '>=',
+                               '<',
+                               '<=',
+                               self.tr('begins with '),
+                               self.tr('contains')]
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input Layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input Layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterTableField(self.FIELD,
-            self.tr('Selection attribute'), self.INPUT))
+                                              self.tr('Selection attribute'), self.INPUT))
         self.addParameter(ParameterSelection(self.OPERATOR,
-            self.tr('Operator'), self.OPERATORS))
+                                             self.tr('Operator'), self.i18n_operators))
         self.addParameter(ParameterString(self.VALUE, self.tr('Value')))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Selected (attribute)'), True))
 
     def processAlgorithm(self, progress):
-        layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+        fileName = self.getParameterValue(self.INPUT)
+        layer = dataobjects.getObjectFromUri(fileName)
         fieldName = self.getParameterValue(self.FIELD)
         operator = self.OPERATORS[self.getParameterValue(self.OPERATOR)]
         value = self.getParameterValue(self.VALUE)
@@ -101,24 +109,18 @@ class SelectByAttribute(GeoAlgorithm):
             progress.setInfo(expr)
         elif fieldType in [QVariant.Date, QVariant.DateTime]:
             progress.setInfo(self.tr('Date field'))
-            expr = """"%s" %s '%s'""" % (fieldX, operator, value)
+            expr = """"%s" %s '%s'""" % (fieldName, operator, value)
             progress.setInfo(expr)
         else:
             raise GeoAlgorithmExecutionException(
                 self.tr('Unsupported field type "%s"' % fields[idx].typeName()))
 
-        expression = QgsExpression(expr)
-        expression.prepare(fields)
-
-        features = vector.features(layer)
-
-        selected = []
-        count = len(features)
-        total = 100.0 / float(count)
-        for count, f in enumerate(features):
-            if expression.evaluate(f, fields):
-                selected.append(f.id())
-            progress.setPercentage(int(count * total))
+        qExp = QgsExpression(expr)
+        if not qExp.hasParserError():
+            qReq = QgsFeatureRequest(qExp)
+        else:
+            raise GeoAlgorithmExecutionException(qExp.parserErrorString())
+        selected = [f.id() for f in layer.getFeatures(qReq)]
 
         layer.setSelectedFeatures(selected)
-        self.setOutputValue(self.OUTPUT, self.getParameterValue(self.INPUT))
+        self.setOutputValue(self.OUTPUT, fileName)

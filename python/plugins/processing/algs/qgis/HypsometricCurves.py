@@ -31,7 +31,7 @@ import os
 import numpy
 from osgeo import gdal, ogr, osr
 
-from qgis.core import *
+from qgis.core import QgsRectangle, QgsGeometry
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterRaster
@@ -54,20 +54,20 @@ class HypsometricCurves(GeoAlgorithm):
     OUTPUT_DIRECTORY = 'OUTPUT_DIRECTORY'
 
     def defineCharacteristics(self):
-        self.name = 'Hypsometric curves'
-        self.group = 'Raster tools'
+        self.name, self.i18n_name = self.trAlgorithm('Hypsometric curves')
+        self.group, self.i18n_group = self.trAlgorithm('Raster tools')
 
         self.addParameter(ParameterRaster(self.INPUT_DEM,
-            self.tr('DEM to analyze')))
+                                          self.tr('DEM to analyze')))
         self.addParameter(ParameterVector(self.BOUNDARY_LAYER,
-            self.tr('Boundary layer'), ParameterVector.VECTOR_TYPE_POLYGON))
+                                          self.tr('Boundary layer'), ParameterVector.VECTOR_TYPE_POLYGON))
         self.addParameter(ParameterNumber(self.STEP,
-            self.tr('Step'), 0.0, 999999999.999999, 100.0))
+                                          self.tr('Step'), 0.0, 999999999.999999, 100.0))
         self.addParameter(ParameterBoolean(self.USE_PERCENTAGE,
-            self.tr('Use % of area instead of absolute value'), False))
+                                           self.tr('Use % of area instead of absolute value'), False))
 
         self.addOutput(OutputDirectory(self.OUTPUT_DIRECTORY,
-            self.tr('Output directory')))
+                                       self.tr('Hypsometric curves')))
 
     def processAlgorithm(self, progress):
         rasterPath = self.getParameterValue(self.INPUT_DEM)
@@ -132,6 +132,12 @@ class HypsometricCurves(GeoAlgorithm):
             srcOffset = (startColumn, startRow, width, height)
             srcArray = rasterBand.ReadAsArray(*srcOffset)
 
+            if srcOffset[2] == 0 or srcOffset[3] == 0:
+                progress.setInfo(
+                    self.tr('Feature %d is smaller than raster '
+                            'cell size' % f.id()))
+                continue
+
             newGeoTransform = (
                 geoTransform[0] + srcOffset[0] * geoTransform[1],
                 geoTransform[1],
@@ -139,7 +145,7 @@ class HypsometricCurves(GeoAlgorithm):
                 geoTransform[3] + srcOffset[1] * geoTransform[5],
                 0.0,
                 geoTransform[5]
-                )
+            )
 
             memVDS = memVectorDriver.CreateDataSource('out')
             memLayer = memVDS.CreateLayer('poly', crs, ogr.wkbPolygon)
@@ -150,18 +156,18 @@ class HypsometricCurves(GeoAlgorithm):
             ft.Destroy()
 
             rasterizedDS = memRasterDriver.Create('', srcOffset[2],
-                srcOffset[3], 1, gdal.GDT_Byte)
+                                                  srcOffset[3], 1, gdal.GDT_Byte)
             rasterizedDS.SetGeoTransform(newGeoTransform)
             gdal.RasterizeLayer(rasterizedDS, [1], memLayer, burn_values=[1])
             rasterizedArray = rasterizedDS.ReadAsArray()
 
             srcArray = numpy.nan_to_num(srcArray)
             masked = numpy.ma.MaskedArray(srcArray,
-                mask=numpy.logical_or(srcArray == noData,
-                    numpy.logical_not(rasterizedArray)))
+                                          mask=numpy.logical_or(srcArray == noData,
+                                                                numpy.logical_not(rasterizedArray)))
 
             self.calculateHypsometry(f.id(), fName, progress, masked,
-                cellXSize, cellYSize, percentage, step)
+                                     cellXSize, cellYSize, percentage, step)
 
             memVDS = None
             rasterizedDS = None

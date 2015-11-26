@@ -25,6 +25,7 @@ email                : jpalmer at linz dot govt dot nz
 
 QgsMapToolSelectFreehand::QgsMapToolSelectFreehand( QgsMapCanvas* canvas )
     : QgsMapTool( canvas )
+    , mDragging( false )
 {
   mRubberBand = 0;
   mCursor = Qt::ArrowCursor;
@@ -37,7 +38,7 @@ QgsMapToolSelectFreehand::~QgsMapToolSelectFreehand()
   delete mRubberBand;
 }
 
-void QgsMapToolSelectFreehand::canvasPressEvent( QMouseEvent * e )
+void QgsMapToolSelectFreehand::canvasPressEvent( QgsMapMouseEvent* e )
 {
   if ( e->button() != Qt::LeftButton )
   {
@@ -54,7 +55,7 @@ void QgsMapToolSelectFreehand::canvasPressEvent( QMouseEvent * e )
 }
 
 
-void QgsMapToolSelectFreehand::canvasMoveEvent( QMouseEvent * e )
+void QgsMapToolSelectFreehand::canvasMoveEvent( QgsMapMouseEvent* e )
 {
   if ( !mDragging || mRubberBand == NULL )
   {
@@ -64,7 +65,7 @@ void QgsMapToolSelectFreehand::canvasMoveEvent( QMouseEvent * e )
 }
 
 
-void QgsMapToolSelectFreehand::canvasReleaseEvent( QMouseEvent * e )
+void QgsMapToolSelectFreehand::canvasReleaseEvent( QgsMapMouseEvent* e )
 {
   if ( mRubberBand == NULL )
   {

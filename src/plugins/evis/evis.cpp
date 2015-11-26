@@ -73,12 +73,6 @@
 #include <QApplication>
 #include <QCursor>
 
-#ifdef WIN32
-#define QGISEXTERN extern "C" __declspec( dllexport )
-#else
-#define QGISEXTERN extern "C"
-#endif
-
 static const QString sName = QObject::tr( "eVis" );
 static const QString sDescription = QObject::tr( "An event visualization tool - view images associated with vector features" );
 static const QString sCategory = QObject::tr( "Database" );
@@ -199,7 +193,7 @@ void eVis::unload()
   }
 }
 
-void eVis::drawVectorLayer( QString thePathNameQString, QString theBaseNameQString, QString theProviderQString )
+void eVis::drawVectorLayer( const QString& thePathNameQString, const QString& theBaseNameQString, const QString& theProviderQString )
 {
   mQGisIface->addVectorLayer( thePathNameQString, theBaseNameQString, theProviderQString );
 }

@@ -31,9 +31,11 @@ from processing.core.outputs import OutputRaster
 from processing.core.parameters import ParameterBoolean
 from processing.core.parameters import ParameterMultipleInput
 from processing.core.parameters import ParameterSelection
-from processing.tools.system import *
 from processing.algs.gdal.GdalUtils import GdalUtils
+from processing.tools.system import tempFolder
+
 import os
+
 
 class buildvrt(GdalAlgorithm):
 
@@ -46,19 +48,19 @@ class buildvrt(GdalAlgorithm):
     RESOLUTION_OPTIONS = ['average', 'highest', 'lowest']
 
     def defineCharacteristics(self):
-        self.name = 'Build Virtual Raster'
-        self.group = '[GDAL] Miscellaneous'
+        self.name, self.i18n_name = self.trAlgorithm('Build Virtual Raster')
+        self.group, self.i18n_group = self.trAlgorithm('[GDAL] Miscellaneous')
         self.addParameter(ParameterMultipleInput(self.INPUT,
-            self.tr('Input layers'), ParameterMultipleInput.TYPE_RASTER))
+                                                 self.tr('Input layers'), ParameterMultipleInput.TYPE_RASTER))
         self.addParameter(ParameterSelection(self.RESOLUTION,
-            self.tr('Resolution'), self.RESOLUTION_OPTIONS, 0))
+                                             self.tr('Resolution'), self.RESOLUTION_OPTIONS, 0))
         self.addParameter(ParameterBoolean(self.SEPARATE,
-            self.tr('Layer stack'), True))
+                                           self.tr('Layer stack'), True))
         self.addParameter(ParameterBoolean(self.PROJ_DIFFERENCE,
-            self.tr('Allow projection difference'), False))
-        self.addOutput(OutputRaster(buildvrt.OUTPUT, self.tr('Output layer')))
+                                           self.tr('Allow projection difference'), False))
+        self.addOutput(OutputRaster(buildvrt.OUTPUT, self.tr('Virtual')))
 
-    def processAlgorithm(self, progress):
+    def getConsoleCommands(self):
         arguments = []
         arguments.append('-resolution')
         arguments.append(self.RESOLUTION_OPTIONS[self.getParameterValue(self.RESOLUTION)])
@@ -82,5 +84,4 @@ class buildvrt(GdalAlgorithm):
             self.setOutputValue(self.OUTPUT, out)
         arguments.append(out)
 
-
-        GdalUtils.runGdal(['gdalbuildvrt', GdalUtils.escapeAndJoin(arguments)], progress)
+        return ['gdalbuildvrt', GdalUtils.escapeAndJoin(arguments)]

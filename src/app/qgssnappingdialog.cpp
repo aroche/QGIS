@@ -107,6 +107,8 @@ QgsSnappingDialog::QgsSnappingDialog( QWidget* parent, QgsMapCanvas* canvas )
 }
 
 QgsSnappingDialog::QgsSnappingDialog()
+    : mMapCanvas( NULL )
+    , mDock( NULL )
 {
 }
 
@@ -131,15 +133,21 @@ void QgsSnappingDialog::reload()
     idx = 0;
   else // off
     idx = 3;
+  mDefaultSnapToComboBox->blockSignals( true );
   mDefaultSnapToComboBox->setCurrentIndex( idx );
+  mDefaultSnapToComboBox->blockSignals( false );
 
   double tolerance = settings.value( "/qgis/digitizing/default_snapping_tolerance", 0 ).toDouble();
   tolerance = QgsProject::instance()->readDoubleEntry( "Digitizing", "/DefaultSnapTolerance", tolerance );
+  mDefaultSnappingToleranceSpinBox->blockSignals( true );
   mDefaultSnappingToleranceSpinBox->setValue( tolerance );
+  mDefaultSnappingToleranceSpinBox->blockSignals( false );
 
   int unit = settings.value( "/qgis/digitizing/default_snapping_tolerance_unit", QgsTolerance::ProjectUnits ).toInt();
   unit = QgsProject::instance()->readNumEntry( "Digitizing", "/DefaultSnapToleranceUnit", unit );
+  mDefaultSnappingToleranceComboBox->blockSignals( true );
   mDefaultSnappingToleranceComboBox->setCurrentIndex( unit == QgsTolerance::Pixels ? 1 : 0 );
+  mDefaultSnappingToleranceComboBox->blockSignals( false );
 
   mLayerTreeWidget->clear();
 
@@ -199,7 +207,6 @@ void QgsSnappingDialog::closeEvent( QCloseEvent* event )
     settings.setValue( "/Windows/BetterSnapping/geometry", saveGeometry() );
   }
 }
-
 
 void QgsSnappingDialog::apply()
 {
@@ -297,9 +304,9 @@ void QgsSnappingDialog::show()
   mLayerTreeWidget->resizeColumnToContents( 4 );
 }
 
-void QgsSnappingDialog::addLayers( QList<QgsMapLayer *> layers )
+void QgsSnappingDialog::addLayers( const QList<QgsMapLayer *>& layers )
 {
-  foreach ( QgsMapLayer* layer, layers )
+  Q_FOREACH ( QgsMapLayer* layer, layers )
   {
     addLayer( layer );
   }
@@ -450,9 +457,9 @@ void QgsSnappingDialog::addLayer( QgsMapLayer *theMapLayer )
   }
 }
 
-void QgsSnappingDialog::layersWillBeRemoved( QStringList thelayers )
+void QgsSnappingDialog::layersWillBeRemoved( const QStringList& thelayers )
 {
-  foreach ( QString theLayerId, thelayers )
+  Q_FOREACH ( const QString& theLayerId, thelayers )
   {
     QTreeWidgetItem *item = 0;
 
@@ -490,6 +497,7 @@ void QgsSnappingDialog::setIntersectionSnappingState()
 
 void QgsSnappingDialog::setSnappingMode()
 {
+  mSnapModeComboBox->blockSignals( true );
   QString snapMode = QgsProject::instance()->readEntry( "Digitizing", "/SnappingMode" );
   if ( snapMode == "current_layer" )
     mSnapModeComboBox->setCurrentIndex( 0 );
@@ -497,5 +505,6 @@ void QgsSnappingDialog::setSnappingMode()
     mSnapModeComboBox->setCurrentIndex( 1 );
   else // "advanced" or empty (backward compatibility)
     mSnapModeComboBox->setCurrentIndex( 2 );
+  onSnappingModeIndexChanged( mSnapModeComboBox->currentIndex() );
+  mSnapModeComboBox->blockSignals( false );
 }
-

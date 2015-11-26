@@ -25,6 +25,7 @@ __copyright__ = '(C) 2015, Arnaud Morvan'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
+<<<<<<< HEAD
 
 from PyQt4.QtGui import QWidget, QCheckBox
 from qgis.core import QGis, QgsVectorLayer
@@ -50,13 +51,49 @@ class GeometryPredicateSelectionPanel(QWidget, Ui_Form):
             QGis.Point : ('equals', 'within', 'overlaps'),
             QGis.Line : ('equals', 'within', 'overlaps'),
             QGis.Polygon : ('crosses')
+=======
+import os
+
+from PyQt4 import uic
+from PyQt4.QtGui import QCheckBox
+from qgis.core import QGis, QgsVectorLayer
+
+from processing.core.parameters import ParameterGeometryPredicate
+
+pluginPath = os.path.split(os.path.dirname(__file__))[0]
+WIDGET, BASE = uic.loadUiType(
+    os.path.join(pluginPath, 'ui', 'widgetGeometryPredicateSelector.ui'))
+
+
+class GeometryPredicateSelectionPanel(BASE, WIDGET):
+
+    unusablePredicates = {
+        QGis.Point: {
+            QGis.Point: ('touches', 'crosses'),
+            QGis.Line: ('equals', 'contains', 'overlaps'),
+            QGis.Polygon: ('equals', 'contains', 'overlaps')
+        },
+        QGis.Line: {
+            QGis.Point: ('equals', 'within', 'overlaps'),
+            QGis.Line: [],
+            QGis.Polygon: ('equals', 'contains', 'overlaps')
+        },
+        QGis.Polygon: {
+            QGis.Point: ('equals', 'within', 'overlaps'),
+            QGis.Line: ('equals', 'within', 'overlaps'),
+            QGis.Polygon: ('crosses')
+>>>>>>> upstream/master
         }
     }
 
     def __init__(self,
                  enabledPredicated=ParameterGeometryPredicate.predicates,
                  rows=4):
+<<<<<<< HEAD
         QWidget.__init__(self)
+=======
+        super(GeometryPredicateSelectionPanel, self).__init__(None)
+>>>>>>> upstream/master
         self.setupUi(self)
 
         self.enabledPredicated = enabledPredicated

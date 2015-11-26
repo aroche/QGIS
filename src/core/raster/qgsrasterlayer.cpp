@@ -339,7 +339,7 @@ QString QgsRasterLayer::metadata()
   }
   else
   {
-    myMetadata += "*" + tr( "NoDataValue not set" ) + "*";
+    myMetadata += '*' + tr( "NoDataValue not set" ) + '*';
   }
   myMetadata += "</p>\n";
 
@@ -665,7 +665,7 @@ void QgsRasterLayer::setDataProvider( QString const & provider )
   if ( !mDataProvider->isValid() )
   {
     setError( mDataProvider->error() );
-    appendError( ERR( tr( "Provider is not valid (provider: %1, URI: %2" ).arg( mProviderKey ).arg( mDataSource ) ) );
+    appendError( ERR( tr( "Provider is not valid (provider: %1, URI: %2" ).arg( mProviderKey, mDataSource ) ) );
     return;
   }
 
@@ -708,7 +708,19 @@ void QgsRasterLayer::setDataProvider( QString const & provider )
   QgsDebugMsg( "dataType = " + QString::number( mDataProvider->dataType( 1 ) ) );
   if (( mDataProvider->bandCount() > 1 ) )
   {
-    mRasterType = Multiband;
+    // handle singleband gray with alpha
+    if ( mDataProvider->bandCount() == 2
+         && (( mDataProvider->colorInterpretation( 1 ) == QgsRaster::GrayIndex
+               && mDataProvider->colorInterpretation( 2 ) == QgsRaster::AlphaBand )
+             || ( mDataProvider->colorInterpretation( 1 ) == QgsRaster::AlphaBand
+                  && mDataProvider->colorInterpretation( 2 ) == QgsRaster::GrayIndex ) ) )
+    {
+      mRasterType = GrayOrUndefined;
+    }
+    else
+    {
+      mRasterType = Multiband;
+    }
   }
   else if ( mDataProvider->dataType( 1 ) == QGis::ARGB32
             ||  mDataProvider->dataType( 1 ) == QGis::ARGB32_Premultiplied )
@@ -844,7 +856,7 @@ void QgsRasterLayer::closeDataProvider()
   mDataProvider = 0;
 }
 
-void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnhancementAlgorithm theAlgorithm, QgsRaster::ContrastEnhancementLimits theLimits, QgsRectangle theExtent, int theSampleSize, bool theGenerateLookupTableFlag )
+void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnhancementAlgorithm theAlgorithm, QgsRaster::ContrastEnhancementLimits theLimits, const QgsRectangle& theExtent, int theSampleSize, bool theGenerateLookupTableFlag )
 {
   QgsDebugMsg( QString( "theAlgorithm = %1 theLimits = %2 theExtent.isEmpty() = %3" ).arg( theAlgorithm ).arg( theLimits ).arg( theExtent.isEmpty() ) );
   if ( !mPipe.renderer() || !mDataProvider )
@@ -870,7 +882,7 @@ void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnh
     myBands << myMultiBandRenderer->redBand() << myMultiBandRenderer->greenBand() << myMultiBandRenderer->blueBand();
   }
 
-  foreach ( int myBand, myBands )
+  Q_FOREACH ( int myBand, myBands )
   {
     if ( myBand != -1 )
     {
@@ -916,14 +928,17 @@ void QgsRasterLayer::setContrastEnhancement( QgsContrastEnhancement::ContrastEnh
 
   if ( rendererType == "singlebandgray" )
   {
-    if ( myEnhancements.value( 0 ) ) myGrayRenderer->setContrastEnhancement( myEnhancements.value( 0 ) );
+    if ( myEnhancements.first() ) myGrayRenderer->setContrastEnhancement( myEnhancements.takeFirst( ) );
   }
   else if ( rendererType == "multibandcolor" )
   {
-    if ( myEnhancements.value( 0 ) ) myMultiBandRenderer->setRedContrastEnhancement( myEnhancements.value( 0 ) );
-    if ( myEnhancements.value( 1 ) ) myMultiBandRenderer->setGreenContrastEnhancement( myEnhancements.value( 1 ) );
-    if ( myEnhancements.value( 2 ) ) myMultiBandRenderer->setBlueContrastEnhancement( myEnhancements.value( 2 ) );
+    if ( myEnhancements.first() ) myMultiBandRenderer->setRedContrastEnhancement( myEnhancements.takeFirst() );
+    if ( myEnhancements.first() ) myMultiBandRenderer->setGreenContrastEnhancement( myEnhancements.takeFirst() );
+    if ( myEnhancements.first() ) myMultiBandRenderer->setBlueContrastEnhancement( myEnhancements.takeFirst() );
   }
+
+  //delete all remaining unused enhancements
+  qDeleteAll( myEnhancements );
 
   emit repaintRequested();
 }
@@ -1049,7 +1064,7 @@ void QgsRasterLayer::setLayerOrder( QStringList const & layers )
 
 }
 
-void QgsRasterLayer::setSubLayerVisibility( QString name, bool vis )
+void QgsRasterLayer::setSubLayerVisibility( const QString& name, bool vis )
 {
 
   if ( mDataProvider )
@@ -1088,7 +1103,7 @@ QStringList QgsRasterLayer::subLayers() const
   return mDataProvider->subLayers();
 }
 
-QPixmap QgsRasterLayer::previewAsPixmap( QSize size, QColor bgColor )
+QPixmap QgsRasterLayer::previewAsPixmap( const QSize& size, const QColor& bgColor )
 {
   QPixmap myQPixmap( size );
 
@@ -1100,7 +1115,7 @@ QPixmap QgsRasterLayer::previewAsPixmap( QSize size, QColor bgColor )
   double myX = 0.0;
   double myY = 0.0;
   QgsRectangle myExtent = mDataProvider->extent();
-  if ( myExtent.width() / myExtent.height() >=  myQPixmap.width() / myQPixmap.height() )
+  if ( myExtent.width() / myExtent.height() >= ( double )myQPixmap.width() / myQPixmap.height() )
   {
     myMapUnitsPerPixel = myExtent.width() / myQPixmap.width();
     myY = ( myQPixmap.height() - myExtent.height() / myMapUnitsPerPixel ) / 2;
@@ -1139,7 +1154,7 @@ QPixmap QgsRasterLayer::previewAsPixmap( QSize size, QColor bgColor )
 
 // this function should be used when rendering with the MTR engine introduced in 2.3, as QPixmap is not thread safe (see bug #9626)
 // note: previewAsImage and previewAsPixmap should use a common low-level fct QgsRasterLayer::previewOnPaintDevice( QSize size, QColor bgColor, QPaintDevice &device )
-QImage QgsRasterLayer::previewAsImage( QSize size, QColor bgColor, QImage::Format format )
+QImage QgsRasterLayer::previewAsImage( const QSize& size, const QColor& bgColor, QImage::Format format )
 {
   QImage myQImage( size, format );
 
@@ -1152,7 +1167,7 @@ QImage QgsRasterLayer::previewAsImage( QSize size, QColor bgColor, QImage::Forma
   double myX = 0.0;
   double myY = 0.0;
   QgsRectangle myExtent = mDataProvider->extent();
-  if ( myExtent.width() / myExtent.height() >=  myQImage.width() / myQImage.height() )
+  if ( myExtent.width() / myExtent.height() >= ( double )myQImage.width() / myQImage.height() )
   {
     myMapUnitsPerPixel = myExtent.width() / myQImage.width();
     myY = ( myQImage.height() - myExtent.height() / myMapUnitsPerPixel ) / 2;
@@ -1195,7 +1210,7 @@ void QgsRasterLayer::updateProgress( int theProgress, int theMax )
   Q_UNUSED( theMax );
 }
 
-void QgsRasterLayer::onProgress( int theType, double theProgress, QString theMessage )
+void QgsRasterLayer::onProgress( int theType, double theProgress, const QString& theMessage )
 {
   Q_UNUSED( theType );
   Q_UNUSED( theMessage );
@@ -1423,6 +1438,7 @@ bool QgsRasterLayer::readXml( const QDomNode& layer_node )
 
       QDomNodeList rangeList = bandElement.elementsByTagName( "noDataRange" );
 
+      myNoDataRangeList.reserve( rangeList.size() );
       for ( int j = 0; j < rangeList.size(); ++j )
       {
         QDomElement rangeElement = rangeList.at( j ).toElement();
@@ -1508,7 +1524,7 @@ bool QgsRasterLayer::writeXml( QDomNode & layer_node,
     noDataRangeList.setAttribute( "bandNo", bandNo );
     noDataRangeList.setAttribute( "useSrcNoData", mDataProvider->useSrcNoDataValue( bandNo ) );
 
-    foreach ( QgsRasterRange range, mDataProvider->userNoDataValues( bandNo ) )
+    Q_FOREACH ( const QgsRasterRange& range, mDataProvider->userNoDataValues( bandNo ) )
     {
       QDomElement noDataRange =  document.createElement( "noDataRange" );
 

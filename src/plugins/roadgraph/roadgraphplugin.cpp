@@ -77,9 +77,9 @@ static const QgisPlugin::PLUGINTYPE sPluginType = QgisPlugin::UI;
 RoadGraphPlugin::RoadGraphPlugin( QgisInterface * theQgisInterface )
     : QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType )
     , mQGisIface( theQgisInterface )
+    , mQSettingsAction( 0 )
+    , mQShortestPathDock( 0 )
 {
-
-  mQShortestPathDock = NULL;
   mSettings = new RgLineVectorLayerSettings();
   mTimeUnitName = "h";
   mDistanceUnitName = "km";
@@ -215,7 +215,7 @@ const QgsGraphDirector* RoadGraphPlugin::director() const
   if ( layer->wkbType() == QGis::WKBLineString
        || layer->wkbType() == QGis::WKBMultiLineString )
   {
-    QgsVectorDataProvider *provider = dynamic_cast< QgsVectorDataProvider* >( layer->dataProvider() );
+    QgsVectorDataProvider *provider = layer->dataProvider();
     if ( provider == NULL )
       return NULL;
     SpeedUnit speedUnit = SpeedUnit::byName( mSettings->mSpeedUnitName );

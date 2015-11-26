@@ -59,7 +59,7 @@ void QgsLegendModel::setLayerSetAndGroups( QgsLayerTreeGroup* rootGroup )
 
 void QgsLegendModel::addGroupFromLayerTree( QgsLayerTreeGroup* parentGroup, QStandardItem* parentItem )
 {
-  foreach ( QgsLayerTreeNode* node, parentGroup->children() )
+  Q_FOREACH ( QgsLayerTreeNode* node, parentGroup->children() )
   {
     if ( QgsLayerTree::isGroup( node ) )
     {
@@ -124,7 +124,7 @@ void QgsLegendModel::setLayerSetAndGroups( const QStringList& layerIds, const QL
   }
 }
 
-void QgsLegendModel::setLayerSet( const QStringList& layerIds, double scaleDenominator, QString rule )
+void QgsLegendModel::setLayerSet( const QStringList& layerIds, double scaleDenominator, const QString& rule )
 {
   mLayerIds = layerIds;
 
@@ -164,7 +164,7 @@ QStandardItem* QgsLegendModel::addGroup( QString text, int position, QStandardIt
   return groupItem;
 }
 
-int QgsLegendModel::addVectorLayerItemsV2( QStandardItem* layerItem, QgsVectorLayer* vlayer, double scaleDenominator, QString rule )
+int QgsLegendModel::addVectorLayerItemsV2( QStandardItem* layerItem, QgsVectorLayer* vlayer, double scaleDenominator, const QString& rule )
 {
   QgsComposerLayerItem* lItem = dynamic_cast<QgsComposerLayerItem*>( layerItem );
 
@@ -553,7 +553,7 @@ void QgsLegendModel::removeLayer( const QString& layerId )
   }
 }
 
-void QgsLegendModel::addLayer( QgsMapLayer* theMapLayer, double scaleDenominator, QString rule, QStandardItem* parentItem )
+void QgsLegendModel::addLayer( QgsMapLayer* theMapLayer, double scaleDenominator, const QString& rule, QStandardItem* parentItem )
 {
   if ( !theMapLayer )
   {
@@ -662,7 +662,6 @@ bool QgsLegendModel::readXML( const QDomElement& legendModelElem, const QDomDocu
 
   QDomNodeList topLevelItemList = legendModelElem.childNodes();
   QDomElement currentElem;
-  QgsComposerLegendItem* currentItem = 0;
 
   int nTopLevelItems =  topLevelItemList.size();
   for ( int i = 0; i < nTopLevelItems; ++i )
@@ -674,6 +673,7 @@ bool QgsLegendModel::readXML( const QDomElement& legendModelElem, const QDomDocu
     }
 
     //toplevel items can be groups or layers
+    QgsComposerLegendItem* currentItem = 0;
     if ( currentElem.tagName() == "LayerItem" )
     {
       currentItem = new QgsComposerLayerItem();
@@ -682,6 +682,10 @@ bool QgsLegendModel::readXML( const QDomElement& legendModelElem, const QDomDocu
     {
       currentItem = new QgsComposerGroupItem();
     }
+
+    if ( !currentItem )
+      continue;
+
     currentItem->readXML( currentElem, mHasTopLevelWindow );
 
     QList<QStandardItem *> itemsList;

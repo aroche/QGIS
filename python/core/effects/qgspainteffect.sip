@@ -30,6 +30,7 @@ class QgsPaintEffect
 %ConvertToSubClassCode
   if (sipCpp->type() == "drawSource" && dynamic_cast<QgsDrawSourceEffect*>(sipCpp) != NULL)
   {
+<<<<<<< HEAD
      sipClass = sipClass_QgsDrawSourceEffect;
   }
   else if (sipCpp->type() == "effectStack" && dynamic_cast<QgsEffectStack*>(sipCpp) != NULL)
@@ -63,6 +64,41 @@ class QgsPaintEffect
   else
   {
     sipClass = 0;
+=======
+     sipType = sipType_QgsDrawSourceEffect;
+  }
+  else if (sipCpp->type() == "effectStack" && dynamic_cast<QgsEffectStack*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsEffectStack;
+  }
+  else if (sipCpp->type() == "blur" && dynamic_cast<QgsBlurEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsBlurEffect;
+  }
+  else if (sipCpp->type() == "dropShadow" && dynamic_cast<QgsDropShadowEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsDropShadowEffect;
+  }
+  else if (sipCpp->type() == "outerGlow" && dynamic_cast<QgsOuterGlowEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsOuterGlowEffect;
+  }
+  else if (sipCpp->type() == "innerGlow" && dynamic_cast<QgsInnerGlowEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsInnerGlowEffect;
+  }
+  else if (sipCpp->type() == "transform" && dynamic_cast<QgsTransformEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsTransformEffect;
+  }
+  else if (sipCpp->type() == "color" && dynamic_cast<QgsColorEffect*>(sipCpp) != NULL)
+  {
+     sipType = sipType_QgsColorEffect;
+  }
+  else
+  {
+    sipType = 0;
+>>>>>>> upstream/master
   }
 %End
 
@@ -74,9 +110,15 @@ class QgsPaintEffect
     */
     enum DrawMode
     {
+<<<<<<< HEAD
       Modifier, /*< the result of the effect is not rendered, but is passed on to following effects in the stack */
       Render, /*< the result of the effect is rendered on the destination, but does not affect subsequent effects in the stack */
       ModifyAndRender /*< the result of the effect is both rendered and passed on to subsequent effects in the stack */
+=======
+      Modifier, /*!< the result of the effect is not rendered, but is passed on to following effects in the stack */
+      Render, /*!< the result of the effect is rendered on the destination, but does not affect subsequent effects in the stack */
+      ModifyAndRender /*!< the result of the effect is both rendered and passed on to subsequent effects in the stack */
+>>>>>>> upstream/master
     };
 
     QgsPaintEffect();
@@ -230,6 +272,16 @@ class QgsPaintEffect
      */
     virtual QRectF boundingRect( const QRectF& rect, const QgsRenderContext& context ) const;
 
+<<<<<<< HEAD
+=======
+    /** Applies a workaround to a QPainter to avoid an issue with incorrect scaling
+     * when drawing QPictures. This may need to be called by derived classes prior
+     * to rendering results onto a painter.
+     * @param painter destination painter
+     */
+    void fixQPictureDpi( QPainter* painter ) const;
+
+>>>>>>> upstream/master
 };
 
 /** \ingroup core
@@ -262,7 +314,11 @@ class QgsDrawSourceEffect : QgsPaintEffect
     static QgsPaintEffect* create( const QgsStringMap& map ) /Factory/;
 
     virtual QString type() const;
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const /Factory/;
+=======
+    virtual QgsDrawSourceEffect* clone() const /Factory/;
+>>>>>>> upstream/master
     virtual QgsStringMap properties() const;
     virtual void readProperties( const QgsStringMap& props );
 
@@ -293,7 +349,11 @@ class QgsDrawSourceEffect : QgsPaintEffect
      * @see setBlendMode
      */
     QPainter::CompositionMode blendMode() const;
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> upstream/master
   protected:
 
     virtual void draw( QgsRenderContext& context );

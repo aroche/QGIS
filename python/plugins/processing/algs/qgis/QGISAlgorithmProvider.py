@@ -33,13 +33,13 @@ try:
 except:
     hasMatplotlib = False
 
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon
 
 from processing.core.AlgorithmProvider import AlgorithmProvider
 from processing.script.ScriptUtils import ScriptUtils
 
 from RegularPoints import RegularPoints
-from SymetricalDifference import SymetricalDifference
+from SymmetricalDifference import SymmetricalDifference
 from VectorSplit import VectorSplit
 from VectorGrid import VectorGrid
 from RandomExtract import RandomExtract
@@ -84,6 +84,7 @@ from DensifyGeometriesInterval import DensifyGeometriesInterval
 from Eliminate import Eliminate
 from SpatialJoin import SpatialJoin
 from DeleteColumn import DeleteColumn
+from DeleteHoles import DeleteHoles
 from DeleteDuplicateGeometries import DeleteDuplicateGeometries
 from TextToFloat import TextToFloat
 from ExtractByAttribute import ExtractByAttribute
@@ -123,15 +124,23 @@ from ImportIntoPostGIS import ImportIntoPostGIS
 from SetVectorStyle import SetVectorStyle
 from SetRasterStyle import SetRasterStyle
 from SelectByExpression import SelectByExpression
+from SelectByAttributeSum import SelectByAttributeSum
 from HypsometricCurves import HypsometricCurves
 from SplitLinesWithLines import SplitLinesWithLines
+from FieldsMapper import FieldsMapper
+from Datasources2Vrt import Datasources2Vrt
+from CheckValidity import CheckValidity
+from OrientedMinimumBoundingBox import OrientedMinimumBoundingBox
+from Smooth import Smooth
+from ReverseLineDirection import ReverseLineDirection
 
-import processing.resources_rc
+pluginPath = os.path.normpath(os.path.join(
+    os.path.split(os.path.dirname(__file__))[0], os.pardir))
 
 
 class QGISAlgorithmProvider(AlgorithmProvider):
 
-    _icon = QIcon(':/processing/images/qgis.png')
+    _icon = QIcon(os.path.join(pluginPath, 'images', 'qgis.png'))
 
     def __init__(self):
         AlgorithmProvider.__init__(self)
@@ -149,9 +158,9 @@ class QGISAlgorithmProvider(AlgorithmProvider):
                         VariableDistanceBuffer(), Dissolve(), Difference(),
                         Intersection(), Union(), Clip(), ExtentFromLayer(),
                         RandomSelection(), RandomSelectionWithinSubsets(),
-                        SelectByLocation(), RandomExtract(),
+                        SelectByLocation(), RandomExtract(), DeleteHoles(),
                         RandomExtractWithinSubsets(), ExtractByLocation(),
-                        SpatialJoin(), RegularPoints(), SymetricalDifference(),
+                        SpatialJoin(), RegularPoints(), SymmetricalDifference(),
                         VectorSplit(), VectorGrid(), DeleteColumn(),
                         DeleteDuplicateGeometries(), TextToFloat(),
                         ExtractByAttribute(), SelectByAttribute(), Grid(),
@@ -171,7 +180,10 @@ class QGISAlgorithmProvider(AlgorithmProvider):
                         SetVectorStyle(), SetRasterStyle(),
                         SelectByExpression(), HypsometricCurves(),
                         SplitLinesWithLines(), CreateConstantRaster(),
-                       ]
+                        FieldsMapper(), SelectByAttributeSum(), Datasources2Vrt(),
+                        CheckValidity(), OrientedMinimumBoundingBox(), Smooth(),
+                        ReverseLineDirection()
+                        ]
 
         if hasMatplotlib:
             from VectorLayerHistogram import VectorLayerHistogram
@@ -181,10 +193,11 @@ class QGISAlgorithmProvider(AlgorithmProvider):
             from BarPlot import BarPlot
             from PolarPlot import PolarPlot
 
-            self.alglist.extend([VectorLayerHistogram(), RasterLayerHistogram(),
+            self.alglist.extend([
+                VectorLayerHistogram(), RasterLayerHistogram(),
                 VectorLayerScatterplot(), MeanAndStdDevPlot(), BarPlot(),
                 PolarPlot(),
-                ])
+            ])
 
         folder = os.path.join(os.path.dirname(__file__), 'scripts')
         scripts = ScriptUtils.loadFromFolder(folder)
@@ -204,7 +217,7 @@ class QGISAlgorithmProvider(AlgorithmProvider):
         return 'qgis'
 
     def getDescription(self):
-        return 'QGIS geoalgorithms'
+        return self.tr('QGIS geoalgorithms')
 
     def getIcon(self):
         return self._icon

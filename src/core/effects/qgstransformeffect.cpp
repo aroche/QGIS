@@ -99,7 +99,11 @@ void QgsTransformEffect::readProperties( const QgsStringMap &props )
   mTranslateMapUnitScale = QgsSymbolLayerV2Utils::decodeMapUnitScale( props.value( "translate_unit_scale" ) );
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsTransformEffect::clone() const
+=======
+QgsTransformEffect* QgsTransformEffect::clone() const
+>>>>>>> upstream/master
 {
   QgsTransformEffect* newEffect = new QgsTransformEffect( *this );
   return newEffect;

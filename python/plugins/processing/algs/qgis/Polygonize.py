@@ -26,10 +26,9 @@ __copyright__ = '(C) 2013, Piotr Pociask'
 __revision__ = '$Format:%H$'
 
 from PyQt4.QtCore import QVariant
-from qgis.core import *
+from qgis.core import QGis, QgsFields, QgsField, QgsFeature, QgsGeometry
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-    GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterBoolean
 from processing.core.outputs import OutputVector
@@ -50,8 +49,7 @@ class Polygonize(GeoAlgorithm):
         except ImportError:
             raise GeoAlgorithmExecutionException(
                 self.tr('Polygonize algorithm requires shapely module!'))
-        vlayer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+        vlayer = dataobjects.getObjectFromUri(self.getParameterValue(self.INPUT))
         output = self.getOutputFromName(self.OUTPUT)
         vprovider = vlayer.dataProvider()
         if self.getParameterValue(self.FIELDS):
@@ -107,12 +105,12 @@ class Polygonize(GeoAlgorithm):
         del writer
 
     def defineCharacteristics(self):
-        self.name = 'Polygonize'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Polygonize')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_LINE]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_LINE]))
         self.addParameter(ParameterBoolean(self.FIELDS,
-            self.tr('Keep table structure of line layer'), False))
+                                           self.tr('Keep table structure of line layer'), False))
         self.addParameter(ParameterBoolean(self.GEOMETRY,
-            self.tr('Create geometry columns'), True))
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output layer')))
+                                           self.tr('Create geometry columns'), True))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Polygons from lines')))

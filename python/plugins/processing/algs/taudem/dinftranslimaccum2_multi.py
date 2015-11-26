@@ -59,6 +59,7 @@ class DinfTransLimAccum2Multi(GeoAlgorithm):
         return QIcon(os.path.dirname(__file__) + '/../../images/taudem.png')
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'D-Infinity Transport Limited Accumulation - 2 (multifile)'
         self.cmdName = 'dinftranslimaccum'
         self.group = 'Specialized Grid Analysis tools'
@@ -83,6 +84,32 @@ class DinfTransLimAccum2Multi(GeoAlgorithm):
             self.tr('Deposition Grid')))
         self.addOutput(OutputDirectory(self.OUT_CONCENTR_GRID,
             self.tr('Output Concentration Grid')))
+=======
+        self.name, self.i18n_name = self.trAlgorithm('D-Infinity Transport Limited Accumulation - 2 (multifile)')
+        self.cmdName = 'dinftranslimaccum'
+        self.group, self.i18n_group = self.trAlgorithm('Specialized Grid Analysis tools')
+
+        self.addParameter(ParameterFile(self.DINF_FLOW_DIR_GRID,
+                                        self.tr('D-Infinity Flow Direction Grid'), True, False))
+        self.addParameter(ParameterFile(self.SUPPLY_GRID,
+                                        self.tr('Supply Grid'), True, False))
+        self.addParameter(ParameterFile(self.CAPACITY_GRID,
+                                        self.tr('Transport Capacity Grid'), True, False))
+        self.addParameter(ParameterFile(self.IN_CONCENTR_GRID,
+                                        self.tr('Input Concentration Grid'), True, False))
+        self.addParameter(ParameterVector(self.OUTLETS_SHAPE,
+                                          self.tr('Outlets Shapefile'),
+                                          [ParameterVector.VECTOR_TYPE_POINT], True))
+        self.addParameter(ParameterBoolean(self.EDGE_CONTAM,
+                                           self.tr('Check for edge contamination'), True))
+
+        self.addOutput(OutputDirectory(self.TRANSP_LIM_ACCUM_GRID,
+                                       self.tr('Transport Limited Accumulation Grid')))
+        self.addOutput(OutputDirectory(self.DEPOSITION_GRID,
+                                       self.tr('Deposition Grid')))
+        self.addOutput(OutputDirectory(self.OUT_CONCENTR_GRID,
+                                       self.tr('Output Concentration Grid')))
+>>>>>>> upstream/master
 
     def processAlgorithm(self, progress):
         commands = []
@@ -95,7 +122,11 @@ class DinfTransLimAccum2Multi(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
+<<<<<<< HEAD
         commands.append(str(processNum))
+=======
+        commands.append(unicode(processNum))
+>>>>>>> upstream/master
         commands.append(os.path.join(TauDEMUtils.taudemMultifilePath(), self.cmdName))
         commands.append('-ang')
         commands.append(self.getParameterValue(self.DINF_FLOW_DIR_GRID))

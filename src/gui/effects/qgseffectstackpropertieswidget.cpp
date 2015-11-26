@@ -29,6 +29,12 @@
 #include <QCheckBox>
 #include <QToolButton>
 
+<<<<<<< HEAD
+=======
+///@cond
+//not part of public API
+
+>>>>>>> upstream/master
 static const int EffectItemType = QStandardItem::UserType + 1;
 
 class EffectItem : public QStandardItem
@@ -84,6 +90,10 @@ class EffectItem : public QStandardItem
     QgsPaintEffect* mEffect;
     QgsEffectStackPropertiesWidget* mWidget;
 };
+<<<<<<< HEAD
+=======
+///@endcond
+>>>>>>> upstream/master
 
 //
 // QgsEffectStackPropertiesWidget
@@ -104,10 +114,17 @@ QgsEffectStackPropertiesWidget::QgsEffectStackPropertiesWidget( QgsEffectStack *
 
   setupUi( this );
 
+<<<<<<< HEAD
   mAddButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyAdd.png" ) ) );
   mRemoveButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyRemove.png" ) ) );
   mUpButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyUp.png" ) ) );
   mDownButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyDown.png" ) ) );
+=======
+  mAddButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyAdd.svg" ) ) );
+  mRemoveButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyRemove.svg" ) ) );
+  mUpButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyUp.svg" ) ) );
+  mDownButton->setIcon( QIcon( QgsApplication::iconPath( "symbologyDown.svg" ) ) );
+>>>>>>> upstream/master
 
   mModel = new QStandardItemModel();
   // Set the effect
@@ -260,10 +277,17 @@ void QgsEffectStackPropertiesWidget::setWidget( QWidget* widget )
 void QgsEffectStackPropertiesWidget::addEffect()
 {
   QgsPaintEffect* newEffect = new QgsDrawSourceEffect();
+<<<<<<< HEAD
   mStack->appendEffect( newEffect );
 
   EffectItem *newEffectItem = new EffectItem( newEffect, this );
   mModel->invisibleRootItem()->insertRow( 0, newEffectItem );
+=======
+  mStack->insertEffect( 0, newEffect );
+
+  EffectItem *newEffectItem = new EffectItem( newEffect, this );
+  mModel->invisibleRootItem()->insertRow( mStack->count() - 1, newEffectItem );
+>>>>>>> upstream/master
 
   mEffectsList->setCurrentIndex( mModel->indexFromItem( newEffectItem ) );
   updateUi();
@@ -345,7 +369,11 @@ void QgsEffectStackPropertiesWidget::changeEffect( QgsPaintEffect* newEffect )
 // QgsEffectStackPropertiesDialog
 //
 
+<<<<<<< HEAD
 QgsEffectStackPropertiesDialog::QgsEffectStackPropertiesDialog( QgsEffectStack *stack, QWidget *parent, Qt::WindowFlags f )
+=======
+QgsEffectStackPropertiesDialog::QgsEffectStackPropertiesDialog( QgsEffectStack *stack, QWidget *parent, const Qt::WindowFlags& f )
+>>>>>>> upstream/master
     : QgsDialog( parent, f, QDialogButtonBox::Ok | QDialogButtonBox::Cancel )
     , mPropertiesWidget( 0 )
 {

@@ -54,6 +54,7 @@ class LengthAreaMulti(GeoAlgorithm):
         return QIcon(os.path.dirname(__file__) + '/../../images/taudem.png')
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Length Area Stream Source (multifile)'
         self.cmdName = 'lengtharea'
         self.group = 'Stream Network Analysis tools'
@@ -69,6 +70,23 @@ class LengthAreaMulti(GeoAlgorithm):
 
         self.addOutput(OutputDirectory(self.STREAM_SOURCE_GRID,
             self.tr('Stream Source Grid')))
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Length Area Stream Source (multifile)')
+        self.cmdName = 'lengtharea'
+        self.group, self.i18n_group = self.trAlgorithm('Stream Network Analysis tools')
+
+        self.addParameter(ParameterFile(self.LENGTH_GRID,
+                                        self.tr('Length Grid'), True, False))
+        self.addParameter(ParameterFile(self.CONTRIB_AREA_GRID,
+                                        self.tr('Contributing Area Grid'), True, False))
+        self.addParameter(ParameterNumber(self.THRESHOLD,
+                                          self.tr('Threshold'), 0, None, 0.03))
+        self.addParameter(ParameterNumber(self.EXPONENT,
+                                          self.tr('Exponent'), 0, None, 1.3))
+
+        self.addOutput(OutputDirectory(self.STREAM_SOURCE_GRID,
+                                       self.tr('Stream Source Grid')))
+>>>>>>> upstream/master
 
     def processAlgorithm(self, progress):
         commands = []
@@ -81,15 +99,24 @@ class LengthAreaMulti(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
+<<<<<<< HEAD
         commands.append(str(processNum))
+=======
+        commands.append(unicode(processNum))
+>>>>>>> upstream/master
         commands.append(os.path.join(TauDEMUtils.taudemMultifilePath(), self.cmdName))
         commands.append('-plen')
         commands.append(self.getParameterValue(self.LENGTH_GRID))
         commands.append('-ad8')
         commands.append(self.getParameterValue(self.CONTRIB_AREA_GRID))
         commands.append('-par')
+<<<<<<< HEAD
         commands.append(str(self.getParameterValue(self.THRESHOLD)))
         commands.append(str(self.getParameterValue(self.EXPONENT)))
+=======
+        commands.append(unicode(self.getParameterValue(self.THRESHOLD)))
+        commands.append(unicode(self.getParameterValue(self.EXPONENT)))
+>>>>>>> upstream/master
         commands.append('-ss')
         commands.append(self.getOutputValue(self.STREAM_SOURCE_GRID))
 

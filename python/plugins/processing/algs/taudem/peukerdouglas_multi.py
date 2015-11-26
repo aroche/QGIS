@@ -53,6 +53,7 @@ class PeukerDouglasMulti(GeoAlgorithm):
         return QIcon(os.path.dirname(__file__) + '/../../images/taudem.png')
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Peuker Douglas (multifile)'
         self.cmdName = 'peukerdouglas'
         self.group = 'Stream Network Analysis tools'
@@ -68,6 +69,23 @@ class PeukerDouglasMulti(GeoAlgorithm):
 
         self.addOutput(OutputDirectory(self.STREAM_SOURCE_GRID,
             self.tr('Stream Source Grid')))
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Peuker Douglas (multifile)')
+        self.cmdName = 'peukerdouglas'
+        self.group, self.i18n_group = self.trAlgorithm('Stream Network Analysis tools')
+
+        self.addParameter(ParameterFile(self.ELEVATION_GRID,
+                                        self.tr('Elevation Grid'), True, False))
+        self.addParameter(ParameterNumber(self.CENTER_WEIGHT,
+                                          self.tr('Center Smoothing Weight'), 0, None, 0.4))
+        self.addParameter(ParameterNumber(self.SIDE_WEIGHT,
+                                          self.tr('Side Smoothing Weight'), 0, None, 0.1))
+        self.addParameter(ParameterNumber(self.DIAGONAL_WEIGHT,
+                                          self.tr('Diagonal Smoothing Weight'), 0, None, 0.05))
+
+        self.addOutput(OutputDirectory(self.STREAM_SOURCE_GRID,
+                                       self.tr('Stream Source Grid')))
+>>>>>>> upstream/master
 
     def processAlgorithm(self, progress):
         commands = []
@@ -80,14 +98,24 @@ class PeukerDouglasMulti(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
+<<<<<<< HEAD
         commands.append(str(processNum))
+=======
+        commands.append(unicode(processNum))
+>>>>>>> upstream/master
         commands.append(os.path.join(TauDEMUtils.taudemMultifilePath(), self.cmdName))
         commands.append('-fel')
         commands.append(self.getParameterValue(self.ELEVATION_GRID))
         commands.append('-par')
+<<<<<<< HEAD
         commands.append(str(self.getParameterValue(self.CENTER_WEIGHT)))
         commands.append(str(self.getParameterValue(self.SIDE_WEIGHT)))
         commands.append(str(self.getParameterValue(self.DIAGONAL_WEIGHT)))
+=======
+        commands.append(unicode(self.getParameterValue(self.CENTER_WEIGHT)))
+        commands.append(unicode(self.getParameterValue(self.SIDE_WEIGHT)))
+        commands.append(unicode(self.getParameterValue(self.DIAGONAL_WEIGHT)))
+>>>>>>> upstream/master
         commands.append('-ss')
         commands.append(self.getOutputValue(self.STREAM_SOURCE_GRID))
 

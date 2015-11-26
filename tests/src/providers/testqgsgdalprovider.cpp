@@ -16,7 +16,10 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+<<<<<<< HEAD
 #include <QObject>
+=======
+>>>>>>> upstream/master
 #include <QApplication>
 #include <QFileInfo>
 #include <QDir>
@@ -56,7 +59,11 @@ void TestQgsGdalProvider::initTestCase()
   QgsApplication::init();
   QgsApplication::initQgis();
 
+<<<<<<< HEAD
   mTestDataDir = QString( TEST_DATA_DIR ) + QDir::separator(); //defined in CmakeLists.txt
+=======
+  mTestDataDir = QString( TEST_DATA_DIR ) + '/'; //defined in CmakeLists.txt
+>>>>>>> upstream/master
   mReport = "<h1>GDAL Provider Tests</h1>\n";
 }
 
@@ -64,7 +71,11 @@ void TestQgsGdalProvider::initTestCase()
 void TestQgsGdalProvider::cleanupTestCase()
 {
   QgsApplication::exitQgis();
+<<<<<<< HEAD
   QString myReportFile = QDir::tempPath() + QDir::separator() + "qgistest.html";
+=======
+  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+>>>>>>> upstream/master
   QFile myFile( myReportFile );
   if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
   {
@@ -76,18 +87,30 @@ void TestQgsGdalProvider::cleanupTestCase()
 
 void TestQgsGdalProvider::scaleDataType()
 {
+<<<<<<< HEAD
   QString rasterWithOffset = QString( TEST_DATA_DIR ) + QDir::separator() +  "int_raster_with_scale.tif";
+=======
+  QString rasterWithOffset = QString( TEST_DATA_DIR ) + "/int_raster_with_scale.tif";
+>>>>>>> upstream/master
   QgsDataProvider* provider = QgsProviderRegistry::instance()->provider( "gdal", rasterWithOffset );
   QgsRasterDataProvider* rp = dynamic_cast< QgsRasterDataProvider* >( provider );
   QVERIFY( rp );
   //raster is an integer data type, but has a scale < 1, so data type must be float
   QCOMPARE( rp->dataType( 1 ), QGis::Float32 );
   QCOMPARE( rp->srcDataType( 1 ), QGis::Float32 );
+<<<<<<< HEAD
+=======
+  delete provider;
+>>>>>>> upstream/master
 }
 
 void TestQgsGdalProvider::warpedVrt()
 {
+<<<<<<< HEAD
   QString raster = QString( TEST_DATA_DIR ) + QDir::separator() +  "requires_warped_vrt.tif";
+=======
+  QString raster = QString( TEST_DATA_DIR ) + "/requires_warped_vrt.tif";
+>>>>>>> upstream/master
   QgsDataProvider* provider = QgsProviderRegistry::instance()->provider( "gdal", raster );
   QgsRasterDataProvider* rp = dynamic_cast< QgsRasterDataProvider* >( provider );
   QVERIFY( rp );
@@ -101,6 +124,10 @@ void TestQgsGdalProvider::warpedVrt()
   QVERIFY( qgsDoubleNear( rp->extent().xMaximum(), 3118999, 1 ) );
   QVERIFY( qgsDoubleNear( rp->extent().yMinimum(), 2281355, 1 ) );
   QVERIFY( qgsDoubleNear( rp->extent().yMaximum(), 3129683, 1 ) );
+<<<<<<< HEAD
+=======
+  delete provider;
+>>>>>>> upstream/master
 }
 
 QTEST_MAIN( TestQgsGdalProvider )

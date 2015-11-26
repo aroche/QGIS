@@ -26,10 +26,11 @@ __copyright__ = 'Copyright (c) 2010 by Ivan Mincik, ivan.mincik@gista.sk \
 
 from PyQt4.QtCore import QObject
 from qgis.core import QgsMapLayerRegistry
-from qgis.core import *
+from qgis.core import QgsRasterLayer, QgsVectorLayer
 
 
 class QgisInterface(QObject):
+
     """Class to expose qgis objects and functionalities to plugins.
 
     This class is here for enabling us to run unit tests only,
@@ -43,7 +44,7 @@ class QgisInterface(QObject):
         self.testRaster = QgsRasterLayer('data/raster', 'raster')
         self.testVector = QgsVectorLayer('data/vector', 'vector', 'ogr')
         QgsMapLayerRegistry.instance().addMapLayers([self.testRaster,
-                self.testVector])
+                                                     self.testVector])
 
         self.statusBar = type('FakeStatusBar', (), {'showMessage': lambda _,
                               m: None})()

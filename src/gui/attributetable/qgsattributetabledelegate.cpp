@@ -67,15 +67,15 @@ QWidget *QgsAttributeTableDelegate::createEditor(
 
   int fieldIdx = index.model()->data( index, QgsAttributeTableModel::FieldIndexRole ).toInt();
 
-  QString widgetType = vl->editorWidgetV2( fieldIdx );
-  QgsEditorWidgetConfig cfg = vl->editorWidgetV2Config( fieldIdx );
+  QString widgetType = vl->editFormConfig()->widgetType( fieldIdx );
+  QgsEditorWidgetConfig cfg = vl->editFormConfig()->widgetConfig( fieldIdx );
   QgsAttributeEditorContext context( masterModel( index.model() )->editorContext(), QgsAttributeEditorContext::Popup );
   QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, vl, fieldIdx, cfg, 0, parent, context );
   QWidget* w = eww->widget();
 
   w->setAutoFillBackground( true );
 
-  eww->setEnabled( vl->fieldEditable( fieldIdx ) );
+  eww->setEnabled( !vl->editFormConfig()->readOnly( fieldIdx ) );
 
   return w;
 }
@@ -133,7 +133,7 @@ void QgsAttributeTableDelegate::paint( QPainter * painter,
     myOpt.palette.setColor( QPalette::Text, QColor( "gray" ) );
   }
 
-  if ( mFeatureSelectionModel->isSelected( fid ) )
+  if ( mFeatureSelectionModel && mFeatureSelectionModel->isSelected( fid ) )
     myOpt.state |= QStyle::State_Selected;
 
   QItemDelegate::paint( painter, myOpt, index );

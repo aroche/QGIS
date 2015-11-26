@@ -41,10 +41,15 @@
 #define TO8F(x) QFile::encodeName( x ).constData()
 #endif
 
-QgsShapeFile::QgsShapeFile( QString name, QString encoding )
+QgsShapeFile::QgsShapeFile( const QString& name, const QString& encoding )
+    : ogrLayer( 0 )
+    , import_canceled( false )
+    , valid( false )
+    , isMulti( false )
+    , hasMoreDimensions( false )
+    , features( 0 )
+    , fileName( name )
 {
-  fileName = name;
-  features = 0;
   QgsApplication::registerOgrDrivers();
 
   QSettings settings;
@@ -57,8 +62,7 @@ QgsShapeFile::QgsShapeFile( QString name, QString encoding )
     ogrLayer = OGR_DS_GetLayer( ogrDataSource, 0 );
     features = OGR_L_GetFeatureCount( ogrLayer, true );
   }
-  else
-    valid = false;
+
   setDefaultTable();
   // init the geometry types
   geometries << "NULL" << "POINT" << "LINESTRING" << "POLYGON" << "MULTIPOINT"
@@ -238,8 +242,8 @@ QString QgsShapeFile::getTable()
 
 void QgsShapeFile::setTable( QString new_table )
 {
-  new_table.replace( "\'", "\\'" );
-  new_table.replace( "\\", "\\\\" );
+  new_table.replace( '\'', "\\'" );
+  new_table.replace( '\\', "\\\\" );
   table_name = new_table;
 }
 
@@ -258,8 +262,8 @@ void QgsShapeFile::setColumnNames( QStringList columns )
   }
 }
 
-bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_key, QString geom_col,
-                                QString srid, PGconn * conn, QProgressDialog& pro, bool &fin,
+bool QgsShapeFile::insertLayer( const QString& dbname, const QString& schema, const QString& primary_key, const QString& geom_col,
+                                const QString& srid, PGconn * conn, QProgressDialog& pro, bool &fin,
                                 QString& errorText )
 {
   Q_UNUSED( dbname );
@@ -268,15 +272,15 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
   bool result = true;
 
   QString query = QString( "CREATE TABLE %1.%2(%3 SERIAL PRIMARY KEY" )
-                  .arg( QgsPgUtil::quotedIdentifier( schema ) )
-                  .arg( QgsPgUtil::quotedIdentifier( table_name ) )
-                  .arg( QgsPgUtil::quotedIdentifier( primary_key ) );
+                  .arg( QgsPgUtil::quotedIdentifier( schema ),
+                        QgsPgUtil::quotedIdentifier( table_name ),
+                        QgsPgUtil::quotedIdentifier( primary_key ) );
 
   for ( int n = 0; n < column_names.size() && result; n++ )
   {
     query += QString( ",%1 %2" )
-             .arg( QgsPgUtil::quotedIdentifier( column_names[n] ) )
-             .arg( column_types[n] );
+             .arg( QgsPgUtil::quotedIdentifier( column_names[n] ),
+                   column_types[n] );
   }
   query += " )";
 
@@ -288,7 +292,7 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
   {
     // flag error and send query and error message to stdout on debug
     errorText += tr( "The database gave an error while executing this SQL:\n%1\nThe error was:\n%2\n" )
-                 .arg( query ).arg( PQresultErrorMessage( res ) );
+                 .arg( query, PQresultErrorMessage( res ) );
     PQclear( res );
     return false;
   }
@@ -298,18 +302,18 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
   }
 
   query = QString( "SELECT AddGeometryColumn(%1,%2,%3,%4,%5,2)" )
-          .arg( QgsPgUtil::quotedValue( schema ) )
-          .arg( QgsPgUtil::quotedValue( table_name ) )
-          .arg( QgsPgUtil::quotedValue( geom_col ) )
-          .arg( srid )
-          .arg( QgsPgUtil::quotedValue( geom_type ) );
+          .arg( QgsPgUtil::quotedValue( schema ),
+                QgsPgUtil::quotedValue( table_name ),
+                QgsPgUtil::quotedValue( geom_col ),
+                srid,
+                QgsPgUtil::quotedValue( geom_type ) );
 
   res = PQexec( conn, query.toUtf8() );
 
   if ( PQresultStatus( res ) != PGRES_TUPLES_OK )
   {
     errorText += tr( "The database gave an error while executing this SQL:\n%1\nThe error was:\n%2\n" )
-                 .arg( query ).arg( PQresultErrorMessage( res ) );
+                 .arg( query, PQresultErrorMessage( res ) );
     PQclear( res );
     return false;
   }
@@ -321,8 +325,8 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
   if ( isMulti )
   {
     query = QString( "select constraint_name from information_schema.table_constraints where table_schema=%1 and table_name=%2 and constraint_name in ('$2','enforce_geotype_the_geom')" )
-            .arg( QgsPgUtil::quotedValue( schema ) )
-            .arg( QgsPgUtil::quotedValue( table_name ) );
+            .arg( QgsPgUtil::quotedValue( schema ),
+                  QgsPgUtil::quotedValue( table_name ) );
 
     QStringList constraints;
     res = PQexec( conn, query.toUtf8() );
@@ -341,14 +345,14 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
       // multiple types in the check constraint. For now, we
       // just drop the constraint...
       query = QString( "alter table %1 drop constraint %2" )
-              .arg( QgsPgUtil::quotedIdentifier( table_name ) )
-              .arg( QgsPgUtil::quotedIdentifier( constraints[0] ) );
+              .arg( QgsPgUtil::quotedIdentifier( table_name ),
+                    QgsPgUtil::quotedIdentifier( constraints[0] ) );
 
       res = PQexec( conn, query.toUtf8() );
       if ( PQresultStatus( res ) != PGRES_COMMAND_OK )
       {
         errorText += tr( "The database gave an error while executing this SQL:\n%1\nThe error was:\n%2\n" )
-                     .arg( query ).arg( PQresultErrorMessage( res ) );
+                     .arg( query, PQresultErrorMessage( res ) );
         PQclear( res );
         return false;
       }
@@ -374,8 +378,8 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
       if ( geom )
       {
         query = QString( "INSERT INTO %1.%2(" )
-                .arg( QgsPgUtil::quotedIdentifier( schema ) )
-                .arg( QgsPgUtil::quotedIdentifier( table_name ) );
+                .arg( QgsPgUtil::quotedIdentifier( schema ),
+                      QgsPgUtil::quotedIdentifier( table_name ) );
         QString values = " VALUES (";
 
         char *geo_temp;
@@ -404,18 +408,18 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
 
           if ( n > 0 )
           {
-            query += ",";
-            values += ",";
+            query += ',';
+            values += ',';
           }
           query += QgsPgUtil::quotedIdentifier( column_names[n] );
           values += val;
         }
-        query += "," + QgsPgUtil::quotedIdentifier( geom_col );
+        query += ',' + QgsPgUtil::quotedIdentifier( geom_col );
         values += QString( ",st_geometryfromtext(%1,%2)" )
-                  .arg( QgsPgUtil::quotedValue( geometry ) )
-                  .arg( srid );
+                  .arg( QgsPgUtil::quotedValue( geometry ),
+                        srid );
 
-        query += ")" + values + ")";
+        query += ')' + values + ')';
 
         if ( result )
           res = PQexec( conn, query.toUtf8() );
@@ -424,12 +428,12 @@ bool QgsShapeFile::insertLayer( QString dbname, QString schema, QString primary_
         {
           // flag error and send query and error message to stdout on debug
           result = false;
-          errorText += tr( "The database gave an error while executing this SQL:" ) + "\n";
+          errorText += tr( "The database gave an error while executing this SQL:" ) + '\n';
           // the query string can be quite long. Trim if necessary...
           if ( query.count() > 100 )
             errorText += query.left( 150 ) +
                          tr( "... (rest of SQL trimmed)", "is appended to a truncated SQL statement" ) +
-                         "\n";
+                         '\n';
           else
             errorText += query + '\n';
           errorText += tr( "The error was:\n%1\n" ).arg( PQresultErrorMessage( res ) );

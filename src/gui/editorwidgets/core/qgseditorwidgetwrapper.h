@@ -3,7 +3,7 @@
      --------------------------------------
     Date                 : 20.4.2013
     Copyright            : (C) 2013 Matthias Kuhn
-    Email                : matthias dot kuhn at gmx dot ch
+    Email                : matthias at opengis dot ch
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -61,7 +61,7 @@ class GUI_EXPORT QgsEditorWidgetWrapper : public QgsWidgetWrapper
      *
      * @return The current value the widget represents
      */
-    virtual QVariant value() = 0;
+    virtual QVariant value() const = 0;
 
     /**
      * Access the field index.
@@ -70,7 +70,7 @@ class GUI_EXPORT QgsEditorWidgetWrapper : public QgsWidgetWrapper
      *
      * @see layer()
      */
-    int fieldIdx();
+    int fieldIdx() const;
 
     /**
      * Access the field.
@@ -79,7 +79,16 @@ class GUI_EXPORT QgsEditorWidgetWrapper : public QgsWidgetWrapper
      *
      * @see layer()
      */
-    QgsField field();
+    QgsField field() const;
+
+    /**
+     * Access the default value of the field.
+     *
+     * @return the default value of the field
+     *
+     * @see layer()
+     */
+    QVariant defaultValue() const;
 
     /**
      * Will return a wrapper for a given widget

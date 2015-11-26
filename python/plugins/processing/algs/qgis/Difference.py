@@ -25,8 +25,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QgsFeatureRequest, QgsFeature, QgsGeometry
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterVector
@@ -46,28 +45,28 @@ class Difference(GeoAlgorithm):
     #==========================================================================
 
     def defineCharacteristics(self):
-        self.name = 'Difference'
-        self.group = 'Vector overlay tools'
+        self.name, self.i18n_name = self.trAlgorithm('Difference')
+        self.group, self.i18n_group = self.trAlgorithm('Vector overlay tools')
         self.addParameter(ParameterVector(Difference.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterVector(Difference.OVERLAY,
-            self.tr('Difference layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Difference layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addOutput(OutputVector(Difference.OUTPUT, self.tr('Difference')))
 
     def processAlgorithm(self, progress):
         layerA = dataobjects.getObjectFromUri(
-                self.getParameterValue(Difference.INPUT))
+            self.getParameterValue(Difference.INPUT))
         layerB = dataobjects.getObjectFromUri(
-                self.getParameterValue(Difference.OVERLAY))
+            self.getParameterValue(Difference.OVERLAY))
 
         GEOS_EXCEPT = True
 
         FEATURE_EXCEPT = True
 
         writer = self.getOutputFromName(
-                Difference.OUTPUT).getVectorWriter(layerA.pendingFields(),
-                        layerA.dataProvider().geometryType(),
-                        layerA.dataProvider().crs())
+            Difference.OUTPUT).getVectorWriter(layerA.pendingFields(),
+                                               layerA.dataProvider().geometryType(),
+                                               layerA.dataProvider().crs())
 
         inFeatA = QgsFeature()
         inFeatB = QgsFeature()
@@ -93,6 +92,10 @@ class Difference(GeoAlgorithm):
                 try:
                     if diff_geom.intersects(tmpGeom):
                         diff_geom = QgsGeometry(diff_geom.difference(tmpGeom))
+                    if diff_geom.isGeosEmpty():
+                        GEOS_EXCEPT = False
+                        add = False
+                        break
                 except:
                     GEOS_EXCEPT = False
                     add = False
@@ -114,7 +117,7 @@ class Difference(GeoAlgorithm):
 
         if not GEOS_EXCEPT:
             ProcessingLog.addToLog(ProcessingLog.LOG_WARNING,
-                self.tr('Geometry exception while computing difference'))
+                                   self.tr('Geometry exception while computing difference'))
         if not FEATURE_EXCEPT:
             ProcessingLog.addToLog(ProcessingLog.LOG_WARNING,
-                self.tr('Feature exception while computing difference'))
+                                   self.tr('Feature exception while computing difference'))

@@ -27,7 +27,14 @@
 #include "qgisapp.h"
 #include "qgsapplication.h"
 
-QgsMapToolRotateLabel::QgsMapToolRotateLabel( QgsMapCanvas* canvas ): QgsMapToolLabel( canvas ), mRotationItem( 0 ), mRotationPreviewBox( 0 )
+QgsMapToolRotateLabel::QgsMapToolRotateLabel( QgsMapCanvas* canvas )
+    : QgsMapToolLabel( canvas )
+    , mStartRotation( 0.0 )
+    , mCurrentRotation( 0.0 )
+    , mCurrentMouseAzimuth( 0.0 )
+    , mRotationItem( 0 )
+    , mRotationPreviewBox( 0 )
+    , mCtrlPressed( false )
 {
 }
 
@@ -37,7 +44,7 @@ QgsMapToolRotateLabel::~QgsMapToolRotateLabel()
   delete mRotationPreviewBox;
 }
 
-void QgsMapToolRotateLabel::canvasPressEvent( QMouseEvent *e )
+void QgsMapToolRotateLabel::canvasPressEvent( QgsMapMouseEvent* e )
 {
   deleteRubberBands();
 
@@ -95,7 +102,7 @@ void QgsMapToolRotateLabel::canvasPressEvent( QMouseEvent *e )
   }
 }
 
-void QgsMapToolRotateLabel::canvasMoveEvent( QMouseEvent *e )
+void QgsMapToolRotateLabel::canvasMoveEvent( QgsMapMouseEvent* e )
 {
   if ( mLabelRubberBand )
   {
@@ -132,7 +139,7 @@ void QgsMapToolRotateLabel::canvasMoveEvent( QMouseEvent *e )
   }
 }
 
-void QgsMapToolRotateLabel::canvasReleaseEvent( QMouseEvent *e )
+void QgsMapToolRotateLabel::canvasReleaseEvent( QgsMapMouseEvent* e )
 {
   Q_UNUSED( e );
 

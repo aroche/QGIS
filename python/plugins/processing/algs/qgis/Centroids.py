@@ -25,11 +25,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QGis, QgsGeometry, QgsFeature
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector
@@ -41,23 +39,23 @@ class Centroids(GeoAlgorithm):
     OUTPUT_LAYER = 'OUTPUT_LAYER'
 
     def defineCharacteristics(self):
-        self.name = 'Polygon centroids'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Polygon centroids')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
 
         self.addParameter(ParameterVector(self.INPUT_LAYER,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POLYGON]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POLYGON]))
 
-        self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Output layer')))
+        self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Centroids')))
 
     def processAlgorithm(self, progress):
         layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT_LAYER))
+            self.getParameterValue(self.INPUT_LAYER))
 
         writer = self.getOutputFromName(
-                self.OUTPUT_LAYER).getVectorWriter(
-                        layer.pendingFields().toList(),
-                        QGis.WKBPoint,
-                        layer.crs())
+            self.OUTPUT_LAYER).getVectorWriter(
+                layer.pendingFields().toList(),
+                QGis.WKBPoint,
+                layer.crs())
 
         outFeat = QgsFeature()
 
@@ -72,7 +70,7 @@ class Centroids(GeoAlgorithm):
             outGeom = QgsGeometry(inGeom.centroid())
             if outGeom is None:
                 raise GeoAlgorithmExecutionException(
-                        self.tr('Error calculating centroid'))
+                    self.tr('Error calculating centroid'))
 
             outFeat.setGeometry(outGeom)
             outFeat.setAttributes(attrs)

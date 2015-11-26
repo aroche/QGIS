@@ -57,6 +57,7 @@ class GridNetMulti(GeoAlgorithm):
         return QIcon(os.path.dirname(__file__) + '/../../images/taudem.png')
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Grid Network (multifile)'
         self.cmdName = 'gridnet'
         self.group = 'Basic Grid Analysis tools'
@@ -77,6 +78,28 @@ class GridNetMulti(GeoAlgorithm):
             self.tr('Total Upslope Length Grid')))
         self.addOutput(OutputDirectory(self.STRAHLER_GRID,
             self.tr('Strahler Network Order Grid')))
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Grid Network (multifile)')
+        self.cmdName = 'gridnet'
+        self.group, self.i18n_group = self.trAlgorithm('Basic Grid Analysis tools')
+
+        self.addParameter(ParameterFile(self.D8_FLOW_DIR_GRID,
+                                        self.tr('D8 Flow Direction Grid'), True, False))
+        self.addParameter(ParameterVector(self.OUTLETS_SHAPE,
+                                          self.tr('Outlets Shapefile'),
+                                          [ParameterVector.VECTOR_TYPE_POINT], True))
+        self.addParameter(ParameterFile(self.MASK_GRID,
+                                        self.tr('Mask Grid'), True, True))
+        self.addParameter(ParameterNumber(self.THRESHOLD,
+                                          self.tr('Mask Threshold'), 0, None, 100))
+
+        self.addOutput(OutputDirectory(self.LONGEST_LEN_GRID,
+                                       self.tr('Longest Upslope Length Grid')))
+        self.addOutput(OutputDirectory(self.TOTAL_LEN_GRID,
+                                       self.tr('Total Upslope Length Grid')))
+        self.addOutput(OutputDirectory(self.STRAHLER_GRID,
+                                       self.tr('Strahler Network Order Grid')))
+>>>>>>> upstream/master
 
     def processAlgorithm(self, progress):
         commands = []
@@ -89,7 +112,11 @@ class GridNetMulti(GeoAlgorithm):
                         'correct number before running TauDEM algorithms.'))
 
         commands.append('-n')
+<<<<<<< HEAD
         commands.append(str(processNum))
+=======
+        commands.append(unicode(processNum))
+>>>>>>> upstream/master
         commands.append(os.path.join(TauDEMUtils.taudemMultifilePath(), self.cmdName))
         commands.append('-p')
         commands.append(self.getParameterValue(self.D8_FLOW_DIR_GRID))

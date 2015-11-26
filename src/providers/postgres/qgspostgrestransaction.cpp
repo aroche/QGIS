@@ -26,7 +26,7 @@ QgsPostgresTransaction::QgsPostgresTransaction( const QString &connString )
 
 }
 
-bool QgsPostgresTransaction::beginTransaction( QString &error , int statementTimeout )
+bool QgsPostgresTransaction::beginTransaction( QString &error, int statementTimeout )
 {
   mConn = QgsPostgresConn::connectDb( mConnString, false /*readonly*/, false /*shared*/, true /*transaction*/ );
 
@@ -65,7 +65,7 @@ bool QgsPostgresTransaction::executeSql( const QString &sql, QString &errorMsg )
 
   QgsDebugMsg( QString( "Transaction sql: %1" ).arg( sql ) );
   mConn->lock();
-  QgsPostgresResult r = mConn->PQexec( sql, true );
+  QgsPostgresResult r( mConn->PQexec( sql, true ) );
   mConn->unlock();
   if ( r.PQresultStatus() != PGRES_COMMAND_OK )
   {

@@ -83,7 +83,7 @@ void QgsMapToolLabel::createRubberBands()
     QgsFeature f;
     if ( currentFeature( f, true ) )
     {
-      QgsGeometry* geom = f.geometry();
+      const QgsGeometry* geom = f.constGeometry();
       if ( geom )
       {
         mFeatureRubberBand = new QgsRubberBand( mCanvas, geom->type() );
@@ -483,11 +483,11 @@ bool QgsMapToolLabel::dataDefinedPosition( QgsVectorLayer* vlayer, const QgsFeat
     return false;
   }
 
-  const QgsAttributes& attributes = f.attributes();
-  if ( !attributes[xCol].isNull() )
-    x = attributes[xCol].toDouble( &xSuccess );
-  if ( !attributes[yCol].isNull() )
-    y = attributes[yCol].toDouble( &ySuccess );
+  QgsAttributes attributes = f.attributes();
+  if ( !attributes.at( xCol ).isNull() )
+    x = attributes.at( xCol ).toDouble( &xSuccess );
+  if ( !attributes.at( yCol ).isNull() )
+    y = attributes.at( yCol ).toDouble( &ySuccess );
 
   return true;
 }
@@ -572,7 +572,7 @@ bool QgsMapToolLabel::dataDefinedShowHide( QgsVectorLayer* vlayer, const QgsFeat
 bool QgsMapToolLabel::diagramMoveable( QgsMapLayer* ml, int& xCol, int& yCol ) const
 {
   QgsVectorLayer* vlayer = qobject_cast<QgsVectorLayer*>( ml );
-  if ( vlayer && vlayer->diagramRenderer() )
+  if ( vlayer && vlayer->diagramsEnabled() )
   {
     const QgsDiagramLayerSettings *dls = vlayer->diagramLayerSettings();
     if ( dls && dls->xPosColumn >= 0 && dls->yPosColumn >= 0 )

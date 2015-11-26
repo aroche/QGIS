@@ -40,15 +40,16 @@ QgsFeatureStore::~QgsFeatureStore()
 void QgsFeatureStore::setFields( const QgsFields & fields )
 {
   mFields = fields;
-  foreach ( QgsFeature feature, mFeatures )
+  QgsFeatureList::iterator it = mFeatures.begin();
+  for ( ; it != mFeatures.end(); ++it )
   {
-    feature.setFields( &mFields );
+    ( *it ).setFields( mFields );
   }
 }
 
 void QgsFeatureStore::addFeature( const QgsFeature& feature )
 {
   QgsFeature f( feature );
-  f.setFields( &mFields );
+  f.setFields( mFields );
   mFeatures.append( f );
 }

@@ -117,7 +117,11 @@ void QgsColorEffect::readProperties( const QgsStringMap &props )
   mColorizeStrength = props.value( "colorize_strength", "100" ).toInt();
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsColorEffect::clone() const
+=======
+QgsColorEffect* QgsColorEffect::clone() const
+>>>>>>> upstream/master
 {
   QgsColorEffect* newEffect = new QgsColorEffect( *this );
   return newEffect;

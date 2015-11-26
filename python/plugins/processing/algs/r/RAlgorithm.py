@@ -26,13 +26,11 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import os
-import subprocess
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from PyQt4 import QtGui
+
+from PyQt4.QtGui import QIcon
+
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.ProcessingLog import ProcessingLog
 from processing.gui.Help2Html import getHtmlFromHelpFile
 from processing.core.parameters import ParameterRaster
@@ -51,7 +49,7 @@ from processing.core.outputs import OutputVector
 from processing.core.outputs import OutputRaster
 from processing.core.outputs import OutputHTML
 from processing.core.outputs import OutputFile
-from processing.tools.system import *
+from processing.tools.system import isWindows
 from processing.script.WrongScriptException import WrongScriptException
 from RUtils import RUtils
 
@@ -76,18 +74,18 @@ class RAlgorithm(GeoAlgorithm):
             self.defineCharacteristicsFromFile()
 
     def getIcon(self):
-        return QtGui.QIcon(os.path.dirname(__file__) + '/../../images/r.png')
+        return QIcon(os.path.dirname(__file__) + '/../../images/r.png')
 
     def defineCharacteristicsFromScript(self):
         lines = self.script.split('\n')
-        self.name = '[Unnamed algorithm]'
-        self.group = 'User R scripts'
+        self.name, self.i18n_name = self.trAlgorithm('[Unnamed algorithm]')
+        self.group, self.i18n_group = self.trAlgorithm('User R scripts')
         self.parseDescription(iter(lines))
 
     def defineCharacteristicsFromFile(self):
         filename = os.path.basename(self.descriptionFile)
         self.name = filename[:filename.rfind('.')].replace('_', ' ')
-        self.group = 'User R scripts'
+        self.group, self.i18n_group = self.trAlgorithm('User R scripts')
         with open(self.descriptionFile, 'r') as f:
             lines = [line.strip() for line in f]
         self.parseDescription(iter(lines))
@@ -114,7 +112,7 @@ class RAlgorithm(GeoAlgorithm):
                 self.verboseCommands.append(line[1:])
                 if not self.showConsoleOutput:
                     self.addOutput(OutputHTML(RAlgorithm.R_CONSOLE_OUTPUT,
-                        self.tr('R Console Output')))
+                                              self.tr('R Console Output')))
                 self.showConsoleOutput = True
             else:
                 if line == '':
@@ -158,15 +156,24 @@ class RAlgorithm(GeoAlgorithm):
         elif tokens[1].lower().strip() == 'vector':
             param = ParameterVector(tokens[0], desc,
                                     [ParameterVector.VECTOR_TYPE_ANY])
+        elif tokens[1].lower().strip() == 'vector point':
+            param = ParameterVector(tokens[0], desc,
+                                    [ParameterVector.VECTOR_TYPE_POINT])
+        elif tokens[1].lower().strip() == 'vector line':
+            param = ParameterVector(tokens[0], desc,
+                                    [ParameterVector.VECTOR_TYPE_LINE])
+        elif tokens[1].lower().strip() == 'vector polygon':
+            param = ParameterVector(tokens[0], desc,
+                                    [ParameterVector.VECTOR_TYPE_POLYGON])
         elif tokens[1].lower().strip() == 'table':
             param = ParameterTable(tokens[0], desc, False)
         elif tokens[1].lower().strip().startswith('multiple raster'):
             param = ParameterMultipleInput(tokens[0], desc,
-                    ParameterMultipleInput.TYPE_RASTER)
+                                           ParameterMultipleInput.TYPE_RASTER)
             param.optional = False
         elif tokens[1].lower().strip() == 'multiple vector':
             param = ParameterMultipleInput(tokens[0], desc,
-                    ParameterMultipleInput.TYPE_VECTOR_ANY)
+                                           ParameterMultipleInput.TYPE_VECTOR_ANY)
             param.optional = False
         elif tokens[1].lower().strip().startswith('selection'):
             options = tokens[1].strip()[len('selection'):].split(';')
@@ -199,6 +206,9 @@ class RAlgorithm(GeoAlgorithm):
         elif tokens[1].lower().strip().startswith('string'):
             default = tokens[1].strip()[len('string') + 1:]
             param = ParameterString(tokens[0], desc, default)
+        elif tokens[1].lower().strip().startswith('longstring'):
+            default = tokens[1].strip()[len('longstring') + 1:]
+            param = ParameterString(tokens[0], desc, default, multiline=True)
         elif tokens[1].lower().strip().startswith('output raster'):
             out = OutputRaster()
         elif tokens[1].lower().strip().startswith('output vector'):
@@ -287,6 +297,8 @@ class RAlgorithm(GeoAlgorithm):
         commands.append('options("repos"="http://cran.at.r-project.org/")')
 
         # Try to install packages if needed
+        if isWindows():
+            commands.append('.libPaths(\"' + unicode(RUtils.RLibs()).replace('\\', '/') + '\")')
         packages = RUtils.getRequiredPackages(self.script)
         packages.extend(['rgdal', 'raster'])
         for p in packages:
@@ -323,7 +335,7 @@ class RAlgorithm(GeoAlgorithm):
                 value = param.value
                 if not value.lower().endswith('csv'):
                     raise GeoAlgorithmExecutionException(
-                            'Unsupported input file format.\n' + value)
+                        'Unsupported input file format.\n' + value)
                 if self.passFileNames:
                     commands.append(param.name + ' = "' + value + '"')
                 else:
@@ -333,7 +345,7 @@ class RAlgorithm(GeoAlgorithm):
                             ParameterFile)):
                 commands.append(param.name + '="' + param.value + '"')
             elif isinstance(param, (ParameterNumber, ParameterSelection)):
-                commands.append(param.name + '=' + str(param.value))
+                commands.append(param.name + '=' + unicode(param.value))
             elif isinstance(param, ParameterBoolean):
                 if param.value:
                     commands.append(param.name + '=TRUE')
@@ -346,33 +358,33 @@ class RAlgorithm(GeoAlgorithm):
                     for layer in layers:
                         layer = layer.replace('\\', '/')
                         if self.passFileNames:
-                            commands.append('tempvar' + str(iLayer) + ' <- "'
-                                    + layer + '"')
+                            commands.append('tempvar' + unicode(iLayer) + ' <- "'
+                                            + layer + '"')
                         elif self.useRasterPackage:
-                            commands.append('tempvar' + str(iLayer) + ' <- '
-                                    + 'brick("' + layer + '")')
+                            commands.append('tempvar' + unicode(iLayer) + ' <- '
+                                            + 'brick("' + layer + '")')
                         else:
-                            commands.append('tempvar' + str(iLayer) + ' <- '
-                                    + 'readGDAL("' + layer + '")')
+                            commands.append('tempvar' + unicode(iLayer) + ' <- '
+                                            + 'readGDAL("' + layer + '")')
                         iLayer += 1
                 else:
                     exported = param.getSafeExportedLayers()
                     layers = exported.split(';')
                     for layer in layers:
                         if not layer.lower().endswith('shp') \
-                            and not self.passFileNames:
+                           and not self.passFileNames:
                             raise GeoAlgorithmExecutionException(
-                                    'Unsupported input file format.\n' + layer)
+                                'Unsupported input file format.\n' + layer)
                         layer = layer.replace('\\', '/')
                         filename = os.path.basename(layer)
                         filename = filename[:-4]
                         if self.passFileNames:
-                            commands.append('tempvar' + str(iLayer) + ' <- "'
-                                    + layer + '"')
+                            commands.append('tempvar' + unicode(iLayer) + ' <- "'
+                                            + layer + '"')
                         else:
-                            commands.append('tempvar' + str(iLayer) + ' <- '
-                                    + 'readOGR("' + layer + '",layer="'
-                                    + filename + '")')
+                            commands.append('tempvar' + unicode(iLayer) + ' <- '
+                                            + 'readOGR("' + layer + '",layer="'
+                                            + filename + '")')
                         iLayer += 1
                 s = ''
                 s += param.name
@@ -381,7 +393,7 @@ class RAlgorithm(GeoAlgorithm):
                 for layer in layers:
                     if iLayer != 0:
                         s += ','
-                    s += 'tempvar' + str(iLayer)
+                    s += 'tempvar' + unicode(iLayer)
                     iLayer += 1
                 s += ')\n'
                 commands.append(s)
@@ -414,28 +426,3 @@ class RAlgorithm(GeoAlgorithm):
                 '<p><a href="http://docs.qgis.org/testing/en/docs/user_manual/processing/3rdParty.html">Click here</a> '
                 'to know more about how to install and configure R to be used with QGIS</p>')
             return html
-
-    def getPostProcessingErrorMessage(self, wrongLayers):
-        html = GeoAlgorithm.getPostProcessingErrorMessage(self, wrongLayers)
-        msg = RUtils.checkRIsInstalled(True)
-        html += self.tr(
-            '<p>This algorithm requires R to be run. A test to check if '
-            'R is correctly installed and configured in your system has '
-            'been performed, with the following result:</p><ul><i>')
-        if msg is None:
-            html += self.tr(
-                'R seems to be correctly installed and configured</i></li></ul>'
-                '<p>The script you have executed needs the following packages:</p><ul>')
-            packages = RUtils.getRequiredPackages(self.script)
-            for p in packages:
-                html += '<li>' + p + '</li>'
-            html += self.tr(
-                '</ul><p>Make sure they are installed in your R '
-                'environment before trying to execute this script.</p>')
-        else:
-            html += msg + '</i></li></ul>'
-            html += self.tr(
-                '<p><a href= "http://docs.qgis.org/testing/en/docs/user_manual/processing/3rdParty.html">Click here</a> '
-                'to know more about how to install and configure R to be used with QGIS</p>')
-
-        return html

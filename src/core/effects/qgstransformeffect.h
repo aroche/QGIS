@@ -48,7 +48,11 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect
     virtual QString type() const override { return QString( "transform" ); }
     virtual QgsStringMap properties() const override;
     virtual void readProperties( const QgsStringMap& props ) override;
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsTransformEffect* clone() const override;
+>>>>>>> upstream/master
 
     /** Sets the transform x translation.
      * @param translateX distance to translate along the x axis
@@ -136,10 +140,16 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect
      */
     double scaleX() const { return mScaleX; }
 
+<<<<<<< HEAD
     /** Sets the x axis scaling factor.
      * @param scaleX factor to scale x axis by, where 1.0 = no scaling
      * @see scaleX
      * @see setScaleY
+=======
+    /** Sets the y axis scaling factor.
+     * @param scaleY factor to scale y axis by, where 1.0 = no scaling
+     * @see scaleX
+>>>>>>> upstream/master
      */
     void setScaleY( const double scaleY ) { mScaleY = scaleY; }
 

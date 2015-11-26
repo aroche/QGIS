@@ -25,8 +25,7 @@ __copyright__ = '(C) 2010, Michael Minn'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QgsFeature
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTableField
@@ -40,14 +39,14 @@ class DeleteColumn(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Delete column'
-        self.group = 'Vector table tools'
+        self.name, self.i18n_name = self.trAlgorithm('Delete column')
+        self.group, self.i18n_group = self.trAlgorithm('Vector table tools')
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterTableField(self.COLUMN,
-            self.tr('Field to delete'), self.INPUT))
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output')))
+                                              self.tr('Field to delete'), self.INPUT))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Deleted column')))
 
     def processAlgorithm(self, progress):
         layer = dataobjects.getObjectFromUri(
@@ -58,7 +57,7 @@ class DeleteColumn(GeoAlgorithm):
         fields.remove(idx)
 
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(fields,
-            layer.wkbType(), layer.crs())
+                                                                     layer.wkbType(), layer.crs())
 
         features = vector.features(layer)
         count = len(features)
@@ -75,4 +74,3 @@ class DeleteColumn(GeoAlgorithm):
             progress.setPercentage(int(count * total))
 
         del writer
-

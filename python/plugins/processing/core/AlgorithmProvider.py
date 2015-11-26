@@ -27,11 +27,12 @@ __revision__ = '$Format:%H$'
 
 import os
 from PyQt4 import QtGui, QtCore
-from qgis.core import *
+from qgis.core import QgsVectorFileWriter
 from processing.core.ProcessingConfig import Setting, ProcessingConfig
 
 
-class AlgorithmProvider:
+class AlgorithmProvider(object):
+
     """This is the base class for algorithms providers.
 
     An algorithm provider is a set of related algorithms, typically

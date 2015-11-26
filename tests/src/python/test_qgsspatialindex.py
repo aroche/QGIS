@@ -12,8 +12,8 @@ __copyright__ = 'Copyright 2012, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-import unittest
 import qgis
+import unittest
 
 from qgis.core import (QgsSpatialIndex,
                        QgsFeature,
@@ -25,7 +25,9 @@ from utilities import getQgisTestApp
 
 QGISAPP, CANVAS, IFACE, PARENT = getQgisTestApp()
 
+
 class TestQgsSpatialIndex(unittest.TestCase):
+
     def testIndex(self):
         idx = QgsSpatialIndex()
         fid = 0

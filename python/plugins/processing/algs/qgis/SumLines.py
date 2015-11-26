@@ -25,8 +25,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QgsFeature, QgsGeometry, QgsFeatureRequest, QgsDistanceArea
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterString
@@ -43,39 +42,35 @@ class SumLines(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Sum line lengths'
-        self.group = 'Vector analysis tools'
+        self.name, self.i18n_name = self.trAlgorithm('Sum line lengths')
+        self.group, self.i18n_group = self.trAlgorithm('Vector analysis tools')
 
         self.addParameter(ParameterVector(self.LINES,
-            self.tr('Lines'), [ParameterVector.VECTOR_TYPE_LINE]))
+                                          self.tr('Lines'), [ParameterVector.VECTOR_TYPE_LINE]))
         self.addParameter(ParameterVector(self.POLYGONS,
-            self.tr('Polygons'), [ParameterVector.VECTOR_TYPE_POLYGON]))
+                                          self.tr('Polygons'), [ParameterVector.VECTOR_TYPE_POLYGON]))
         self.addParameter(ParameterString(self.LEN_FIELD,
-            self.tr('Lines length field name', 'LENGTH')))
+                                          self.tr('Lines length field name', 'LENGTH')))
         self.addParameter(ParameterString(self.COUNT_FIELD,
-            self.tr('Lines count field name', 'COUNT')))
+                                          self.tr('Lines count field name', 'COUNT')))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Result')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Line length')))
 
     def processAlgorithm(self, progress):
-        lineLayer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.LINES))
-        polyLayer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.POLYGONS))
+        lineLayer = dataobjects.getObjectFromUri(self.getParameterValue(self.LINES))
+        polyLayer = dataobjects.getObjectFromUri(self.getParameterValue(self.POLYGONS))
         lengthFieldName = self.getParameterValue(self.LEN_FIELD)
         countFieldName = self.getParameterValue(self.COUNT_FIELD)
 
         polyProvider = polyLayer.dataProvider()
 
         (idxLength, fieldList) = vector.findOrCreateField(polyLayer,
-                polyLayer.pendingFields(), lengthFieldName)
+                                                          polyLayer.pendingFields(), lengthFieldName)
         (idxCount, fieldList) = vector.findOrCreateField(polyLayer, fieldList,
-                countFieldName)
+                                                         countFieldName)
 
-        writer = self.getOutputFromName(
-                self.OUTPUT).getVectorWriter(fieldList.toList(),
-                                             polyProvider.geometryType(),
-                                             polyProvider.crs())
+        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
+            fieldList.toList(), polyProvider.geometryType(), polyProvider.crs())
 
         spatialIndex = vector.spatialindex(lineLayer)
 

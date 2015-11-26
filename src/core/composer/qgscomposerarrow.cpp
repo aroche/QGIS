@@ -186,6 +186,9 @@ void QgsComposerArrow::drawLine( QPainter *painter )
   QgsRenderContext context = QgsRenderContext::fromMapSettings( ms );
   context.setForceVectorOutput( true );
   context.setPainter( painter );
+  QgsExpressionContext* expressionContext = createExpressionContext();
+  context.setExpressionContext( *expressionContext );
+  delete expressionContext;
 
   //line scaled to dots
   QPolygonF line;
@@ -523,7 +526,7 @@ bool QgsComposerArrow::readXML( const QDomElement& itemElem, const QDomDocument&
     if ( !lineStyleElem.isNull() )
     {
       delete mLineSymbol;
-      mLineSymbol = dynamic_cast<QgsLineSymbolV2*>( QgsSymbolLayerV2Utils::loadSymbol( lineStyleElem ) );
+      mLineSymbol = QgsSymbolLayerV2Utils::loadSymbol<QgsLineSymbolV2>( lineStyleElem );
     }
   }
   else

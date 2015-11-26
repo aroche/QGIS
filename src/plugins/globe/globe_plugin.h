@@ -63,7 +63,7 @@ class GlobePlugin : public QObject, public QgisPlugin
     Q_OBJECT
 
   public:
-    GlobePlugin( QgisInterface* theQgisInterface );
+    explicit GlobePlugin( QgisInterface* theQgisInterface );
     virtual ~GlobePlugin();
 
   public slots:
@@ -135,7 +135,6 @@ class GlobePlugin : public QObject, public QgisPlugin
     void setupControls();
 
   private://! Checks if the globe is open
-    int mPluginType;
     //! Pointer to the QGIS interface object
     QgisInterface *mQGisIface;
     //!pointer to the qaction for this plugin
@@ -196,7 +195,7 @@ class GlobePlugin : public QObject, public QgisPlugin
 class FlyToExtentHandler : public osgGA::GUIEventHandler
 {
   public:
-    FlyToExtentHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
+    explicit FlyToExtentHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa ) override;
 
@@ -229,7 +228,7 @@ class QueryCoordinatesHandler : public osgGA::GUIEventHandler
 class KeyboardControlHandler : public osgGA::GUIEventHandler
 {
   public:
-    KeyboardControlHandler( osgEarth::Util::EarthManipulator* manip ) : _manip( manip ) { }
+    explicit KeyboardControlHandler( osgEarth::Util::EarthManipulator* manip ) : _manip( manip ) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa ) override;
 
@@ -259,7 +258,7 @@ namespace osgEarth
       class NavigationControl : public ImageControl
       {
         public:
-          NavigationControl( osg::Image* image = 0L ) : ImageControl( image ),  _mouse_down_event( NULL ) {}
+          explicit NavigationControl( osg::Image* image = 0L ) : ImageControl( image ), _mouse_down_event( NULL ) {}
 
         protected:
           virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx ) override;

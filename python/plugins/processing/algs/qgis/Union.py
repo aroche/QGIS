@@ -25,13 +25,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from qgis.core import QgsFeatureRequest, QgsFeature, QgsGeometry, QgsWKBTypes
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingLog import ProcessingLog
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector
@@ -44,19 +41,17 @@ class Union(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def processAlgorithm(self, progress):
-        vlayerA = dataobjects.getObjectFromUri(
-                self.getParameterValue(Union.INPUT))
-        vlayerB = dataobjects.getObjectFromUri(
-                self.getParameterValue(Union.INPUT2))
+        vlayerA = dataobjects.getObjectFromUri(self.getParameterValue(Union.INPUT))
+        vlayerB = dataobjects.getObjectFromUri(self.getParameterValue(Union.INPUT2))
         GEOS_EXCEPT = True
         FEATURE_EXCEPT = True
         vproviderA = vlayerA.dataProvider()
 
         fields = vector.combineVectorFields(vlayerA, vlayerB)
         names = [field.name() for field in fields]
-        ProcessingLog.addToLog(ProcessingLog.LOG_INFO, str(names))
+        ProcessingLog.addToLog(ProcessingLog.LOG_INFO, unicode(names))
         writer = self.getOutputFromName(Union.OUTPUT).getVectorWriter(fields,
-                vproviderA.geometryType(), vproviderA.crs())
+                                                                      vproviderA.geometryType(), vproviderA.crs())
         inFeatA = QgsFeature()
         inFeatB = QgsFeature()
         outFeat = QgsFeature()
@@ -70,9 +65,8 @@ class Union(GeoAlgorithm):
         for inFeatA in featuresA:
             progress.setPercentage(nElement / float(nFeat) * 50)
             nElement += 1
-            found = False
+            lstIntersectingB = []
             geom = QgsGeometry(inFeatA.geometry())
-            diff_geom = QgsGeometry(geom)
             atMapA = inFeatA.attributes()
             intersects = indexA.intersects(geom.boundingBox())
             if len(intersects) < 1:
@@ -94,8 +88,8 @@ class Union(GeoAlgorithm):
                     tmpGeom = QgsGeometry(inFeatB.geometry())
 
                     if geom.intersects(tmpGeom):
-                        found = True
                         int_geom = geom.intersection(tmpGeom)
+                        lstIntersectingB.append(tmpGeom)
 
                         if int_geom is None:
                            # There was a problem creating the intersection
@@ -105,15 +99,7 @@ class Union(GeoAlgorithm):
                         else:
                             int_geom = QgsGeometry(int_geom)
 
-                        if diff_geom.intersects(tmpGeom):
-                            diff_geom = diff_geom.difference(tmpGeom)
-                            if diff_geom is None:
-                                # It's possible there was an error here?
-                                diff_geom = QgsGeometry()
-                            else:
-                                diff_geom = QgsGeometry(diff_geom)
-
-                        if int_geom.wkbType() == 0:
+                        if int_geom.wkbType() == QGis.WKBUnknown or QgsWKBTypes.flatType(int_geom.geometry().wkbType()) == QgsWKBTypes.GeometryCollection:
                             # Intersection produced different geomety types
                             temp_list = int_geom.asGeometryCollection()
                             for i in temp_list:
@@ -126,34 +112,29 @@ class Union(GeoAlgorithm):
                             attrs.extend(atMapB)
                             outFeat.setAttributes(attrs)
                             writer.addFeature(outFeat)
-                        except Exception, err:
-                            raise GeoAlgorithmExecutionException(
-                                self.tr('Feature exception while computing union'))
-                    else:
-                      # This only happends if the bounding box intersects,
-                      # but the geometry doesn't
-                        try:
-                            outFeat.setGeometry(geom)
-                            outFeat.setAttributes(atMapA)
-                            writer.addFeature(outFeat)
-                        except:
-                            # Also shoudn't ever happen
+                        except Exception as err:
                             raise GeoAlgorithmExecutionException(
                                 self.tr('Feature exception while computing union'))
 
-                if found:
-                    try:
-                        if diff_geom.wkbType() == 0:
-                            temp_list = diff_geom.asGeometryCollection()
-                            for i in temp_list:
-                                if i.type() == geom.type():
-                                    diff_geom = QgsGeometry(i)
-                        outFeat.setGeometry(diff_geom)
-                        outFeat.setAttributes(atMapA)
-                        writer.addFeature(outFeat)
-                    except Exception, err:
-                        raise GeoAlgorithmExecutionException(
-                            self.tr('Feature exception while computing union'))
+                try:
+                    # the remaining bit of inFeatA's geometry
+                    # if there is nothing left, this will just silently fail and we're good
+                    diff_geom = QgsGeometry(geom)
+                    if len(lstIntersectingB) != 0:
+                        intB = QgsGeometry.unaryUnion(lstIntersectingB)
+                        diff_geom = diff_geom.difference(intB)
+
+                    if diff_geom.wkbType() == 0 or QgsWKBTypes.flatType(int_geom.geometry().wkbType()) == QgsWKBTypes.GeometryCollection:
+                        temp_list = diff_geom.asGeometryCollection()
+                        for i in temp_list:
+                            if i.type() == geom.type():
+                                diff_geom = QgsGeometry(i)
+                    outFeat.setGeometry(diff_geom)
+                    outFeat.setAttributes(atMapA)
+                    writer.addFeature(outFeat)
+                except Exception as err:
+                    raise GeoAlgorithmExecutionException(
+                        self.tr('Feature exception while computing union'))
 
         length = len(vproviderA.fields())
 
@@ -173,7 +154,7 @@ class Union(GeoAlgorithm):
                     outFeat.setGeometry(geom)
                     outFeat.setAttributes(atMap)
                     writer.addFeature(outFeat)
-                except Exception, err:
+                except Exception as err:
                     raise GeoAlgorithmExecutionException(
                         self.tr('Feature exception while computing union'))
             else:
@@ -186,14 +167,14 @@ class Union(GeoAlgorithm):
                         if diff_geom.intersects(tmpGeom):
                             add = True
                             diff_geom = QgsGeometry(
-                                    diff_geom.difference(tmpGeom))
+                                diff_geom.difference(tmpGeom))
                         else:
                             # Ihis only happends if the bounding box
                             # intersects, but the geometry doesn't
                             outFeat.setGeometry(diff_geom)
                             outFeat.setAttributes(atMap)
                             writer.addFeature(outFeat)
-                    except Exception, err:
+                    except Exception as err:
                         raise GeoAlgorithmExecutionException(
                             self.tr('Geometry exception while computing intersection'))
 
@@ -202,7 +183,7 @@ class Union(GeoAlgorithm):
                     outFeat.setGeometry(diff_geom)
                     outFeat.setAttributes(atMap)
                     writer.addFeature(outFeat)
-                except Exception, err:
+                except Exception as err:
                     raise err
                     FEATURE_EXCEPT = False
             nElement += 1
@@ -210,16 +191,16 @@ class Union(GeoAlgorithm):
         del writer
         if not GEOS_EXCEPT:
             ProcessingLog.addToLog(ProcessingLog.LOG_WARNING,
-                self.tr('Geometry exception while computing intersection'))
+                                   self.tr('Geometry exception while computing intersection'))
         if not FEATURE_EXCEPT:
             ProcessingLog.addToLog(ProcessingLog.LOG_WARNING,
-                self.tr('Feature exception while computing intersection'))
+                                   self.tr('Feature exception while computing intersection'))
 
     def defineCharacteristics(self):
-        self.name = 'Union'
-        self.group = 'Vector overlay tools'
+        self.name, self.i18n_name = self.trAlgorithm('Union')
+        self.group, self.i18n_group = self.trAlgorithm('Vector overlay tools')
         self.addParameter(ParameterVector(Union.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterVector(Union.INPUT2,
-            self.tr('Input layer 2'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer 2'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addOutput(OutputVector(Union.OUTPUT, self.tr('Union')))

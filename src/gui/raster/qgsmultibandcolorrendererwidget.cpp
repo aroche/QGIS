@@ -19,7 +19,9 @@
 #include "qgsmultibandcolorrenderer.h"
 #include "qgsrasterlayer.h"
 
-QgsMultiBandColorRendererWidget::QgsMultiBandColorRendererWidget( QgsRasterLayer* layer, const QgsRectangle &extent ): QgsRasterRendererWidget( layer, extent )
+QgsMultiBandColorRendererWidget::QgsMultiBandColorRendererWidget( QgsRasterLayer* layer, const QgsRectangle &extent )
+    : QgsRasterRendererWidget( layer, extent )
+    , mMinMaxWidget( NULL )
 {
   setupUi( this );
   createValidators();
@@ -320,7 +322,7 @@ QString QgsMultiBandColorRendererWidget::max( int index )
   return QString();
 }
 
-void QgsMultiBandColorRendererWidget::setMin( QString value, int index )
+void QgsMultiBandColorRendererWidget::setMin( const QString& value, int index )
 {
   switch ( index )
   {
@@ -338,7 +340,7 @@ void QgsMultiBandColorRendererWidget::setMin( QString value, int index )
   }
 }
 
-void QgsMultiBandColorRendererWidget::setMax( QString value, int index )
+void QgsMultiBandColorRendererWidget::setMax( const QString& value, int index )
 {
   switch ( index )
   {

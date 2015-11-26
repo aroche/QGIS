@@ -45,6 +45,16 @@ QgsJoinDialog::QgsJoinDialog( QgsVectorLayer* layer, QList<QgsMapLayer*> already
   connect( mJoinLayerComboBox, SIGNAL( layerChanged( QgsMapLayer* ) ), this, SLOT( joinedLayerChanged( QgsMapLayer* ) ) );
 
   mCacheInMemoryCheckBox->setChecked( true );
+<<<<<<< HEAD
+=======
+
+  QgsMapLayer *joinLayer = mJoinLayerComboBox->currentLayer();
+  if ( joinLayer && joinLayer->isValid() )
+  {
+    mJoinFieldComboBox->setLayer( joinLayer );
+    joinedLayerChanged( joinLayer );
+  }
+>>>>>>> upstream/master
 }
 
 QgsJoinDialog::~QgsJoinDialog()
@@ -94,6 +104,11 @@ QgsVectorJoinInfo QgsJoinDialog::joinInfo() const
   info.joinFieldName = mJoinFieldComboBox->currentField();
   info.targetFieldName = mTargetFieldComboBox->currentField();
   info.memoryCache = mCacheInMemoryCheckBox->isChecked();
+<<<<<<< HEAD
+=======
+  info.targetFieldIndex = -1;
+  info.joinFieldIndex = -1;
+>>>>>>> upstream/master
 
   if ( mUseCustomPrefix->isChecked() )
     info.prefix = mCustomPrefix->text();
@@ -126,7 +141,10 @@ bool QgsJoinDialog::createAttributeIndex() const
 
 void QgsJoinDialog::joinedLayerChanged( QgsMapLayer* layer )
 {
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
   mJoinFieldComboBox->clear();
 
   QgsVectorLayer* vLayer = dynamic_cast<QgsVectorLayer*>( layer );
@@ -137,7 +155,11 @@ void QgsJoinDialog::joinedLayerChanged( QgsMapLayer* layer )
 
   mUseJoinFieldsSubset->setChecked( false );
   QStandardItemModel* subsetModel = new QStandardItemModel( this );
+<<<<<<< HEAD
   const QgsFields& layerFields = vLayer->pendingFields();
+=======
+  const QgsFields& layerFields = vLayer->fields();
+>>>>>>> upstream/master
   for ( int idx = 0; idx < layerFields.count(); ++idx )
   {
     QStandardItem* subsetItem = new QStandardItem( layerFields[idx].name() );
@@ -161,6 +183,10 @@ void QgsJoinDialog::joinedLayerChanged( QgsMapLayer* layer )
 
   if ( !mUseCustomPrefix->isChecked() )
   {
+<<<<<<< HEAD
     mCustomPrefix->setText( layer->name() + "_" );
+=======
+    mCustomPrefix->setText( layer->name() + '_' );
+>>>>>>> upstream/master
   }
 }

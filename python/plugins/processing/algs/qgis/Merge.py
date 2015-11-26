@@ -25,15 +25,13 @@ __copyright__ = '(C) 2010, Michael Minn'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
 
 from processing.tools import dataobjects, vector
+
 
 class Merge(GeoAlgorithm):
     LAYER1 = 'LAYER1'
@@ -41,15 +39,15 @@ class Merge(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Merge vector layers'
-        self.group = 'Vector general tools'
+        self.name, self.i18n_name = self.trAlgorithm('Merge vector layers')
+        self.group, self.i18n_group = self.trAlgorithm('Vector general tools')
 
         self.addParameter(ParameterVector(self.LAYER1,
-            self.tr('Input layer 1'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer 1'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterVector(self.LAYER2,
-            self.tr('Input layer 2'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer 2'), [ParameterVector.VECTOR_TYPE_ANY]))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Merged')))
 
     def processAlgorithm(self, progress):
         layer1 = dataobjects.getObjectFromUri(
@@ -71,7 +69,7 @@ class Merge(GeoAlgorithm):
                 found = None
                 for dfield in fields:
                     if dfield.name() == sfield.name() and \
-                            dfield.type() == sfield.type():
+                       dfield.type() == sfield.type():
                         found = dfield
                         break
 
@@ -89,7 +87,7 @@ class Merge(GeoAlgorithm):
                 i = 0
                 for sfield in layer.pendingFields():
                     if sfield.name() == dfield.name() and \
-                            sfield.type() == dfield.type():
+                       sfield.type() == dfield.type():
                         idx[dfield] = i
                         break
                     i += 1

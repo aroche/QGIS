@@ -25,11 +25,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QGis, QgsFeature, QgsGeometry
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
 from processing.tools import dataobjects, vector
@@ -46,21 +44,19 @@ class MultipartToSingleparts(GeoAlgorithm):
     # =========================================================================
 
     def defineCharacteristics(self):
-        self.name = 'Multipart to singleparts'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Multipart to singleparts')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
 
         self.addParameter(ParameterVector(self.INPUT, self.tr('Input layer')))
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output layer')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Single parts')))
 
     def processAlgorithm(self, progress):
-        layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+        layer = dataobjects.getObjectFromUri(self.getParameterValue(self.INPUT))
 
         geomType = self.multiToSingleGeom(layer.dataProvider().geometryType())
 
-        writer = self.getOutputFromName(
-                self.OUTPUT).getVectorWriter(layer.pendingFields().toList(),
-                                             geomType, layer.crs())
+        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
+            layer.pendingFields().toList(), geomType, layer.crs())
 
         outFeat = QgsFeature()
         inGeom = QgsGeometry()
@@ -100,7 +96,7 @@ class MultipartToSingleparts(GeoAlgorithm):
                 return QGis.WKBPolygon
             else:
                 return QGis.WKBUnknown
-        except Exception, err:
+        except Exception as err:
             raise GeoAlgorithmExecutionException(unicode(err))
 
     def extractAsSingle(self, geom):

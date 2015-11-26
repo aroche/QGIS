@@ -1,4 +1,29 @@
 
+/**
+ * \brief Handles asynchronous download of images
+ *
+ * \note added in 2.8
+ */
+class QgsImageFetcher : QObject
+{
+%TypeHeaderCode
+#include <qgsrasterdataprovider.h>
+%End
+  public:
+
+    QgsImageFetcher();
+    virtual ~QgsImageFetcher();
+
+    // Make sure to connect to "finish" and "error" before starting
+    virtual void start() = 0;
+
+  signals:
+
+    void finish( const QImage& legend );
+    void progress( qint64 received, qint64 total );
+    void error( const QString& msg );
+};
+
 /** Base class for raster data providers
  *
  *  \note  This class has been copied and pasted from
@@ -73,7 +98,7 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
     /** Read block of data using given extent and size. */
     virtual QgsRasterBlock *block( int theBandNo, const QgsRectangle &theExtent, int theWidth, int theHeight ) / Factory /;
 
-    /* Return true if source band has no data value */
+    /** Return true if source band has no data value */
     virtual bool srcHasNoDataValue( int bandNo ) const;
 
     /** \brief Get source nodata value usage */
@@ -85,7 +110,7 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
     /** Value representing no data value. */
     virtual double srcNoDataValue( int bandNo ) const;
 
-    virtual void setUserNoDataValue( int bandNo, QgsRasterRangeList noData );
+    virtual void setUserNoDataValue( int bandNo, const QgsRasterRangeList& noData );
 
     /** Get list of user no data value ranges */
     virtual QgsRasterRangeList userNoDataValues( int bandNo ) const;
@@ -97,8 +122,29 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
     virtual QStringList subLayers() const;
 
     /** \brief Returns the legend rendered as pixmap
-     *  useful for that layer that need to get legend layer remotly as WMS */
-    virtual QImage getLegendGraphic( double scale = 0, bool forceRefresh = false );
+     *
+     *  useful for that layer that need to get legend layer remotely as WMS
+     * \param scale Optional parameter that is the Scale of the layer
+     * \param forceRefresh Optional bool parameter to force refresh getLegendGraphic call
+     * \param visibleExtent Visible extent for providers supporting contextual legends, in layer CRS
+     * \note visibleExtent parameter added in 2.8 (no available in python bindings)
+     */
+    virtual QImage getLegendGraphic( double scale = 0, bool forceRefresh = false, const QgsRectangle * visibleExtent = 0 );
+
+    /**
+     * \brief Get an image downloader for the raster legend
+     *
+     * \param mapSettings map settings for legend providers supporting
+     *                    contextual legends.
+     *
+     * \return a download handler or null if the provider does not support
+     *         legend at all. Ownership of the returned object is transferred
+     *         to caller.
+     *
+     * \note added in 2.8
+     *
+     */
+    virtual QgsImageFetcher* getLegendGraphicFetcher( const QgsMapSettings* mapSettings ) /Factory/;
 
     /** \brief Create pyramid overviews */
     virtual QString buildPyramids( const QList<QgsRasterPyramid> & thePyramidList,
@@ -174,10 +220,10 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
     /** Returns the format of the error text for the last error in this provider */
     virtual QString lastErrorFormat();
 
-    /**Returns the dpi of the output device. */
+    /** Returns the dpi of the output device. */
     int dpi() const;
 
-    /**Sets the output device resolution. */
+    /** Sets the output device resolution. */
     void setDpi( int dpi );
 
     /** Time stamp of data source in the moment when data/metadata were loaded by provider */
@@ -186,7 +232,7 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
     /** Current time stamp of data source */
     virtual QDateTime dataTimestamp() const;
 
-    /**Writes into the provider datasource*/
+    /** Writes into the provider datasource*/
     // TODO: add data type (may be defferent from band type)
     virtual bool write( void* data, int band, int width, int height, int xOffset, int yOffset );
 
@@ -197,7 +243,7 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
                                           QGis::DataType type,
                                           int width, int height, double* geoTransform,
                                           const QgsCoordinateReferenceSystem& crs,
-                                          QStringList createOptions = QStringList() );
+                                          const QStringList& createOptions = QStringList() );
 
     /** Set no data value on created dataset
      *  @param bandNo band number
@@ -210,12 +256,12 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
 
     /** Returns a list of pyramid resampling method name and label pairs
      * for given provider */
-    static QList<QPair<QString, QString> > pyramidResamplingMethods( QString providerKey );
+    static QList<QPair<QString, QString> > pyramidResamplingMethods( const QString& providerKey );
 
     /** Validates creation options for a specific dataset and destination format.
      * @note used by GDAL provider only
      * @note see also validateCreationOptionsFormat() in gdal provider for validating options based on format only */
-    virtual QString validateCreationOptions( const QStringList& createOptions, QString format );
+    virtual QString validateCreationOptions( const QStringList& createOptions, const QString& format );
 
     /** Validates pyramid creation options for a specific dataset and destination format
      * @note used by GDAL provider only */
@@ -223,14 +269,14 @@ class QgsRasterDataProvider : QgsDataProvider, QgsRasterInterface
         const QStringList & theConfigOptions, const QString & fileFormat );
 
     static QString identifyFormatName( QgsRaster::IdentifyFormat format );
-    static QgsRaster::IdentifyFormat identifyFormatFromName( QString formatName );
+    static QgsRaster::IdentifyFormat identifyFormatFromName( const QString& formatName );
     static QString identifyFormatLabel( QgsRaster::IdentifyFormat format );
     static Capability identifyFormatToCapability( QgsRaster::IdentifyFormat format );
 
   signals:
     /** Emit a signal to notify of the progress event.
       * Emitted theProgress is in percents (0.0-100.0) */
-    void progress( int theType, double theProgress, QString theMessage );
+    void progress( int theType, double theProgress, const QString& theMessage );
     void progressUpdate( int theProgress );
 
   protected:

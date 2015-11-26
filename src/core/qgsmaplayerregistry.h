@@ -23,8 +23,6 @@
 #include <QSet>
 #include <QObject>
 #include <QStringList>
-
-#include "qgssingleton.h"
 class QString;
 class QgsMapLayer;
 
@@ -32,21 +30,24 @@ class QgsMapLayer;
 * This class tracks map layers that are currently loaded and provides
 * a means to fetch a pointer to a map layer and delete it.
 */
-class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsMapLayerRegistry>
+class CORE_EXPORT QgsMapLayerRegistry : public QObject
 {
     Q_OBJECT
 
   public:
+    //! Returns the instance pointer, creating the object on the first call
+    static QgsMapLayerRegistry * instance();
+
     //! Return the number of registered layers.
     int count();
 
     ~QgsMapLayerRegistry();
 
     //! Retrieve a pointer to a loaded layer by id
-    QgsMapLayer *mapLayer( QString theLayerId );
+    QgsMapLayer *mapLayer( const QString& theLayerId );
 
     //! Retrieve a pointer to a loaded layer by name
-    QList<QgsMapLayer *> mapLayersByName( QString layerName );
+    QList<QgsMapLayer *> mapLayersByName( const QString& layerName );
 
     //! Retrieve the mapLayers collection (mainly intended for use by projection)
     const QMap<QString, QgsMapLayer*> & mapLayers();
@@ -73,7 +74,7 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      * @note As a side-effect QgsProject is made dirty.
      * @note takeOwner not available in python binding - always takes ownership
      */
-    QList<QgsMapLayer *> addMapLayers( QList<QgsMapLayer *> theMapLayers,
+    QList<QgsMapLayer *> addMapLayers( const QList<QgsMapLayer*>& theMapLayers,
                                        bool addToLegend = true,
                                        bool takeOwnership = true );
 
@@ -117,7 +118,7 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @note As a side-effect QgsProject is made dirty.
      */
-    void removeMapLayers( QStringList theLayerIds );
+    void removeMapLayers( const QStringList& theLayerIds );
 
     /**
      * @brief
@@ -162,7 +163,7 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @param theLayerIds  A list of ids of the layers which are removed.
      */
-    void layersWillBeRemoved( QStringList theLayerIds );
+    void layersWillBeRemoved( const QStringList& theLayerIds );
 
     /**
      * Emitted when a layer is removed from the registry
@@ -171,14 +172,14 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @note Consider using {@link layersWillBeRemoved()} instead
      */
-    void layerWillBeRemoved( QString theLayerId );
+    void layerWillBeRemoved( const QString& theLayerId );
 
     /**
      * Emitted after one or more layers were removed from the registry
      *
      * @param theLayerIds  A list of ids of the layers which were removed.
      */
-    void layersRemoved( QStringList theLayerIds );
+    void layersRemoved( const QStringList& theLayerIds );
 
     /**
      * Emitted after a layer was removed from the registry
@@ -187,7 +188,7 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @note Consider using {@link layersRemoved()} instead
      */
-    void layerRemoved( QString theLayerId );
+    void layerRemoved( const QString& theLayerId );
 
 
     /**
@@ -207,7 +208,7 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @see legendLayersAdded()
      */
-    void layersAdded( QList<QgsMapLayer *> theMapLayers );
+    void layersAdded( const QList<QgsMapLayer *>& theMapLayers );
 
     /**
      * Emitted when a layer is added to the registry.
@@ -226,13 +227,15 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
      *
      * @param theMapLayers  The {@link QgsMapLayer}s which are added to the legend.
      */
-    void legendLayersAdded( QList<QgsMapLayer*> theMapLayers );
+    void legendLayersAdded( const QList<QgsMapLayer*>& theMapLayers );
 
   protected:
-    /** debugging member
+#if 0
+    /** Debugging member
         invoked when a connect() is made to this object
     */
     void connectNotify( const char * signal ) override;
+#endif
 
   private:
     //! private singleton constructor
@@ -240,8 +243,6 @@ class CORE_EXPORT QgsMapLayerRegistry : public QObject, public QgsSingleton<QgsM
 
     QMap<QString, QgsMapLayer*> mMapLayers;
     QSet<QgsMapLayer*> mOwnedLayers;
-
-    friend class QgsSingleton<QgsMapLayerRegistry>; // Let QgsSingleton access private constructor
 }; // class QgsMapLayerRegistry
 
 #endif //QgsMapLayerRegistry_H

@@ -13,6 +13,7 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsspatialiteconnection.h"
+#include "qgsslconnect.h"
 
 #include <QFileInfo>
 #include <QSettings>
@@ -31,7 +32,7 @@ QStringList QgsSpatiaLiteConnection::connectionList()
   return settings.childGroups();
 }
 
-void QgsSpatiaLiteConnection::deleteConnection( QString name )
+void QgsSpatiaLiteConnection::deleteConnection( const QString& name )
 {
   QSettings settings;
   QString key = "/SpatiaLite/connections/" + name;
@@ -39,7 +40,7 @@ void QgsSpatiaLiteConnection::deleteConnection( QString name )
   settings.remove( key );
 }
 
-QString QgsSpatiaLiteConnection::connectionPath( QString name )
+QString QgsSpatiaLiteConnection::connectionPath( const QString& name )
 {
   QSettings settings;
   return settings.value( "/SpatiaLite/connections/" + name + "/sqlitepath" ).toString();
@@ -47,7 +48,7 @@ QString QgsSpatiaLiteConnection::connectionPath( QString name )
 
 // -------
 
-QgsSpatiaLiteConnection::QgsSpatiaLiteConnection( QString name )
+QgsSpatiaLiteConnection::QgsSpatiaLiteConnection( const QString& name )
 {
   // "name" can be either a saved connection or a path to database
 
@@ -67,7 +68,7 @@ QgsSpatiaLiteConnection::Error QgsSpatiaLiteConnection::fetchTables( bool loadGe
     return NotExists;
   }
 
-  sqlite3* handle = openSpatiaLiteDb( fi.canonicalFilePath() );
+  sqlite3 *handle = openSpatiaLiteDb( fi.canonicalFilePath() );
   if ( handle == NULL )
   {
     return FailedToOpen;
@@ -134,15 +135,12 @@ bool QgsSpatiaLiteConnection::updateStatistics()
 #endif
 }
 
-sqlite3 *QgsSpatiaLiteConnection::openSpatiaLiteDb( QString path )
+sqlite3 *QgsSpatiaLiteConnection::openSpatiaLiteDb( const QString& path )
 {
   sqlite3 *handle = NULL;
   int ret;
-  // activating the SpatiaLite library
-  spatialite_init( 0 );
-
   // trying to open the SQLite DB
-  ret = sqlite3_open_v2( path.toUtf8().constData(), &handle, SQLITE_OPEN_READWRITE, NULL );
+  ret = QgsSLConnect::sqlite3_open_v2( path.toUtf8().constData(), &handle, SQLITE_OPEN_READWRITE, NULL );
   if ( ret )
   {
     // failure
@@ -155,7 +153,7 @@ sqlite3 *QgsSpatiaLiteConnection::openSpatiaLiteDb( QString path )
 void QgsSpatiaLiteConnection::closeSpatiaLiteDb( sqlite3 * handle )
 {
   if ( handle )
-    sqlite3_close( handle );
+    QgsSLConnect::sqlite3_close( handle );
 }
 
 int QgsSpatiaLiteConnection::checkHasMetadataTables( sqlite3* handle )
@@ -268,7 +266,7 @@ error:
   // unexpected IO error
   if ( errMsg )
   {
-    mErrorMsg += "\n";
+    mErrorMsg += '\n';
     mErrorMsg += errMsg;
     sqlite3_free( errMsg );
   }
@@ -496,8 +494,8 @@ QString QgsSpatiaLiteConnection::quotedValue( QString value ) const
   if ( value.isNull() )
     return "NULL";
 
-  value.replace( "'", "''" );
-  return value.prepend( "'" ).append( "'" );
+  value.replace( '\'', "''" );
+  return value.prepend( '\'' ).append( '\'' );
 }
 
 bool QgsSpatiaLiteConnection::checkGeometryColumnsAuth( sqlite3 * handle )
@@ -613,7 +611,9 @@ bool QgsSpatiaLiteConnection::isRasterlite1Datasource( sqlite3 * handle, const c
   char table_raster[4192];
   char sql[4192];
 
-  strcpy( table_raster, table );
+  strncpy( table_raster, table, sizeof sql );
+  table_raster[ sizeof sql - 1 ] = '\0';
+
   len =  strlen( table_raster );
   if ( strlen( table_raster ) < 9 )
     return false;
@@ -646,7 +646,7 @@ bool QgsSpatiaLiteConnection::isRasterlite1Datasource( sqlite3 * handle, const c
   return exists;
 }
 
-bool QgsSpatiaLiteConnection::isDeclaredHidden( sqlite3 * handle, QString table, QString geom )
+bool QgsSpatiaLiteConnection::isDeclaredHidden( sqlite3 * handle, const QString& table, const QString& geom )
 {
   int ret;
   int i;
@@ -660,8 +660,8 @@ bool QgsSpatiaLiteConnection::isDeclaredHidden( sqlite3 * handle, QString table,
     return false;
   // checking if some Layer has been declared as HIDDEN
   QString sql = QString( "SELECT hidden FROM geometry_columns_auth"
-                         " WHERE f_table_name=%1 and f_geometry_column=%2" ).arg( quotedValue( table ) ).
-                arg( quotedValue( geom ) );
+                         " WHERE f_table_name=%1 and f_geometry_column=%2" ).arg( quotedValue( table ),
+                             quotedValue( geom ) );
 
   ret = sqlite3_get_table( handle, sql.toUtf8().constData(), &results, &rows, &columns, &errMsg );
   if ( ret != SQLITE_OK )
@@ -743,12 +743,12 @@ QgsSqliteHandle* QgsSqliteHandle::openDb( const QString & dbPath, bool shared )
   }
 
   QgsDebugMsg( QString( "New sqlite connection for " ) + dbPath );
-  if ( sqlite3_open_v2( dbPath.toUtf8().constData(), &sqlite_handle, shared ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, NULL ) )
+  if ( QgsSLConnect::sqlite3_open_v2( dbPath.toUtf8().constData(), &sqlite_handle, shared ? SQLITE_OPEN_READWRITE : SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, NULL ) )
   {
     // failure
     QgsDebugMsg( QString( "Failure while connecting to: %1\n%2" )
-                 .arg( dbPath )
-                 .arg( QString::fromUtf8( sqlite3_errmsg( sqlite_handle ) ) ) );
+                 .arg( dbPath,
+                       QString::fromUtf8( sqlite3_errmsg( sqlite_handle ) ) ) );
     return NULL;
   }
 
@@ -757,11 +757,11 @@ QgsSqliteHandle* QgsSqliteHandle::openDb( const QString & dbPath, bool shared )
   {
     // failure
     QgsDebugMsg( QString( "Failure while connecting to: %1\n\ninvalid metadata tables" ).arg( dbPath ) );
-    sqlite3_close( sqlite_handle );
+    QgsSLConnect::sqlite3_close( sqlite_handle );
     return NULL;
   }
   // activating Foreign Key constraints
-  sqlite3_exec( sqlite_handle, "PRAGMA foreign_keys = 1", NULL, 0, NULL );
+  ( void )sqlite3_exec( sqlite_handle, "PRAGMA foreign_keys = 1", NULL, 0, NULL );
 
   QgsDebugMsg( "Connection to the database was successful" );
 
@@ -816,7 +816,7 @@ void QgsSqliteHandle::sqliteClose()
 {
   if ( sqlite_handle )
   {
-    sqlite3_close( sqlite_handle );
+    QgsSLConnect::sqlite3_close( sqlite_handle );
     sqlite_handle = NULL;
   }
 }

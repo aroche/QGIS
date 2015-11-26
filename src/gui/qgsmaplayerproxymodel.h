@@ -19,6 +19,7 @@
 #include <QSortFilterProxyModel>
 
 class QgsMapLayerModel;
+class QgsMapLayer;
 
 /**
  * @brief The QgsMapLayerProxyModel class provides an easy to use model to display the list of layers in widgets.
@@ -59,11 +60,16 @@ class GUI_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      * @param filters are Filter flags
      * @note added in 2.3
      */
-    QgsMapLayerProxyModel* setFilters( Filters filters );
+    QgsMapLayerProxyModel* setFilters( const QgsMapLayerProxyModel::Filters& filters );
     const Filters& filters() const { return mFilters; }
+
+    //! offer the possibility to except some layers to be listed
+    void setExceptedLayerList( const QList<QgsMapLayer*>& exceptList );
+    QList<QgsMapLayer*> exceptedLayerList() {return mExceptList;}
 
   private:
     Filters mFilters;
+    QList<QgsMapLayer*> mExceptList;
     QgsMapLayerModel* mModel;
 
     // QSortFilterProxyModel interface

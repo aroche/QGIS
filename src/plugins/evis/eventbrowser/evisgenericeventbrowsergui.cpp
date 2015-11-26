@@ -543,7 +543,7 @@ void eVisGenericEventBrowserGui::displayImage()
       if ( 0 == myFeature )
         return;
 
-      QgsPoint myPoint = myFeature->geometry()->asPoint();
+      QgsPoint myPoint = myFeature->constGeometry()->asPoint();
       myPoint = mCanvas->mapSettings().layerToMapCoordinates( mVectorLayer, myPoint );
       //keep the extent the same just center the map canvas in the display so our feature is in the middle
       QgsRectangle myRect( myPoint.x() - ( mCanvas->extent().width() / 2 ), myPoint.y() - ( mCanvas->extent().height() / 2 ), myPoint.x() + ( mCanvas->extent().width() / 2 ), myPoint.y() + ( mCanvas->extent().height() / 2 ) );
@@ -595,29 +595,29 @@ void eVisGenericEventBrowserGui::loadRecord()
   QString myCompassOffsetField = cboxCompassOffsetField->currentText();
   QString myEventImagePathField = cboxEventImagePathField->currentText();
   const QgsFields& myFields = mDataProvider->fields();
-  const QgsAttributes& myAttrs = myFeature->attributes();
+  QgsAttributes myAttrs = myFeature->attributes();
   //loop through the attributes and display their contents
   for ( int i = 0; i < myAttrs.count(); ++i )
   {
     QStringList myValues;
     QString fieldName = myFields[i].name();
-    myValues << fieldName << myAttrs[i].toString();
+    myValues << fieldName << myAttrs.at( i ).toString();
     QTreeWidgetItem* myItem = new QTreeWidgetItem( myValues );
     if ( fieldName == myEventImagePathField )
     {
-      mEventImagePath = myAttrs[i].toString();
+      mEventImagePath = myAttrs.at( i ).toString();
     }
 
     if ( fieldName == myCompassBearingField )
     {
-      mCompassBearing = myAttrs[i].toDouble();
+      mCompassBearing = myAttrs.at( i ).toDouble();
     }
 
     if ( mConfiguration.isAttributeCompassOffsetSet() )
     {
       if ( fieldName == myCompassOffsetField )
       {
-        mCompassOffset = myAttrs[i].toDouble();
+        mCompassOffset = myAttrs.at( i ).toDouble();
       }
     }
     else
@@ -629,7 +629,7 @@ void eVisGenericEventBrowserGui::loadRecord()
     int myIterator = 0;
     while ( myIterator < tableFileTypeAssociations->rowCount() )
     {
-      if ( tableFileTypeAssociations->item( myIterator, 0 ) && ( myAttrs[i].toString().startsWith( tableFileTypeAssociations->item( myIterator, 0 )->text() + ":", Qt::CaseInsensitive ) || myAttrs[i].toString().endsWith( tableFileTypeAssociations->item( myIterator, 0 )->text(), Qt::CaseInsensitive ) ) )
+      if ( tableFileTypeAssociations->item( myIterator, 0 ) && ( myAttrs.at( i ).toString().startsWith( tableFileTypeAssociations->item( myIterator, 0 )->text() + ':', Qt::CaseInsensitive ) || myAttrs.at( i ).toString().endsWith( tableFileTypeAssociations->item( myIterator, 0 )->text(), Qt::CaseInsensitive ) ) )
       {
         myItem->setBackground( 1, QBrush( QColor( 183, 216, 125, 255 ) ) );
         break;
@@ -681,11 +681,8 @@ void eVisGenericEventBrowserGui::restoreDefaultOptions()
  */
 void eVisGenericEventBrowserGui::setBasePathToDataSource()
 {
-  //Noticed some strangeness here while cleaning up for migration to the QGIS trunk - PJE 2009-07-01
-  //TODO: The check for windows paths not longer does anything, remove or fix
-
   int myPathMarker = 0;
-  bool isWindows = false;
+
   QString mySourceUri = mDataProvider->dataSourceUri();
   //Check to see which way the directory symbol goes, I think this is actually unnecessary in qt
   if ( mySourceUri.contains( '/' ) )
@@ -701,22 +698,19 @@ void eVisGenericEventBrowserGui::setBasePathToDataSource()
   mySourceUri.truncate( myPathMarker + 1 );
 
   //check for duplicate directory symbols when concatinating the two strings
-  if ( isWindows )
+#ifdef Q_OS_WIN
+  mySourceUri.replace( "\\\\", "\\" );
+#else
+  if ( mySourceUri.startsWith( "http://", Qt::CaseInsensitive ) )
   {
-    mySourceUri.replace( "\\\\", "\\" );
+    mySourceUri.replace( "//", "/" );
+    mySourceUri.replace( "http:/", "http://", Qt::CaseInsensitive );
   }
   else
   {
-    if ( mySourceUri.startsWith( "http://", Qt::CaseInsensitive ) )
-    {
-      mySourceUri.replace( "//", "/" );
-      mySourceUri.replace( "http:/", "http://", Qt::CaseInsensitive );
-    }
-    else
-    {
-      mySourceUri.replace( "//", "/" );
-    }
+    mySourceUri.replace( "//", "/" );
   }
+#endif
 
   leBasePath->setText( mySourceUri );
 }
@@ -741,7 +735,7 @@ void eVisGenericEventBrowserGui::launchExternalApplication( QTreeWidgetItem * th
     bool startsWithExtension = false;
     while ( myIterator < tableFileTypeAssociations->rowCount() )
     {
-      if ( theItem->text( theColumn ).startsWith( tableFileTypeAssociations->item( myIterator, 0 )->text() + ":", Qt::CaseInsensitive ) )
+      if ( theItem->text( theColumn ).startsWith( tableFileTypeAssociations->item( myIterator, 0 )->text() + ':', Qt::CaseInsensitive ) )
       {
         startsWithExtension = true;
         break;
@@ -762,7 +756,7 @@ void eVisGenericEventBrowserGui::launchExternalApplication( QTreeWidgetItem * th
       QString myDocument = theItem->text( theColumn );
       if ( startsWithExtension )
       {
-        myDocument = theItem->text( theColumn ).remove( tableFileTypeAssociations->item( myIterator, 0 )->text() + ":", Qt::CaseInsensitive );
+        myDocument = theItem->text( theColumn ).remove( tableFileTypeAssociations->item( myIterator, 0 )->text() + ':', Qt::CaseInsensitive );
       }
 
       if ( "" != myApplication )
@@ -848,12 +842,12 @@ void eVisGenericEventBrowserGui::on_cboxEventImagePathField_currentIndexChanged(
     if ( 0 == myFeature )
       return;
 
-    const QgsAttributes& myAttrs = myFeature->attributes();
+    QgsAttributes myAttrs = myFeature->attributes();
     for ( int i = 0 ; i < myAttrs.count(); ++i )
     {
-      if ( myFields[i].name() == cboxEventImagePathField->currentText() )
+      if ( myFields.at( i ).name() == cboxEventImagePathField->currentText() )
       {
-        mEventImagePath = myAttrs[i].toString();
+        mEventImagePath = myAttrs.at( i ).toString();
       }
     }
   }
@@ -876,12 +870,12 @@ void eVisGenericEventBrowserGui::on_cboxCompassBearingField_currentIndexChanged(
     if ( 0 == myFeature )
       return;
 
-    const QgsAttributes& myAttrs = myFeature->attributes();
+    QgsAttributes myAttrs = myFeature->attributes();
     for ( int i = 0; i < myAttrs.count(); ++i )
     {
       if ( myFields[i].name() == cboxCompassBearingField->currentText() )
       {
-        mCompassBearing = myAttrs[i].toDouble();
+        mCompassBearing = myAttrs.at( i ).toDouble();
       }
     }
   }
@@ -904,12 +898,12 @@ void eVisGenericEventBrowserGui::on_cboxCompassOffsetField_currentIndexChanged( 
     if ( 0 == myFeature )
       return;
 
-    const QgsAttributes& myAttrs = myFeature->attributes();
+    QgsAttributes myAttrs = myFeature->attributes();
     for ( int i = 0; i < myAttrs.count(); ++i )
     {
       if ( myFields[i].name() == cboxCompassOffsetField->currentText() )
       {
-        mCompassOffset = myAttrs[i].toDouble();
+        mCompassOffset = myAttrs.at( i ).toDouble();
       }
     }
   }
@@ -978,7 +972,7 @@ void eVisGenericEventBrowserGui::on_dsboxCompassOffset_valueChanged( double theV
  * Slot called the text in leBasePath is set or changed
  * @param theText - The new base path
  */
-void eVisGenericEventBrowserGui::on_leBasePath_textChanged( QString theText )
+void eVisGenericEventBrowserGui::on_leBasePath_textChanged( const QString& theText )
 {
   mConfiguration.setBasePath( theText );
 }
@@ -1132,7 +1126,7 @@ void eVisGenericEventBrowserGui::renderSymbol( QPainter* thePainter )
     if ( 0 == myFeature )
       return;
 
-    QgsPoint myPoint = myFeature->geometry()->asPoint();
+    QgsPoint myPoint = myFeature->constGeometry()->asPoint();
     myPoint = mCanvas->mapSettings().layerToMapCoordinates( mVectorLayer, myPoint );
 
     mCanvas->getCoordinateTransform()->transform( &myPoint );

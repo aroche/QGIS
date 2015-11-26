@@ -47,8 +47,10 @@
 #include "qgscursors.h"
 #include "qgscomposerutils.h"
 
-QgsComposerView::QgsComposerView( QWidget* parent, const char* name, Qt::WindowFlags f )
+QgsComposerView::QgsComposerView( QWidget* parent, const char* name, const Qt::WindowFlags& f )
     : QGraphicsView( parent )
+    , mCurrentTool( Select )
+    , mPreviousTool( Select )
     , mRubberBandItem( 0 )
     , mRubberBandLineItem( 0 )
     , mMoveContentItem( 0 )
@@ -935,12 +937,12 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
       {
         QgsComposerHtml* composerHtml = new QgsComposerHtml( composition(), true );
         QgsAddRemoveMultiFrameCommand* command = new QgsAddRemoveMultiFrameCommand( QgsAddRemoveMultiFrameCommand::Added,
-            composerHtml, composition(), tr( "Html item added" ) );
+            composerHtml, composition(), tr( "HTML item added" ) );
         composition()->undoStack()->push( command );
         QgsComposerFrame* frame = new QgsComposerFrame( composition(), composerHtml, mRubberBandItem->transform().dx(),
             mRubberBandItem->transform().dy(), mRubberBandItem->rect().width(),
             mRubberBandItem->rect().height() );
-        composition()->beginMultiFrameCommand( composerHtml, tr( "Html frame added" ) );
+        composition()->beginMultiFrameCommand( composerHtml, tr( "HTML frame added" ) );
         composerHtml->addFrame( frame );
         composition()->endMultiFrameCommand();
 
@@ -951,6 +953,7 @@ void QgsComposerView::mouseReleaseEvent( QMouseEvent* e )
         removeRubberBand();
         emit actionFinished();
       }
+      break;
     default:
       break;
   }
@@ -1378,7 +1381,7 @@ void QgsComposerView::keyPressEvent( QKeyEvent * e )
     {
       //both control and space pressed
       //set cursor to zoom in/out depending on shift key status
-      QPixmap myZoomQPixmap = QPixmap(( const char ** )( e->modifiers() & Qt::ShiftModifier ? zoom_out : zoom_in ) );
+      QPixmap myZoomQPixmap = QPixmap(( const char ** )(( e->modifiers() & Qt::ShiftModifier ) ? zoom_out : zoom_in ) );
       QCursor zoomCursor = QCursor( myZoomQPixmap, 7, 7 );
       viewport()->setCursor( zoomCursor );
     }
@@ -1413,7 +1416,7 @@ void QgsComposerView::keyPressEvent( QKeyEvent * e )
       mPreviousTool = mCurrentTool;
       setCurrentTool( Zoom );
       //set cursor to zoom in/out depending on shift key status
-      QPixmap myZoomQPixmap = QPixmap(( const char ** )( e->modifiers() & Qt::ShiftModifier ? zoom_out : zoom_in ) );
+      QPixmap myZoomQPixmap = QPixmap(( const char ** )(( e->modifiers() & Qt::ShiftModifier ) ? zoom_out : zoom_in ) );
       QCursor zoomCursor = QCursor( myZoomQPixmap, 7, 7 );
       viewport()->setCursor( zoomCursor );
       return;
@@ -1425,7 +1428,7 @@ void QgsComposerView::keyPressEvent( QKeyEvent * e )
     //using the zoom tool, respond to changes in shift key status and update mouse cursor accordingly
     if ( ! e->isAutoRepeat() )
     {
-      QPixmap myZoomQPixmap = QPixmap(( const char ** )( e->modifiers() & Qt::ShiftModifier ? zoom_out : zoom_in ) );
+      QPixmap myZoomQPixmap = QPixmap(( const char ** )(( e->modifiers() & Qt::ShiftModifier ) ? zoom_out : zoom_in ) );
       QCursor zoomCursor = QCursor( myZoomQPixmap, 7, 7 );
       viewport()->setCursor( zoomCursor );
     }
@@ -1530,7 +1533,7 @@ void QgsComposerView::keyReleaseEvent( QKeyEvent * e )
     //if zoom tool is active, respond to changes in the shift key status and update cursor accordingly
     if ( ! e->isAutoRepeat() )
     {
-      QPixmap myZoomQPixmap = QPixmap(( const char ** )( e->modifiers() & Qt::ShiftModifier ? zoom_out : zoom_in ) );
+      QPixmap myZoomQPixmap = QPixmap(( const char ** )(( e->modifiers() & Qt::ShiftModifier ) ? zoom_out : zoom_in ) );
       QCursor zoomCursor = QCursor( myZoomQPixmap, 7, 7 );
       viewport()->setCursor( zoomCursor );
     }
@@ -1723,13 +1726,13 @@ void QgsComposerView::paintEvent( QPaintEvent* event )
 
 void QgsComposerView::hideEvent( QHideEvent* e )
 {
-  emit( composerViewHide( this ) );
+  emit composerViewHide( this );
   e->ignore();
 }
 
 void QgsComposerView::showEvent( QShowEvent* e )
 {
-  emit( composerViewShow( this ) );
+  emit composerViewShow( this );
   e->ignore();
 }
 

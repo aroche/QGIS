@@ -25,6 +25,7 @@
 #include <qwt_plot_curve.h>
 #if (WITH_QWTPOLAR)
 #include <qwt_polar_plot.h>
+#include <qwt_polar_grid.h>
 #include <qwt_polar_marker.h>
 #endif
 
@@ -36,7 +37,7 @@ struct QgsGPSInformation;
 class QFile;
 class QColor;
 
-/**A dock widget that displays information from a GPS device and
+/** A dock widget that displays information from a GPS device and
  * allows the user to capture features using gps readings to
  * specify the geometry.*/
 class QgsGPSInformationWidget: public QWidget, private Ui::QgsGPSInformationWidgetBase
@@ -89,6 +90,7 @@ class QgsGPSInformationWidget: public QWidget, private Ui::QgsGPSInformationWidg
     QwtPlotCurve * mpCurve;
 #if (WITH_QWTPOLAR)
     QwtPolarPlot * mpSatellitesWidget;
+    QwtPolarGrid *mpSatellitesGrid;
     QList< QwtPolarMarker * > mMarkerList;
 #endif
     void createRubberBand();

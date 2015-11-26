@@ -24,7 +24,10 @@
 #include "qgscoloreffect.h"
 #include "qgsstylev2.h"
 #include "qgsvectorcolorrampv2.h"
+<<<<<<< HEAD
 #include "qgsvectorgradientcolorrampv2dialog.h"
+=======
+>>>>>>> upstream/master
 
 //
 // draw source
@@ -425,6 +428,12 @@ QgsGlowWidget::QgsGlowWidget( QWidget *parent )
   mRampComboBox->populate( QgsStyleV2::defaultStyle() );
   mRampComboBox->setShowGradientOnly( true );
   connect( mRampComboBox, SIGNAL( currentIndexChanged( int ) ), this, SLOT( applyColorRamp() ) );
+<<<<<<< HEAD
+=======
+  connect( mRampComboBox, SIGNAL( sourceRampEdited() ), this, SLOT( applyColorRamp() ) );
+  connect( mButtonEditRamp, SIGNAL( clicked() ), mRampComboBox, SLOT( editSourceRamp() ) );
+
+>>>>>>> upstream/master
   connect( radioSingleColor, SIGNAL( toggled( bool ) ), this, SLOT( colorModeChanged() ) );
 
   initGui();
@@ -467,7 +476,10 @@ void QgsGlowWidget::initGui()
   radioColorRamp->setChecked( mEffect->colorType() == QgsGlowEffect::ColorRamp );
   mRampComboBox->setEnabled( mEffect->colorType() == QgsGlowEffect::ColorRamp );
   mButtonEditRamp->setEnabled( mEffect->colorType() == QgsGlowEffect::ColorRamp );
+<<<<<<< HEAD
   mInvertCheckBox->setEnabled( mEffect->colorType() == QgsGlowEffect::ColorRamp );
+=======
+>>>>>>> upstream/master
   mDrawModeComboBox->setDrawMode( mEffect->drawMode() );
 
   blockSignals( false );
@@ -601,6 +613,7 @@ void QgsGlowWidget::applyColorRamp()
   emit changed();
 }
 
+<<<<<<< HEAD
 void QgsGlowWidget::on_mButtonEditRamp_clicked()
 {
   if ( !mEffect )
@@ -629,6 +642,8 @@ void QgsGlowWidget::on_mButtonEditRamp_clicked()
   }
 }
 
+=======
+>>>>>>> upstream/master
 //
 // transform
 //

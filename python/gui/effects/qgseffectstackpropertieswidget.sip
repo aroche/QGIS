@@ -121,7 +121,11 @@ class QgsEffectStackPropertiesDialog : QgsDialog
      * @param parent parent widget
      * @param f window flags
      */
+<<<<<<< HEAD
     QgsEffectStackPropertiesDialog( QgsEffectStack* stack, QWidget* parent /TransferThis/ = 0, Qt::WindowFlags f = 0 );
+=======
+    QgsEffectStackPropertiesDialog( QgsEffectStack* stack, QWidget* parent /TransferThis/ = 0, const Qt::WindowFlags& f = 0 );
+>>>>>>> upstream/master
     ~QgsEffectStackPropertiesDialog();
 
     /** Returns effect stack attached to the dialog
@@ -133,7 +137,11 @@ class QgsEffectStackPropertiesDialog : QgsDialog
      * @param picture preview picture
      */
     void setPreviewPicture( const QPicture& picture );
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> upstream/master
 };
 
 /** \ingroup gui

@@ -68,6 +68,7 @@ static const QString sPluginIcon = ":/heatmap/heatmap.png";
  */
 Heatmap::Heatmap( QgisInterface * theQgisInterface )
     : QgisPlugin( sName, sDescription, sCategory, sPluginVersion, sPluginType )
+    , mDecay( 1. )
     , mQGisIface( theQgisInterface )
     , mQActionPointer( 0 )
 {
@@ -201,7 +202,7 @@ void Heatmap::run()
     QgsDebugMsg( QString( "Radius Field index received: %1" ).arg( rField ) );
 
     // If not using map units, then calculate a conversion factor to convert the radii to map units
-    if ( d.radiusUnit() == HeatmapGui::Meters )
+    if ( d.radiusUnit() == HeatmapGui::LayerUnits )
     {
       radiusToMapUnits = mapUnitsOf( 1, inputLayer->crs() );
     }
@@ -224,7 +225,8 @@ void Heatmap::run()
   int totalFeatures = inputLayer->featureCount();
   int counter = 0;
 
-  QProgressDialog p( tr( "Creating heatmap" ), tr( "Abort" ), 0, totalFeatures, mQGisIface->mainWindow() );
+  QProgressDialog p( tr( "Rendering heatmap..." ), tr( "Abort" ), 0, totalFeatures, mQGisIface->mainWindow() );
+  p.setWindowTitle( tr( "QGIS" ) );
   p.setWindowModality( Qt::ApplicationModal );
   p.show();
 
@@ -241,7 +243,7 @@ void Heatmap::run()
       break;
     }
 
-    QgsGeometry* featureGeometry = myFeature.geometry();
+    const QgsGeometry* featureGeometry = myFeature.constGeometry();
     if ( !featureGeometry )
     {
       continue;
@@ -362,9 +364,9 @@ void Heatmap::run()
  *
  */
 
-double Heatmap::mapUnitsOf( double meters, QgsCoordinateReferenceSystem layerCrs )
+double Heatmap::mapUnitsOf( double layerdist, const QgsCoordinateReferenceSystem& layerCrs )
 {
-  // Worker to transform metres input to mapunits
+  // Worker to transform layer input to mapunits
   QgsDistanceArea da;
   da.setSourceCrs( layerCrs.srsid() );
   da.setEllipsoid( layerCrs.ellipsoidAcronym() );
@@ -372,7 +374,7 @@ double Heatmap::mapUnitsOf( double meters, QgsCoordinateReferenceSystem layerCrs
   {
     da.setEllipsoidalMode( true );
   }
-  return meters / da.measureLine( QgsPoint( 0.0, 0.0 ), QgsPoint( 0.0, 1.0 ) );
+  return layerdist / da.measureLine( QgsPoint( 0.0, 0.0 ), QgsPoint( 0.0, 1.0 ) );
 }
 
 int Heatmap::bufferSize( double radius, double cellsize )
@@ -443,7 +445,7 @@ double Heatmap::quarticKernel( const double distance, const int bandwidth, const
     case Heatmap::Scaled:
     {
       // Normalizing constant
-      double k = outputType == Heatmap::Scaled ? 116. / ( 5. * M_PI * pow(( double )bandwidth, 2 ) ) : 1.0;
+      double k = 116. / ( 5. * M_PI * pow(( double )bandwidth, 2 ) );
 
       // Derived from Wand and Jones (1995), p. 175
       return k * ( 15. / 16. ) * pow( 1. - pow( distance / ( double )bandwidth, 2 ), 2 );
@@ -460,7 +462,7 @@ double Heatmap::triweightKernel( const double distance, const int bandwidth, con
     case Heatmap::Scaled:
     {
       // Normalizing constant
-      double k = outputType == Heatmap::Scaled ? 128. / ( 35. * M_PI * pow(( double )bandwidth, 2 ) ) : 1.0;
+      double k = 128. / ( 35. * M_PI * pow(( double )bandwidth, 2 ) );
 
       // Derived from Wand and Jones (1995), p. 175
       return k * ( 35. / 32. ) * pow( 1. - pow( distance / ( double )bandwidth, 2 ), 3 );
@@ -477,7 +479,7 @@ double Heatmap::epanechnikovKernel( const double distance, const int bandwidth, 
     case Heatmap::Scaled:
     {
       // Normalizing constant
-      double k = outputType == Heatmap::Scaled ? 8. / ( 3. * M_PI * pow(( double )bandwidth, 2 ) ) : 1.0;
+      double k = 8. / ( 3. * M_PI * pow(( double )bandwidth, 2 ) );
 
       // Derived from Wand and Jones (1995), p. 175
       return k * ( 3. / 4. ) * ( 1. - pow( distance / ( double )bandwidth, 2 ) );

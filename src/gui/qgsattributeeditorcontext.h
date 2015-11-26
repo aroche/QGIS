@@ -3,7 +3,7 @@
      --------------------------------------
     Date                 : 30.7.2013
     Copyright            : (C) 2013 Matthias Kuhn
-    Email                : matthias dot kuhn at gmx dot ch
+    Email                : matthias at opengis dot ch
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -55,6 +55,7 @@ class GUI_EXPORT QgsAttributeEditorContext
         , mLayer( 0 )
         , mVectorLayerTools( 0 )
         , mRelationMode( Undefined )
+        , mFormMode( Embed )
     {}
 
     QgsAttributeEditorContext( const QgsAttributeEditorContext& parentContext, FormMode formMode )

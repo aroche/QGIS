@@ -184,7 +184,11 @@ class GUI_EXPORT QgsGlowWidget : public QgsPaintEffectWidget, private Ui::Widget
     void on_mBlurRadiusSpnBx_valueChanged( int value );
     void on_mTranspSlider_valueChanged( int value );
     void applyColorRamp();
+<<<<<<< HEAD
     void on_mButtonEditRamp_clicked();
+=======
+
+>>>>>>> upstream/master
 };
 
 #include "ui_widget_transform.h"

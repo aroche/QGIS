@@ -37,6 +37,10 @@ from processing.tools.system import isWindows
 from processing.algs.gdal.OgrAlgorithm import OgrAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
 class Ogr2OgrBuffer(OgrAlgorithm):
 
     OUTPUT_LAYER = 'OUTPUT_LAYER'
@@ -49,6 +53,7 @@ class Ogr2OgrBuffer(OgrAlgorithm):
     OPTIONS = 'OPTIONS'
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Buffer vectors'
         self.group = '[OGR] Geoprocessing'
 
@@ -72,6 +77,31 @@ class Ogr2OgrBuffer(OgrAlgorithm):
         self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Output layer')))
 
     def processAlgorithm(self, progress):
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Buffer vectors')
+        self.group, self.i18n_group = self.trAlgorithm('[OGR] Geoprocessing')
+
+        self.addParameter(ParameterVector(self.INPUT_LAYER,
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY], False))
+        self.addParameter(ParameterString(self.GEOMETRY,
+                                          self.tr('Geometry column name ("geometry" for Shapefiles, may be different for other formats)'),
+                                          'geometry', optional=False))
+        self.addParameter(ParameterString(self.DISTANCE,
+                                          self.tr('Buffer distance'), '1000', optional=False))
+        self.addParameter(ParameterBoolean(self.DISSOLVEALL,
+                                           self.tr('Dissolve all results'), False))
+        self.addParameter(ParameterTableField(self.FIELD,
+                                              self.tr('Dissolve by attribute'), self.INPUT_LAYER, optional=True))
+        self.addParameter(ParameterBoolean(self.MULTI,
+                                           self.tr('Output as singlepart geometries (only used when dissolving by attribute)'), False))
+        self.addParameter(ParameterString(self.OPTIONS,
+                                          self.tr('Additional creation options (see ogr2ogr manual)'),
+                                          '', optional=True))
+
+        self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Buffer')))
+
+    def getConsoleCommands(self):
+>>>>>>> upstream/master
         inLayer = self.getParameterValue(self.INPUT_LAYER)
         ogrLayer = self.ogrConnectionString(inLayer)[1:-1]
         layername = "'" + self.ogrLayerName(inLayer) + "'"
@@ -92,13 +122,20 @@ class Ogr2OgrBuffer(OgrAlgorithm):
         arguments.append(ogrLayer)
         arguments.append(self.ogrLayerName(inLayer))
         if dissolveall or field != 'None':
+<<<<<<< HEAD
            arguments.append('-dialect sqlite -sql "SELECT ST_Union(ST_Buffer(')
         else:
            arguments.append('-dialect sqlite -sql "SELECT ST_Buffer(')
+=======
+            arguments.append('-dialect sqlite -sql "SELECT ST_Union(ST_Buffer(')
+        else:
+            arguments.append('-dialect sqlite -sql "SELECT ST_Buffer(')
+>>>>>>> upstream/master
         arguments.append(geometry)
         arguments.append(',')
         arguments.append(distance)
         if dissolveall or field != 'None':
+<<<<<<< HEAD
            arguments.append(')),*')
         else:
            arguments.append('),*')
@@ -111,6 +148,20 @@ class Ogr2OgrBuffer(OgrAlgorithm):
         arguments.append('"')
         if field != 'None' and multi:
            arguments.append('-explodecollections')
+=======
+            arguments.append(')),*')
+        else:
+            arguments.append('),*')
+        arguments.append('FROM')
+        arguments.append(layername)
+        if field != 'None':
+            arguments.append('GROUP')
+            arguments.append('BY')
+            arguments.append(field)
+        arguments.append('"')
+        if field != 'None' and multi:
+            arguments.append('-explodecollections')
+>>>>>>> upstream/master
 
         if len(options) > 0:
             arguments.append(options)
@@ -122,4 +173,11 @@ class Ogr2OgrBuffer(OgrAlgorithm):
         else:
             commands = ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]
 
+<<<<<<< HEAD
         GdalUtils.runGdal(commands, progress)
+=======
+        return commands
+
+    def commandName(self):
+        return "ogr2ogr"
+>>>>>>> upstream/master

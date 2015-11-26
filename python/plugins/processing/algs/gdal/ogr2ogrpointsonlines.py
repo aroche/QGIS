@@ -36,6 +36,10 @@ from processing.tools.system import isWindows
 from processing.algs.gdal.OgrAlgorithm import OgrAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
 class Ogr2OgrPointsOnLines(OgrAlgorithm):
 
     OUTPUT_LAYER = 'OUTPUT_LAYER'
@@ -45,6 +49,7 @@ class Ogr2OgrPointsOnLines(OgrAlgorithm):
     OPTIONS = 'OPTIONS'
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Create points along lines'
         self.group = '[OGR] Geoprocessing'
 
@@ -62,6 +67,25 @@ class Ogr2OgrPointsOnLines(OgrAlgorithm):
         self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Output layer')))
 
     def processAlgorithm(self, progress):
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Create points along lines')
+        self.group, self.i18n_group = self.trAlgorithm('[OGR] Geoprocessing')
+
+        self.addParameter(ParameterVector(self.INPUT_LAYER,
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_LINE], False))
+        self.addParameter(ParameterString(self.GEOMETRY,
+                                          self.tr('Geometry column name ("geometry" for Shapefiles, may be different for other formats)'),
+                                          'geometry', optional=False))
+        self.addParameter(ParameterNumber(self.DISTANCE,
+                                          self.tr('Distance from line start represented as fraction of line length'), 0, 1, 0.5))
+        self.addParameter(ParameterString(self.OPTIONS,
+                                          self.tr('Additional creation options (see ogr2ogr manual)'),
+                                          '', optional=True))
+
+        self.addOutput(OutputVector(self.OUTPUT_LAYER, self.tr('Points along lines')))
+
+    def getConsoleCommands(self):
+>>>>>>> upstream/master
         inLayer = self.getParameterValue(self.INPUT_LAYER)
         ogrLayer = self.ogrConnectionString(inLayer)[1:-1]
         layername = "'" + self.ogrLayerName(inLayer) + "'"
@@ -98,4 +122,11 @@ class Ogr2OgrPointsOnLines(OgrAlgorithm):
         else:
             commands = ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]
 
+<<<<<<< HEAD
         GdalUtils.runGdal(commands, progress)
+=======
+        return commands
+
+    def commandName(self):
+        return "ogr2ogr"
+>>>>>>> upstream/master

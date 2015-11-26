@@ -24,6 +24,7 @@ const QString QgsFeatureRequest::AllAttributes = QString( "#!allattributes!#" );
 
 QgsFeatureRequest::QgsFeatureRequest()
     : mFilter( FilterNone )
+    , mFilterFid( -1 )
     , mFilterExpression( 0 )
     , mFlags( 0 )
 {
@@ -40,14 +41,17 @@ QgsFeatureRequest::QgsFeatureRequest( QgsFeatureId fid )
 QgsFeatureRequest::QgsFeatureRequest( const QgsRectangle& rect )
     : mFilter( FilterRect )
     , mFilterRect( rect )
+    , mFilterFid( -1 )
     , mFilterExpression( 0 )
     , mFlags( 0 )
 {
 }
 
-QgsFeatureRequest::QgsFeatureRequest( const QgsExpression& expr )
+QgsFeatureRequest::QgsFeatureRequest( const QgsExpression& expr, const QgsExpressionContext &context )
     : mFilter( FilterExpression )
+    , mFilterFid( -1 )
     , mFilterExpression( new QgsExpression( expr.expression() ) )
+    , mExpressionContext( context )
     , mFlags( 0 )
 {
 }
@@ -72,6 +76,7 @@ QgsFeatureRequest& QgsFeatureRequest::operator=( const QgsFeatureRequest & rh )
   {
     mFilterExpression = 0;
   }
+  mExpressionContext = rh.mExpressionContext;
   mAttrs = rh.mAttrs;
   mSimplifyMethod = rh.mSimplifyMethod;
   return *this;
@@ -84,7 +89,8 @@ QgsFeatureRequest::~QgsFeatureRequest()
 
 QgsFeatureRequest& QgsFeatureRequest::setFilterRect( const QgsRectangle& rect )
 {
-  mFilter = FilterRect;
+  if ( mFilter == FilterNone )
+    mFilter = FilterRect;
   mFilterRect = rect;
   return *this;
 }
@@ -96,7 +102,7 @@ QgsFeatureRequest& QgsFeatureRequest::setFilterFid( QgsFeatureId fid )
   return *this;
 }
 
-QgsFeatureRequest&QgsFeatureRequest::setFilterFids( QgsFeatureIds fids )
+QgsFeatureRequest&QgsFeatureRequest::setFilterFids( const QgsFeatureIds& fids )
 {
   mFilter = FilterFids;
   mFilterFids = fids;
@@ -111,7 +117,26 @@ QgsFeatureRequest& QgsFeatureRequest::setFilterExpression( const QString& expres
   return *this;
 }
 
-QgsFeatureRequest& QgsFeatureRequest::setFlags( QgsFeatureRequest::Flags flags )
+QgsFeatureRequest&QgsFeatureRequest::combineFilterExpression( const QString& expression )
+{
+  if ( mFilterExpression )
+  {
+    setFilterExpression( QString( "(%1) AND (%2)" ).arg( mFilterExpression->expression(), expression ) );
+  }
+  else
+  {
+    setFilterExpression( expression );
+  }
+  return *this;
+}
+
+QgsFeatureRequest &QgsFeatureRequest::setExpressionContext( const QgsExpressionContext &context )
+{
+  mExpressionContext = context;
+  return *this;
+}
+
+QgsFeatureRequest& QgsFeatureRequest::setFlags( const QgsFeatureRequest::Flags& flags )
 {
   mFlags = flags;
   return *this;
@@ -135,7 +160,7 @@ QgsFeatureRequest& QgsFeatureRequest::setSubsetOfAttributes( const QStringList& 
   mFlags |= SubsetOfAttributes;
   mAttrs.clear();
 
-  foreach ( const QString& attrName, attrNames )
+  Q_FOREACH ( const QString& attrName, attrNames )
   {
     int attrNum = fields.fieldNameIndex( attrName );
     if ( attrNum != -1 && !mAttrs.contains( attrNum ) )
@@ -160,7 +185,7 @@ bool QgsFeatureRequest::acceptFeature( const QgsFeature& feature )
       break;
 
     case QgsFeatureRequest::FilterRect:
-      if ( feature.geometry() && feature.geometry()->intersects( mFilterRect ) )
+      if ( feature.constGeometry() && feature.constGeometry()->intersects( mFilterRect ) )
         return true;
       else
         return false;
@@ -174,7 +199,8 @@ bool QgsFeatureRequest::acceptFeature( const QgsFeature& feature )
       break;
 
     case QgsFeatureRequest::FilterExpression:
-      if ( mFilterExpression->evaluate( feature ).toBool() )
+      mExpressionContext.setFeature( feature );
+      if ( mFilterExpression->evaluate( &mExpressionContext ).toBool() )
         return true;
       else
         return false;

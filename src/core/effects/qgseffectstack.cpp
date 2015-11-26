@@ -100,7 +100,15 @@ void QgsEffectStack::draw( QgsRenderContext &context )
     QPicture *resultPic = new QPicture();
     QPainter p( resultPic );
     context.setPainter( &p );
+<<<<<<< HEAD
     effect->render( *pic, context );
+=======
+    //effect stack has it's own handling of the QPicture DPI issue, so
+    //we disable QgsPaintEffect's internal workaround
+    effect->requiresQPainterDpiFix = false;
+    effect->render( *pic, context );
+    effect->requiresQPainterDpiFix = true;
+>>>>>>> upstream/master
     p.end();
 
     results << resultPic;
@@ -113,7 +121,10 @@ void QgsEffectStack::draw( QgsRenderContext &context )
   sourcePic = 0;
 
   context.setPainter( destPainter );
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
   //then, we render all the results in the opposite order
   for ( int i = 0; i < mEffectList.count(); ++i )
   {
@@ -125,13 +136,25 @@ void QgsEffectStack::draw( QgsRenderContext &context )
     QPicture* pic = results.takeLast();
     if ( mEffectList[i]->drawMode() != QgsPaintEffect::Modifier )
     {
+<<<<<<< HEAD
       context.painter()->drawPicture( 0, 0, *pic );
+=======
+      context.painter()->save();
+      fixQPictureDpi( context.painter() );
+      context.painter()->drawPicture( 0, 0, *pic );
+      context.painter()->restore();
+
+>>>>>>> upstream/master
     }
     delete pic;
   }
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsEffectStack::clone() const
+=======
+QgsEffectStack* QgsEffectStack::clone() const
+>>>>>>> upstream/master
 {
   return new QgsEffectStack( *this );
 }
@@ -149,7 +172,11 @@ bool QgsEffectStack::saveProperties( QDomDocument &doc, QDomElement &element ) c
   effectElement.setAttribute( QString( "enabled" ), mEnabled );
 
   bool ok = true;
+<<<<<<< HEAD
   foreach ( QgsPaintEffect* effect, mEffectList )
+=======
+  Q_FOREACH ( QgsPaintEffect* effect, mEffectList )
+>>>>>>> upstream/master
   {
     if ( effect )
       ok = ok && effect->saveProperties( doc, effectElement );

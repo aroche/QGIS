@@ -30,7 +30,7 @@
 static const QString TEXT_PROVIDER_KEY = "memory";
 static const QString TEXT_PROVIDER_DESCRIPTION = "Memory provider";
 
-QgsMemoryProvider::QgsMemoryProvider( QString uri )
+QgsMemoryProvider::QgsMemoryProvider( const QString& uri )
     : QgsVectorDataProvider( uri )
     , mSpatialIndex( 0 )
 {
@@ -175,8 +175,10 @@ QgsAbstractFeatureSource* QgsMemoryProvider::featureSource() const
   return new QgsMemoryFeatureSource( this );
 }
 
-QString QgsMemoryProvider::dataSourceUri() const
+QString QgsMemoryProvider::dataSourceUri( bool expandAuthConfig ) const
 {
+  Q_UNUSED( expandAuthConfig )
+
   QUrl uri( "memory" );
   QString geometry;
   switch ( mWkbType )
@@ -355,7 +357,9 @@ bool QgsMemoryProvider::addAttributes( const QList<QgsField> &attributes )
     for ( QgsFeatureMap::iterator fit = mFeatures.begin(); fit != mFeatures.end(); ++fit )
     {
       QgsFeature& f = fit.value();
-      f.attributes().append( QVariant() );
+      QgsAttributes attr = f.attributes();
+      attr.append( QVariant() );
+      f.setAttributes( attr );
     }
   }
   return true;
@@ -375,7 +379,9 @@ bool QgsMemoryProvider::deleteAttributes( const QgsAttributeIds& attributes )
     for ( QgsFeatureMap::iterator fit = mFeatures.begin(); fit != mFeatures.end(); ++fit )
     {
       QgsFeature& f = fit.value();
-      f.attributes().remove( idx );
+      QgsAttributes attr = f.attributes();
+      attr.remove( idx );
+      f.setAttributes( attr );
     }
   }
   return true;
@@ -425,7 +431,7 @@ QString QgsMemoryProvider::subsetString()
   return mSubsetString;
 }
 
-bool QgsMemoryProvider::setSubsetString( QString theSQL, bool updateFeatureCount )
+bool QgsMemoryProvider::setSubsetString( const QString& theSQL, bool updateFeatureCount )
 {
   Q_UNUSED( updateFeatureCount );
 
@@ -437,6 +443,8 @@ bool QgsMemoryProvider::setSubsetString( QString theSQL, bool updateFeatureCount
   }
 
   mSubsetString = theSQL;
+
+  emit dataChanged();
   return true;
 }
 
@@ -474,8 +482,8 @@ void QgsMemoryProvider::updateExtent()
     mExtent.setMinimal();
     Q_FOREACH ( const QgsFeature& feat, mFeatures )
     {
-      if ( feat.geometry() )
-        mExtent.unionRect( feat.geometry()->boundingBox() );
+      if ( feat.constGeometry() )
+        mExtent.unionRect( feat.constGeometry()->boundingBox() );
     }
   }
 }

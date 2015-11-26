@@ -15,7 +15,7 @@ bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsLayerTreeG
   QFile file( path );
   if ( !file.open( QIODevice::ReadOnly ) )
   {
-    errorMessage = QString( "Can not open file" );
+    errorMessage = QLatin1String( "Can not open file" );
     return false;
   }
 
@@ -35,7 +35,10 @@ bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsLayerTreeG
 
 bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsLayerTreeGroup *rootGroup, QString &errorMessage )
 {
-  QgsLayerTreeGroup* root = new QgsLayerTreeGroup;
+  Q_UNUSED( errorMessage );
+
+  QgsLayerTreeGroup *root = new QgsLayerTreeGroup();
+
   // We have to replace the IDs before we load them because it's too late once they are loaded
   QDomNodeList ids = doc.elementsByTagName( "id" );
   for ( int i = 0; i < ids.size(); ++i )
@@ -46,7 +49,7 @@ bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsLayerTreeGrou
     // Strip the date part because we will replace it.
     QString layername = oldid.left( oldid.length() - 17 );
     QDateTime dt = QDateTime::currentDateTime();
-    QString newid = layername + dt.toString( "yyyyMMddhhmmsszzz" );
+    QString newid = layername + dt.toString( "yyyyMMddhhmmsszzz" ) + QString::number( qrand() );
     idElem.firstChild().setNodeValue( newid );
     QDomNodeList treeLayerNodes = doc.elementsByTagName( "layer-tree-layer" );
 
@@ -73,12 +76,17 @@ bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsLayerTreeGrou
   QgsMapLayerRegistry::instance()->addMapLayers( layers, loadInLegend );
 
   QList<QgsLayerTreeNode*> nodes = root->children();
+  Q_FOREACH ( QgsLayerTreeNode *node, nodes )
+    root->takeChild( node );
+  delete root;
+
   rootGroup->insertChildNodes( -1, nodes );
+
   return true;
 
 }
 
-bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTreeNode*> selectedTreeNodes, QString &errorMessage )
+bool QgsLayerDefinition::exportLayerDefinition( QString path, const QList<QgsLayerTreeNode*>& selectedTreeNodes, QString &errorMessage )
 {
   if ( !path.endsWith( ".qlr" ) )
     path = path.append( ".qlr" );
@@ -89,9 +97,9 @@ bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTree
   QDomDocument doc( "qgis-layer-definition" );
   QDomElement qgiselm = doc.createElement( "qlr" );
   doc.appendChild( qgiselm );
-  QList<QgsLayerTreeNode*> nodes =  selectedTreeNodes;
+  QList<QgsLayerTreeNode*> nodes = selectedTreeNodes;
   QgsLayerTreeGroup* root = new QgsLayerTreeGroup;
-  foreach ( QgsLayerTreeNode* node, nodes )
+  Q_FOREACH ( QgsLayerTreeNode* node, nodes )
   {
     QgsLayerTreeNode* newnode = node->clone();
     root->addChildNode( newnode );
@@ -100,7 +108,7 @@ bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTree
 
   QDomElement layerselm = doc.createElement( "maplayers" );
   QList<QgsLayerTreeLayer*> layers = root->findLayers();
-  foreach ( QgsLayerTreeLayer* layer, layers )
+  Q_FOREACH ( QgsLayerTreeLayer* layer, layers )
   {
     QDomElement layerelm = doc.createElement( "maplayer" );
     layer->layer()->writeLayerXML( layerelm, doc, fileinfo.canonicalFilePath() );

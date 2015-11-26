@@ -55,7 +55,11 @@ QgsDataItemProviderRegistry::QgsDataItemProviderRegistry()
 {
   QStringList providersList = QgsProviderRegistry::instance()->providerList();
 
+<<<<<<< HEAD
   foreach ( QString key, providersList )
+=======
+  Q_FOREACH ( const QString& key, providersList )
+>>>>>>> upstream/master
   {
     QLibrary *library = QgsProviderRegistry::instance()->providerLibrary( key );
     if ( !library )
@@ -79,6 +83,15 @@ QgsDataItemProviderRegistry::QgsDataItemProviderRegistry()
   }
 }
 
+<<<<<<< HEAD
+=======
+QgsDataItemProviderRegistry* QgsDataItemProviderRegistry::instance()
+{
+  static QgsDataItemProviderRegistry sInstance;
+  return &sInstance;
+}
+
+>>>>>>> upstream/master
 QgsDataItemProviderRegistry::~QgsDataItemProviderRegistry()
 {
   qDeleteAll( mProviders );

@@ -195,8 +195,8 @@ void RgShortestPathWidget::onSelectFrontPoint()
 void RgShortestPathWidget::setFrontPoint( const QgsPoint& pt )
 {
   mPlugin->iface()->mapCanvas()->unsetMapTool( mFrontPointMapTool );
-  mFrontPointLineEdit->setText( QString( "(" ) + QString().setNum( pt.x() ) + QString( "," ) +
-                                QString().setNum( pt.y() ) + QString( ")" ) );
+  mFrontPointLineEdit->setText( QString( "(" ) + QString().setNum( pt.x() ) + QLatin1String( "," ) +
+                                QString().setNum( pt.y() ) + QLatin1String( ")" ) );
   mFrontPoint = pt;
 
   double mupp = mPlugin->iface()->mapCanvas()->getCoordinateTransform()->mapUnitsPerPixel() * 2;
@@ -219,8 +219,8 @@ void RgShortestPathWidget::setBackPoint( const QgsPoint& pt )
   mPlugin->iface()->mapCanvas()->unsetMapTool( mBackPointMapTool );
 
   mBackPoint = pt;
-  mBackPointLineEdit->setText( QString( "(" ) + QString().setNum( pt.x() ) + QString( "," ) +
-                               QString().setNum( pt.y() ) + QString( ")" ) );
+  mBackPointLineEdit->setText( QString( "(" ) + QString().setNum( pt.x() ) + QLatin1String( "," ) +
+                               QString().setNum( pt.y() ) + QLatin1String( ")" ) );
 
   double mupp = mPlugin->iface()->mapCanvas()->getCoordinateTransform()->mapUnitsPerPixel() * 2;
 
@@ -281,6 +281,18 @@ QgsGraph* RgShortestPathWidget::getPath( QgsPoint& p1, QgsPoint& p2 )
   QgsGraph *graph = builder.graph();
 
   int startVertexIdx = graph->findVertex( p1 );
+  if ( startVertexIdx < 0 )
+  {
+    mPlugin->iface()->messageBar()->pushMessage(
+      tr( "Cannot calculate path" ),
+      tr( "Could not find start vertex. Please check your input data." ),
+      QgsMessageBar::WARNING,
+      mPlugin->iface()->messageTimeout()
+    );
+
+    delete graph;
+    return NULL;
+  }
 
   int criterionNum = 0;
   if ( mCriterionName->currentIndex() > 0 )
@@ -305,6 +317,7 @@ QgsGraph* RgShortestPathWidget::getPath( QgsPoint& p1, QgsPoint& p2 )
 
   if ( shortestpathTree->findVertex( p2 ) == -1 )
   {
+    delete shortestpathTree;
     QMessageBox::critical( this, tr( "Path not found" ), tr( "Path not found" ) );
     return NULL;
   }
@@ -327,6 +340,9 @@ void RgShortestPathWidget::findingPath()
   QList< QgsPoint > p;
   while ( startVertexIdx != stopVertexIdx )
   {
+    if ( stopVertexIdx < 0 )
+      break;
+
     QgsGraphArcIdList l = path->vertex( stopVertexIdx ).inArc();
     if ( l.empty() )
       break;
@@ -398,6 +414,9 @@ void RgShortestPathWidget::exportPath()
   QgsPolyline p;
   while ( startVertexIdx != stopVertexIdx )
   {
+    if ( stopVertexIdx < 0 )
+      break;
+
     QgsGraphArcIdList l = path->vertex( stopVertexIdx ).inArc();
     if ( l.empty() )
       break;
@@ -412,7 +431,7 @@ void RgShortestPathWidget::exportPath()
   p.push_front( ct.transform( p1 ) );
 
   QgsFeature f;
-  f.initAttributes( vl->pendingFields().count() );
+  f.initAttributes( vl->fields().count() );
   f.setGeometry( QgsGeometry::fromPolyline( p ) );
   f.setAttribute( 0, cost / distanceUnit.multipler() );
   f.setAttribute( 1, time / timeUnit.multipler() );

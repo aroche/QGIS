@@ -17,6 +17,10 @@
 
 #include "qgspainteffectregistry.h"
 #include "qgspainteffect.h"
+<<<<<<< HEAD
+=======
+#include "qgseffectstack.h"
+>>>>>>> upstream/master
 #include <QObject>
 #include <QtTest/QtTest>
 
@@ -50,7 +54,11 @@ class TestQgsPaintEffectRegistry : public QObject
     void addEffect(); // check adding an effect to an empty registry
     void fetchEffects(); //check fetching effects
     void createEffect(); //check creating effect
+<<<<<<< HEAD
     void cleanUpRegistry();
+=======
+    void defaultStack(); //check creating/testing default stack
+>>>>>>> upstream/master
 
   private:
 
@@ -146,17 +154,40 @@ void TestQgsPaintEffectRegistry::createEffect()
   DummyPaintEffect* dummyEffect = dynamic_cast<DummyPaintEffect*>( effect );
   QVERIFY( dummyEffect );
   delete effect;
+<<<<<<< HEAD
   effect = 0;
+=======
+>>>>>>> upstream/master
 
   //try creating a bad effect
   effect = registry->createEffect( QString( "bad effect" ) );
   QVERIFY( !effect );
 }
 
+<<<<<<< HEAD
 void TestQgsPaintEffectRegistry::cleanUpRegistry()
 {
   QgsPaintEffectRegistry* registry = QgsPaintEffectRegistry::instance();
   registry->cleanup();
+=======
+void TestQgsPaintEffectRegistry::defaultStack()
+{
+  QgsPaintEffectRegistry* registry = QgsPaintEffectRegistry::instance();
+  QgsEffectStack* effect = static_cast<QgsEffectStack*>( registry->defaultStack() );
+  QVERIFY( registry->isDefaultStack( effect ) );
+  effect->effect( 1 )->setEnabled( true );
+  QVERIFY( !registry->isDefaultStack( effect ) );
+  effect->effect( 1 )->setEnabled( false );
+  effect->effect( 2 )->setEnabled( false ); //third effect should be enabled by default
+  QVERIFY( !registry->isDefaultStack( effect ) );
+  effect->effect( 2 )->setEnabled( true );
+  effect->appendEffect( new QgsEffectStack() );
+  QVERIFY( !registry->isDefaultStack( effect ) );
+  delete effect;
+  QgsPaintEffect* effect2 = new DummyPaintEffect();
+  QVERIFY( !registry->isDefaultStack( effect2 ) );
+  delete effect2;
+>>>>>>> upstream/master
 }
 
 QTEST_MAIN( TestQgsPaintEffectRegistry )

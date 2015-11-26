@@ -38,7 +38,7 @@
 #include <QGridLayout>
 #include <QPushButton>
 
-QgsColorButtonV2::QgsColorButtonV2( QWidget *parent, QString cdt, QgsColorSchemeRegistry* registry )
+QgsColorButtonV2::QgsColorButtonV2( QWidget *parent, const QString& cdt, QgsColorSchemeRegistry* registry )
     : QToolButton( parent )
     , mBehaviour( QgsColorButtonV2::ShowDialog )
     , mColorDialogTitle( cdt.isEmpty() ? tr( "Select Color" ) : cdt )
@@ -172,7 +172,12 @@ void QgsColorButtonV2::mousePressEvent( QMouseEvent *e )
     return;
   }
 
-  if ( e->button() == Qt::LeftButton )
+  if ( e->button() == Qt::RightButton )
+  {
+    QToolButton::showMenu();
+    return;
+  }
+  else if ( e->button() == Qt::LeftButton )
   {
     mDragStartPosition = e->pos();
   }
@@ -652,7 +657,7 @@ void QgsColorButtonV2::setAllowAlpha( const bool allowAlpha )
   mAllowAlpha = allowAlpha;
 }
 
-void QgsColorButtonV2::setColorDialogTitle( const QString title )
+void QgsColorButtonV2::setColorDialogTitle( const QString& title )
 {
   mColorDialogTitle = title;
 }
@@ -676,7 +681,7 @@ void QgsColorButtonV2::setBehaviour( const QgsColorButtonV2::Behaviour behaviour
   mBehaviour = behaviour;
 }
 
-void QgsColorButtonV2::setDefaultColor( const QColor color )
+void QgsColorButtonV2::setDefaultColor( const QColor& color )
 {
   mDefaultColor = color;
 }

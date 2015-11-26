@@ -276,11 +276,28 @@
  </widget>
  <customwidgets>
   <customwidget>
+<<<<<<< HEAD
+=======
+   <class>QgsColorButtonV2</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbuttonv2.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+>>>>>>> upstream/master
    <class>QgsDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qgsdoublespinbox.h</header>
   </customwidget>
   <customwidget>
+<<<<<<< HEAD
+=======
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+  </customwidget>
+  <customwidget>
+>>>>>>> upstream/master
    <class>QgsBlendModeComboBox</class>
    <extends>QComboBox</extends>
    <header>qgsblendmodecombobox.h</header>
@@ -291,6 +308,7 @@
    <header>qgseffectdrawmodecombobox.h</header>
   </customwidget>
   <customwidget>
+<<<<<<< HEAD
    <class>QgsColorButtonV2</class>
    <extends>QToolButton</extends>
    <header>qgscolorbuttonv2.h</header>
@@ -302,12 +320,29 @@
    <header>qgsspinbox.h</header>
   </customwidget>
   <customwidget>
+=======
+>>>>>>> upstream/master
    <class>QgsUnitSelectionWidget</class>
    <extends>QWidget</extends>
    <header>qgsunitselectionwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
+<<<<<<< HEAD
+=======
+ <tabstops>
+  <tabstop>mShadowOffsetAngleDial</tabstop>
+  <tabstop>mShadowOffsetAngleSpnBx</tabstop>
+  <tabstop>mShadowOffsetSpnBx</tabstop>
+  <tabstop>mOffsetUnitWidget</tabstop>
+  <tabstop>mShadowRadiuSpnBx</tabstop>
+  <tabstop>mShadowTranspSlider</tabstop>
+  <tabstop>mShadowTranspSpnBx</tabstop>
+  <tabstop>mShadowColorBtn</tabstop>
+  <tabstop>mShadowBlendCmbBx</tabstop>
+  <tabstop>mDrawModeComboBox</tabstop>
+ </tabstops>
+>>>>>>> upstream/master
  <resources/>
  <connections/>
 </ui>

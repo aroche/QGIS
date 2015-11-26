@@ -23,12 +23,15 @@
 
 
 QgsHueSaturationFilter::QgsHueSaturationFilter( QgsRasterInterface* input )
-    : QgsRasterInterface( input ),
-    mSaturation( 0 ),
-    mGrayscaleMode( QgsHueSaturationFilter::GrayscaleOff ),
-    mColorizeOn( false ),
-    mColorizeColor( QColor::fromRgb( 255, 128, 128 ) ),
-    mColorizeStrength( 100 )
+    : QgsRasterInterface( input )
+    , mSaturation( 0 )
+    , mSaturationScale( 1 )
+    , mGrayscaleMode( QgsHueSaturationFilter::GrayscaleOff )
+    , mColorizeOn( false )
+    , mColorizeColor( QColor::fromRgb( 255, 128, 128 ) )
+    , mColorizeH( 0 )
+    , mColorizeS( 50 )
+    , mColorizeStrength( 100 )
 {
 }
 
@@ -36,7 +39,7 @@ QgsHueSaturationFilter::~QgsHueSaturationFilter()
 {
 }
 
-QgsRasterInterface * QgsHueSaturationFilter::clone() const
+QgsHueSaturationFilter* QgsHueSaturationFilter::clone() const
 {
   QgsDebugMsg( "Entered hue/saturation filter" );
   QgsHueSaturationFilter * filter = new QgsHueSaturationFilter( 0 );
@@ -331,7 +334,7 @@ void QgsHueSaturationFilter::setSaturation( int saturation )
   mSaturationScale = (( double ) mSaturation / 100 ) + 1;
 }
 
-void QgsHueSaturationFilter::setColorizeColor( QColor colorizeColor )
+void QgsHueSaturationFilter::setColorizeColor( const QColor& colorizeColor )
 {
   mColorizeColor = colorizeColor;
 

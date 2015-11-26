@@ -45,6 +45,12 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
     {
       ActionData()
           : mIsValid( false )
+          , mAllResults( false )
+          , mIsExternalAction( false )
+          , mLayer( NULL )
+          , mFeatureId( 0 )
+          , mLevel( LayerLevel )
+          , mMapLayerAction( NULL )
       {}
 
       ActionData( QgsMapLayer* layer, QgsMapLayerAction* mapLayerAction = 0 )
@@ -52,6 +58,7 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
           , mAllResults( layer == 0 )
           , mIsExternalAction( mapLayerAction != 0 )
           , mLayer( layer )
+          , mFeatureId( 0 )
           , mLevel( LayerLevel )
           , mMapLayerAction( mapLayerAction )
       {}
@@ -127,7 +134,7 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
      * @param idResults the list of identify results to choose within
      * @param pos the position where the menu will be executed
      */
-    QList<QgsMapToolIdentify::IdentifyResult> exec( const QList<QgsMapToolIdentify::IdentifyResult> idResults, QPoint pos );
+    QList<QgsMapToolIdentify::IdentifyResult> exec( const QList<QgsMapToolIdentify::IdentifyResult>& idResults, QPoint pos );
 
   protected:
     virtual void closeEvent( QCloseEvent *e ) override;
@@ -152,7 +159,7 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
 
     //! adds a vector layer and its results in the menu being built
     //! if singleLayer is true, results will be displayed on the top level item (not in QMenu with the layer name)
-    void addVectorLayer( QgsVectorLayer* layer, const QList<QgsMapToolIdentify::IdentifyResult> results, bool singleLayer = false );
+    void addVectorLayer( QgsVectorLayer* layer, const QList<QgsMapToolIdentify::IdentifyResult>& results, bool singleLayer = false );
 
     //! get the lists of results corresponding to an action in the menu
     QList<QgsMapToolIdentify::IdentifyResult> results( QAction* action, bool& externalAction );

@@ -39,8 +39,13 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
     /** Color sources for the glow */
     enum GlowColorType
     {
+<<<<<<< HEAD
       SingleColor, /*< use a single color and fade the color to totally transparent */
       ColorRamp /*< use colors from a color ramp */
+=======
+      SingleColor, /*!< use a single color and fade the color to totally transparent */
+      ColorRamp /*!< use colors from a color ramp */
+>>>>>>> upstream/master
     };
 
     QgsGlowEffect();
@@ -243,7 +248,11 @@ class CORE_EXPORT QgsOuterGlowEffect : public QgsGlowEffect
     virtual ~QgsOuterGlowEffect();
 
     virtual QString type() const override { return QString( "outerGlow" ); }
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsOuterGlowEffect* clone() const override;
+>>>>>>> upstream/master
 
   protected:
 
@@ -274,7 +283,11 @@ class CORE_EXPORT QgsInnerGlowEffect : public QgsGlowEffect
     virtual ~QgsInnerGlowEffect();
 
     virtual QString type() const override { return QString( "innerGlow" ); }
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsInnerGlowEffect* clone() const override;
+>>>>>>> upstream/master
 
   protected:
 

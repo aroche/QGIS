@@ -31,19 +31,20 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
-#include "qgslogger.h"
 #include "qgsmapserviceexception.h"
 #include "qgssymbolv2.h"
 #include "qgslegendmodel.h"
 #include "qgscomposerlegenditem.h"
 #include "qgsrequesthandler.h"
 #include "qgsogcutils.h"
+#include "qgsaccesscontrol.h"
 
 #include <QImage>
 #include <QPainter>
 #include <QStringList>
 #include <QTextStream>
 #include <QDir>
+#include <QSharedPointer>
 
 //for printing
 #include "qgscomposition.h"
@@ -64,16 +65,43 @@ static const QString GML_NAMESPACE = "http://www.opengis.net/gml";
 static const QString OGC_NAMESPACE = "http://www.opengis.net/ogc";
 static const QString QGS_NAMESPACE = "http://www.qgis.org/gml";
 
-QgsWFSServer::QgsWFSServer( const QString& configFilePath, QMap<QString, QString> &parameters, QgsWFSProjectParser* cp,
-                            QgsRequestHandler* rh ): QgsOWSServer( configFilePath, parameters, rh ), mConfigParser( cp )
+QgsWFSServer::QgsWFSServer(
+  const QString& configFilePath
+  , QMap<QString, QString> &parameters
+  , QgsWFSProjectParser* cp
+  , QgsRequestHandler* rh
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+  , const QgsAccessControl* accessControl
+#endif
+)
+    : QgsOWSServer(
+      configFilePath
+      , parameters
+      , rh
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      , accessControl
+#endif
+    )
+    , mWithGeom( true )
+    , mConfigParser( cp )
+{
+}
+
+QgsWFSServer::QgsWFSServer()
+    : QgsOWSServer(
+      QString()
+      , QMap<QString, QString>()
+      , 0
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      , NULL
+#endif
+    )
+    , mWithGeom( true )
+    , mConfigParser( 0 )
 {
 }
 
 QgsWFSServer::~QgsWFSServer()
-{
-}
-
-QgsWFSServer::QgsWFSServer(): QgsOWSServer( QString(), QMap<QString, QString>(), 0 )
 {
 }
 
@@ -89,7 +117,7 @@ void QgsWFSServer::executeRequest()
   if ( request.isEmpty() )
   {
     //do some error handling
-    QgsDebugMsg( "unable to find 'REQUEST' parameter, exiting..." );
+    QgsMessageLog::logMessage( "unable to find 'REQUEST' parameter, exiting..." );
     mRequestHandler->setServiceException( QgsMapServiceException( "OperationNotSupported", "Please check the value of the REQUEST parameter" ) );
     return;
   }
@@ -106,7 +134,7 @@ void QgsWFSServer::executeRequest()
       mRequestHandler->setServiceException( ex );
       return;
     }
-    QgsDebugMsg( "Setting GetCapabilities response" );
+    QgsMessageLog::logMessage( "Setting GetCapabilities response" );
     mRequestHandler->setGetCapabilitiesResponse( capabilitiesDocument );
     return;
   }
@@ -122,7 +150,7 @@ void QgsWFSServer::executeRequest()
       mRequestHandler->setServiceException( ex );
       return;
     }
-    QgsDebugMsg( "Setting GetCapabilities response" );
+    QgsMessageLog::logMessage( "Setting GetCapabilities response" );
     mRequestHandler->setGetCapabilitiesResponse( describeDocument );
     return;
   }
@@ -153,7 +181,7 @@ void QgsWFSServer::executeRequest()
       mRequestHandler->setServiceException( ex );
       return;
     }
-    QgsDebugMsg( "Setting Transaction response" );
+    QgsMessageLog::logMessage( "Setting Transaction response" );
     mRequestHandler->setGetCapabilitiesResponse( transactionDocument );
     return;
   }
@@ -161,7 +189,7 @@ void QgsWFSServer::executeRequest()
 
 QDomDocument QgsWFSServer::getCapabilities()
 {
-  QgsDebugMsg( "Entering." );
+  QgsMessageLog::logMessage( "Entering." );
   QDomDocument doc;
 
   //wfs:WFS_Capabilities element
@@ -199,10 +227,14 @@ QDomDocument QgsWFSServer::getCapabilities()
   dcpTypeElement.appendChild( httpElement );
 
   //Prepare url
-  QString hrefString = mConfigParser->wfsServiceUrl();
-  if ( hrefString.isEmpty() )
+  QString hrefString;
+  if ( mConfigParser )
   {
-    hrefString = mConfigParser->serviceUrl();
+    hrefString = mConfigParser->wfsServiceUrl();
+    if ( hrefString.isEmpty() )
+    {
+      hrefString = mConfigParser->serviceUrl();
+    }
   }
   if ( hrefString.isEmpty() )
   {
@@ -302,7 +334,7 @@ QDomDocument QgsWFSServer::getCapabilities()
 
 QDomDocument QgsWFSServer::describeFeatureType()
 {
-  QgsDebugMsg( "Entering." );
+  QgsMessageLog::logMessage( "Entering." );
   QDomDocument doc;
 
   //xsd:schema
@@ -365,7 +397,7 @@ QDomDocument QgsWFSServer::describeFeatureType()
 
 int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format )
 {
-  QgsDebugMsg( "Info format is:" + format );
+  QgsMessageLog::logMessage( "Info format is:" + format );
 
   QStringList wfsLayersId = mConfigParser->wfsLayers();
 
@@ -381,6 +413,10 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
   long maxFeatures = -1;
   long featureCounter = 0;
   int layerPrec = 8;
+
+  QgsExpressionContext expressionContext;
+  expressionContext << QgsExpressionContextUtils::globalScope()
+  << QgsExpressionContextUtils::projectScope();
 
   QDomDocument doc;
   QString errorMsg;
@@ -423,6 +459,18 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
       QgsVectorLayer* layer = dynamic_cast<QgsVectorLayer*>( currentLayer );
       if ( layer && wfsLayersId.contains( layer->id() ) )
       {
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+        if ( !mAccessControl->layerReadPermission( currentLayer ) )
+        {
+          throw QgsMapServiceException( "Security", "Feature access permission denied" );
+        }
+
+        QMap<QString, QString> originalLayerFilters;
+        applyAccessControlLayerFilters( currentLayer, originalLayerFilters );
+#endif
+
+        expressionContext << QgsExpressionContextUtils::layerScope( layer );
+
         //is there alias info for this vector layer?
         QMap< int, QString > layerAliasInfo;
         const QMap< QString, QString >& aliasMap = layer->attributeAliases();
@@ -451,11 +499,10 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
         }
 
         QgsFeature feature;
-        QgsAttributeMap featureAttributes;
-        const QgsFields& fields = provider->fields();
 
         mWithGeom = true;
-        QgsAttributeList attrIndexes = provider->attributeIndexes();
+        //QgsAttributeList attrIndexes = provider->attributeIndexes();
+        QgsAttributeList attrIndexes = layer->pendingAllAttributesList();
 
         QDomNodeList queryChildNodes = queryElem.childNodes();
         if ( queryChildNodes.size() )
@@ -491,16 +538,28 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
 
         //map extent
         searchRect = layer->extent();
-        searchRect.set( searchRect.xMinimum() - 0.000001
-                        , searchRect.yMinimum() - 0.000001
-                        , searchRect.xMaximum() + 0.000001
-                        , searchRect.yMaximum() + 0.000001 );
+        searchRect.set( searchRect.xMinimum() - 1. / pow( 10., layerPrec )
+                        , searchRect.yMinimum() - 1. / pow( 10., layerPrec )
+                        , searchRect.xMaximum() + 1. / pow( 10., layerPrec )
+                        , searchRect.yMaximum() + 1. / pow( 10., layerPrec ) );
         layerCrs = layer->crs();
 
-        QgsFeatureIterator fit = layer->getFeatures(
-                                   QgsFeatureRequest()
-                                   .setFlags( QgsFeatureRequest::ExactIntersect | ( mWithGeom ? QgsFeatureRequest::NoFlags : QgsFeatureRequest::NoGeometry ) )
-                                   .setSubsetOfAttributes( attrIndexes ) );
+        QgsFeatureRequest fReq;
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+        fReq.setFlags( QgsFeatureRequest::ExactIntersect | ( mWithGeom ? QgsFeatureRequest::NoFlags : QgsFeatureRequest::NoGeometry ) );
+        mAccessControl->filterFeatures( layer, fReq );
+
+        QStringList attributes = QStringList();
+        foreach ( int idx, attrIndexes )
+        {
+          attributes.append( layer->pendingFields().field( idx ).name() );
+        }
+        fReq.setSubsetOfAttributes(
+          mAccessControl->layerAttributes( layer, attributes ),
+          layer->pendingFields() );
+#endif
+
+        QgsFeatureIterator fit = layer->getFeatures( fReq );
 
         long featCounter = 0;
         QDomNodeList filterNodes = queryElem.elementsByTagName( "Filter" );
@@ -577,19 +636,21 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
           }
           else
           {
-            QgsExpression *mFilter = QgsOgcUtils::expressionFromOgcFilter( filterElem );
-            if ( mFilter )
+            QSharedPointer<QgsExpression> filter( QgsOgcUtils::expressionFromOgcFilter( filterElem ) );
+            if ( filter )
             {
-              if ( mFilter->hasParserError() )
+              if ( filter->hasParserError() )
               {
-                throw QgsMapServiceException( "RequestNotWellFormed", mFilter->parserErrorString() );
+                throw QgsMapServiceException( "RequestNotWellFormed", filter->parserErrorString() );
               }
               while ( fit.nextFeature( feature ) && ( maxFeatures == -1 || featureCounter < maxFeat ) )
               {
-                QVariant res = mFilter->evaluate( &feature, fields );
-                if ( mFilter->hasEvalError() )
+                expressionContext.setFeature( feature );
+
+                QVariant res = filter->evaluate( &expressionContext );
+                if ( filter->hasEvalError() )
                 {
-                  throw QgsMapServiceException( "RequestNotWellFormed", mFilter->evalErrorString() );
+                  throw QgsMapServiceException( "RequestNotWellFormed", filter->evalErrorString() );
                 }
                 if ( res.toInt() != 0 )
                 {
@@ -616,6 +677,10 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
             ++featureCounter;
           }
         }
+
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+        restoreLayerFilters( originalLayerFilters );
+#endif
       }
       else
       {
@@ -623,6 +688,8 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
       }
 
     }
+
+    QgsMessageLog::logMessage( mErrors.join( "\n" ) );
 
     QgsMapLayerRegistry::instance()->removeAllMapLayers();
     if ( featureCounter == 0 )
@@ -651,7 +718,7 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
     featureIdOk = true;
     featureIdList = feature_id_it.value().split( "," );
     QStringList typeNameList;
-    foreach ( const QString &fidStr, featureIdList )
+    Q_FOREACH ( const QString &fidStr, featureIdList )
     {
       // testing typename in the WFS featureID
       if ( !fidStr.contains( "." ) )
@@ -718,13 +785,13 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
         bboxOk = true;
         QString bbString = bbIt.value();
         minx = bbString.section( ",", 0, 0 ).toDouble( &conversionSuccess );
-        if ( !conversionSuccess ) {bboxOk = false;}
+        bboxOk &= conversionSuccess;
         miny = bbString.section( ",", 1, 1 ).toDouble( &conversionSuccess );
-        if ( !conversionSuccess ) {bboxOk = false;}
+        bboxOk &= conversionSuccess;
         maxx = bbString.section( ",", 2, 2 ).toDouble( &conversionSuccess );
-        if ( !conversionSuccess ) {bboxOk = false;}
+        bboxOk &= conversionSuccess;
         maxy = bbString.section( ",", 3, 3 ).toDouble( &conversionSuccess );
-        if ( !conversionSuccess ) {bboxOk = false;}
+        bboxOk &= conversionSuccess;
       }
     }
   }
@@ -747,9 +814,15 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
   {
     mPropertyName = pnIt.value();
   }
+  mGeometryName = "";
+  QMap<QString, QString>::const_iterator gnIt = mParameters.find( "GEOMETRYNAME" );
+  if ( gnIt != mParameters.end() )
+  {
+    mGeometryName = gnIt.value().toUpper();
+  }
 
   mTypeNames = mTypeName.split( "," );
-  foreach ( const QString &tnStr, mTypeNames )
+  Q_FOREACH ( const QString &tnStr, mTypeNames )
   {
     mTypeName = tnStr;
     layerList = mConfigParser->mapLayerFromTypeName( tnStr );
@@ -764,6 +837,8 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
     QgsVectorLayer* layer = dynamic_cast<QgsVectorLayer*>( currentLayer );
     if ( layer && wfsLayersId.contains( layer->id() ) )
     {
+      expressionContext << QgsExpressionContextUtils::layerScope( layer );
+
       //is there alias info for this vector layer?
       QMap< int, QString > layerAliasInfo;
       const QMap< QString, QString >& aliasMap = layer->attributeAliases();
@@ -792,13 +867,12 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
       }
 
       QgsFeature feature;
-      QgsAttributeMap featureAttributes;
-      const QgsFields& fields = provider->fields();
 
       //map extent
       searchRect = layer->extent();
 
-      QgsAttributeList attrIndexes = provider->attributeIndexes();
+      //QgsAttributeList attrIndexes = provider->attributeIndexes();
+      QgsAttributeList attrIndexes = layer->pendingAllAttributesList();
       if ( mPropertyName != "*" )
       {
         QStringList attrList = mPropertyName.split( "," );
@@ -828,16 +902,16 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
       if ( bboxOk )
         searchRect.set( minx, miny, maxx, maxy );
       else
-        searchRect.set( searchRect.xMinimum() - 0.000001,
-                        searchRect.yMinimum() - 0.000001,
-                        searchRect.xMaximum() + 0.000001,
-                        searchRect.yMaximum() + 0.000001 );
+        searchRect.set( searchRect.xMinimum() - 1. / pow( 10., layerPrec ),
+                        searchRect.yMinimum() - 1. / pow( 10., layerPrec ),
+                        searchRect.xMaximum() + 1. / pow( 10., layerPrec ),
+                        searchRect.yMaximum() + 1. / pow( 10., layerPrec ) );
       layerCrs = layer->crs();
 
       long featCounter = 0;
       if ( featureIdOk )
       {
-        foreach ( const QString &fidStr, featureIdList )
+        Q_FOREACH ( const QString &fidStr, featureIdList )
         {
           if ( !fidStr.startsWith( tnStr ) )
             continue;
@@ -878,19 +952,20 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
         }
         req.setSubsetOfAttributes( attrIndexes );
         QgsFeatureIterator fit = layer->getFeatures( req );
-        QgsExpression *mFilter = new QgsExpression( expFilter );
-        if ( mFilter )
+        QSharedPointer<QgsExpression> filter( new QgsExpression( expFilter ) );
+        if ( filter )
         {
-          if ( mFilter->hasParserError() )
+          if ( filter->hasParserError() )
           {
-            throw QgsMapServiceException( "RequestNotWellFormed", QString( "Expression filter error message: %1." ).arg( mFilter->parserErrorString() ) );
+            throw QgsMapServiceException( "RequestNotWellFormed", QString( "Expression filter error message: %1." ).arg( filter->parserErrorString() ) );
           }
           while ( fit.nextFeature( feature ) && ( maxFeatures == -1 || featureCounter < maxFeat ) )
           {
-            QVariant res = mFilter->evaluate( &feature, fields );
-            if ( mFilter->hasEvalError() )
+            expressionContext.setFeature( feature );
+            QVariant res = filter->evaluate( &expressionContext );
+            if ( filter->hasEvalError() )
             {
-              throw QgsMapServiceException( "RequestNotWellFormed", QString( "Expression filter eval error message: %1." ).arg( mFilter->evalErrorString() ) );
+              throw QgsMapServiceException( "RequestNotWellFormed", QString( "Expression filter eval error message: %1." ).arg( filter->evalErrorString() ) );
             }
             if ( res.toInt() != 0 )
             {
@@ -902,7 +977,6 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
               ++featureCounter;
             }
           }
-          delete mFilter;
         }
       }
       else if ( filterOk )
@@ -978,12 +1052,12 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
         }
         else
         {
-          QgsExpression *mFilter = QgsOgcUtils::expressionFromOgcFilter( filterElem );
-          if ( mFilter )
+          QSharedPointer<QgsExpression> filter( QgsOgcUtils::expressionFromOgcFilter( filterElem ) );
+          if ( filter )
           {
-            if ( mFilter->hasParserError() )
+            if ( filter->hasParserError() )
             {
-              throw QgsMapServiceException( "RequestNotWellFormed", QString( "OGC expression filter error message: %1." ).arg( mFilter->parserErrorString() ) );
+              throw QgsMapServiceException( "RequestNotWellFormed", QString( "OGC expression filter error message: %1." ).arg( filter->parserErrorString() ) );
             }
             QgsFeatureRequest req;
             if ( layer->wkbType() != QGis::WKBNoGeometry )
@@ -1006,10 +1080,11 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
             QgsFeatureIterator fit = layer->getFeatures( req );
             while ( fit.nextFeature( feature ) && ( maxFeatures == -1 || featureCounter < maxFeat ) )
             {
-              QVariant res = mFilter->evaluate( &feature, fields );
-              if ( mFilter->hasEvalError() )
+              expressionContext.setFeature( feature );
+              QVariant res = filter->evaluate( &expressionContext );
+              if ( filter->hasEvalError() )
               {
-                throw QgsMapServiceException( "RequestNotWellFormed", QString( "OGC expression filter eval error message: %1." ).arg( mFilter->evalErrorString() ) );
+                throw QgsMapServiceException( "RequestNotWellFormed", QString( "OGC expression filter eval error message: %1." ).arg( filter->evalErrorString() ) );
               }
               if ( res.toInt() != 0 )
               {
@@ -1022,7 +1097,6 @@ int QgsWFSServer::getFeature( QgsRequestHandler& request, const QString& format 
               }
             }
           }
-          delete mFilter;
         }
       }
       else
@@ -1205,7 +1279,7 @@ void QgsWFSServer::startGetFeature( QgsRequestHandler& request, const QString& f
   fcString = "";
 }
 
-void QgsWFSServer::setGetFeature( QgsRequestHandler& request, const QString& format, QgsFeature* feat, int featIdx, int prec, QgsCoordinateReferenceSystem& crs, QgsAttributeList attrIndexes, QSet<QString> excludedAttributes ) /*const*/
+void QgsWFSServer::setGetFeature( QgsRequestHandler& request, const QString& format, QgsFeature* feat, int featIdx, int prec, QgsCoordinateReferenceSystem& crs, const QgsAttributeList& attrIndexes, const QSet<QString>& excludedAttributes ) /*const*/
 {
   if ( !feat->isValid() )
     return;
@@ -1347,7 +1421,7 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
   // Store the created feature id for WFS
   QStringList insertResults;
   // Get the WFS layers id
-  QStringList wfsLayersId = mConfigParser->wfsLayers();
+  QStringList wfsLayersId = mConfigParser ? mConfigParser->wfsLayers() : QStringList();
 
   QList<QgsMapLayer*> layerList;
   QgsMapLayer* currentLayer = 0;
@@ -1364,15 +1438,40 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
     currentLayer = layerList.at( 0 );
 
     QgsVectorLayer* layer = qobject_cast<QgsVectorLayer*>( currentLayer );
-    // it's a vectorlayer and definy by the administrator as a WFS layer
+    // it's a vectorlayer and defined by the administrator as a WFS layer
     if ( layer && wfsLayersId.contains( layer->id() ) )
     {
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      if ( actionName == "Insert" )
+      {
+        if ( !mAccessControl->layerInsertPermission( layer ) )
+        {
+          throw QgsMapServiceException( "Security", "Feature insert permission denied" );
+        }
+      }
+      else if ( actionName == "Update" )
+      {
+        if ( !mAccessControl->layerUpdatePermission( layer ) )
+        {
+          throw QgsMapServiceException( "Security", "Feature update permission denied" );
+        }
+      }
+      else if ( actionName == "Delete" )
+      {
+        if ( !mAccessControl->layerDeletePermission( layer ) )
+        {
+          throw QgsMapServiceException( "Security", "Feature delete permission denied" );
+        }
+      }
+#endif
+
       // Get the provider and it's capabilities
       QgsVectorDataProvider* provider = layer->dataProvider();
       if ( !provider )
       {
         continue;
       }
+
       int cap = provider->capabilities();
 
       // Start the update transaction
@@ -1432,6 +1531,18 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
           QgsFeatureIds::const_iterator fidIt = fids.constBegin();
           for ( ; fidIt != fids.constEnd(); ++fidIt )
           {
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+            QgsFeatureIterator fit = layer->getFeatures( QgsFeatureRequest( *fidIt ) );
+            QgsFeature feature;
+            while ( fit.nextFeature( feature ) )
+            {
+              if ( !mAccessControl->allowToEdit( layer, feature ) )
+              {
+                throw QgsMapServiceException( "Security", "Feature modify permission denied" );
+              }
+            }
+#endif
+
             QMap< QString, QString >::const_iterator it = propertyMap.constBegin();
             for ( ; it != propertyMap.constEnd(); ++it )
             {
@@ -1455,6 +1566,18 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
               if ( !layer->changeGeometry( *fidIt, QgsOgcUtils::geometryFromGML( geometryElem ) ) )
                 throw QgsMapServiceException( "RequestNotWellFormed", "Error in change geometry" );
             }
+
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+            fit = layer->getFeatures( QgsFeatureRequest( *fidIt ) );
+            while ( fit.nextFeature( feature ) )
+            {
+              if ( !mAccessControl->allowToEdit( layer, feature ) )
+              {
+                layer->rollBack();
+                throw QgsMapServiceException( "Security", "Feature modify permission denied" );
+              }
+            }
+#endif
           }
         }
       }
@@ -1485,6 +1608,23 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
           QDomElement filterElem = actionElem.firstChild().toElement();
           // Get Feature Ids for the Filter element
           QgsFeatureIds fids = getFeatureIdsFromFilter( filterElem, layer );
+
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+          QgsFeatureIds::const_iterator fidIt = fids.constBegin();
+          for ( ; fidIt != fids.constEnd(); ++fidIt )
+          {
+            QgsFeatureIterator fit = layer->getFeatures( QgsFeatureRequest( *fidIt ) );
+            QgsFeature feature;
+            while ( fit.nextFeature( feature ) )
+            {
+              if ( !mAccessControl->allowToEdit( layer, feature ) )
+              {
+                throw QgsMapServiceException( "Security", "Feature modify permission denied" );
+              }
+            }
+          }
+#endif
+
           layer->setSelectedFeatures( fids );
           layer->deleteSelectedFeatures();
         }
@@ -1550,7 +1690,7 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
                   const QgsField& field = fields[fieldMapIt.value()];
                   QString attrValue = currentAttributeElement.text();
                   int attrType = field.type();
-                  QgsDebugMsg( QString( "attr: name=%1 idx=%2 value=%3" ).arg( attrName ).arg( fieldMapIt.value() ).arg( attrValue ) );
+                  QgsMessageLog::logMessage( QString( "attr: name=%1 idx=%2 value=%3" ).arg( attrName ).arg( fieldMapIt.value() ).arg( attrValue ) );
                   if ( attrType == QVariant::Int )
                     inFeatList.last().setAttribute( fieldMapIt.value(), attrValue.toInt() );
                   else if ( attrType == QVariant::Double )
@@ -1568,6 +1708,18 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
           }
         }
       }
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      QgsFeatureList::iterator featureIt = inFeatList.begin();
+      while ( featureIt != inFeatList.end() )
+      {
+        if ( !mAccessControl->allowToEdit( layer, *featureIt ) )
+        {
+          throw QgsMapServiceException( "Security", "Feature modify permission denied" );
+        }
+        featureIt++;
+      }
+#endif
+
       // add the features
       if ( !provider->addFeatures( inFeatList ) )
       {
@@ -1589,7 +1741,7 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
   // Put the Feature Ids of the inserted feature
   if ( insertResults.size() > 0 )
   {
-    foreach ( const QString &fidStr, insertResults )
+    Q_FOREACH ( const QString &fidStr, insertResults )
     {
       QDomElement irElem = doc.createElement( "InsertResult" );
       QDomElement fiElem = doc.createElement( "ogc:FeatureId" );
@@ -1610,7 +1762,7 @@ QDomDocument QgsWFSServer::transaction( const QString& requestBody )
   return resp;
 }
 
-QgsFeatureIds QgsWFSServer::getFeatureIdsFromFilter( QDomElement filterElem, QgsVectorLayer* layer )
+QgsFeatureIds QgsWFSServer::getFeatureIdsFromFilter( const QDomElement& filterElem, QgsVectorLayer* layer )
 {
   QgsFeatureIds fids;
 
@@ -1628,27 +1780,30 @@ QgsFeatureIds QgsWFSServer::getFeatureIdsFromFilter( QDomElement filterElem, Qgs
       fid = fidElem.attribute( "fid" );
       if ( fid.contains( "." ) )
         fid = fid.section( ".", 1, 1 );
-      fids.insert( fid.toInt( &conversionSuccess ) );
+      fids.insert( fid.toLongLong( &conversionSuccess ) );
     }
   }
   else
   {
-    QgsExpression *mFilter = QgsOgcUtils::expressionFromOgcFilter( filterElem );
-    if ( mFilter )
+    QSharedPointer<QgsExpression> filter( QgsOgcUtils::expressionFromOgcFilter( filterElem ) );
+    if ( filter )
     {
-      if ( mFilter->hasParserError() )
+      if ( filter->hasParserError() )
       {
-        throw QgsMapServiceException( "RequestNotWellFormed", mFilter->parserErrorString() );
+        throw QgsMapServiceException( "RequestNotWellFormed", filter->parserErrorString() );
       }
       QgsFeature feature;
       const QgsFields& fields = provider->fields();
       QgsFeatureIterator fit = layer->getFeatures();
+      QgsExpressionContext context = QgsExpressionContextUtils::createFeatureBasedContext( feature, fields );
+
       while ( fit.nextFeature( feature ) )
       {
-        QVariant res = mFilter->evaluate( &feature, fields );
-        if ( mFilter->hasEvalError() )
+        context.setFeature( feature );
+        QVariant res = filter->evaluate( &context );
+        if ( filter->hasEvalError() )
         {
-          throw QgsMapServiceException( "RequestNotWellFormed", mFilter->evalErrorString() );
+          throw QgsMapServiceException( "RequestNotWellFormed", filter->evalErrorString() );
         }
         if ( res.toInt() != 0 )
         {
@@ -1661,7 +1816,7 @@ QgsFeatureIds QgsWFSServer::getFeatureIdsFromFilter( QDomElement filterElem, Qgs
   return fids;
 }
 
-QString QgsWFSServer::createFeatureGeoJSON( QgsFeature* feat, int prec, QgsCoordinateReferenceSystem &, QgsAttributeList attrIndexes, QSet<QString> excludedAttributes ) /*const*/
+QString QgsWFSServer::createFeatureGeoJSON( QgsFeature* feat, int prec, QgsCoordinateReferenceSystem &, const QgsAttributeList& attrIndexes, const QSet<QString>& excludedAttributes ) /*const*/
 {
   QString fStr = "{\"type\": \"Feature\",\n";
 
@@ -1670,14 +1825,27 @@ QString QgsWFSServer::createFeatureGeoJSON( QgsFeature* feat, int prec, QgsCoord
   fStr += ",\n";
 
   QgsGeometry* geom = feat->geometry();
-  if ( geom && mWithGeom )
+  if ( geom && mWithGeom && mGeometryName != "NONE" )
   {
     QgsRectangle box = geom->boundingBox();
 
     fStr += " \"bbox\": [ " + qgsDoubleToString( box.xMinimum(), prec ) + ", " + qgsDoubleToString( box.yMinimum(), prec ) + ", " + qgsDoubleToString( box.xMaximum(), prec ) + ", " + qgsDoubleToString( box.yMaximum(), prec ) + "],\n";
 
     fStr += "  \"geometry\": ";
-    fStr += geom->exportToGeoJSON( prec );
+    if ( mGeometryName == "EXTENT" )
+    {
+      QgsGeometry* bbox = QgsGeometry::fromRect( box );
+      fStr += bbox->exportToGeoJSON( prec );
+      delete bbox;
+    }
+    else if ( mGeometryName == "CENTROID" )
+    {
+      QgsGeometry* centroid = geom->centroid();
+      fStr += centroid->exportToGeoJSON( prec );
+      delete centroid;
+    }
+    else
+      fStr += geom->exportToGeoJSON( prec );
     fStr += ",\n";
   }
 
@@ -1710,7 +1878,10 @@ QString QgsWFSServer::createFeatureGeoJSON( QgsFeature* feat, int prec, QgsCoord
     else
     {
       fStr += "\"";
-      fStr +=  val.toString().replace( QString( "\"" ), QString( "\\\"" ) );
+      fStr +=  val.toString()
+               .replace( '"', "\\\"" )
+               .replace( '\r', "\\r" )
+               .replace( '\n', "\\n" );
       fStr += "\"";
     }
     fStr += "\n";
@@ -1724,7 +1895,7 @@ QString QgsWFSServer::createFeatureGeoJSON( QgsFeature* feat, int prec, QgsCoord
   return fStr;
 }
 
-QDomElement QgsWFSServer::createFeatureGML2( QgsFeature* feat, QDomDocument& doc, int prec, QgsCoordinateReferenceSystem& crs, QgsAttributeList attrIndexes, QSet<QString> excludedAttributes ) /*const*/
+QDomElement QgsWFSServer::createFeatureGML2( QgsFeature* feat, QDomDocument& doc, int prec, QgsCoordinateReferenceSystem& crs, const QgsAttributeList& attrIndexes, const QSet<QString>& excludedAttributes ) /*const*/
 {
   //gml:FeatureMember
   QDomElement featureElement = doc.createElement( "gml:featureMember"/*wfs:FeatureMember*/ );
@@ -1734,13 +1905,27 @@ QDomElement QgsWFSServer::createFeatureGML2( QgsFeature* feat, QDomDocument& doc
   typeNameElement.setAttribute( "fid", mTypeName + "." + QString::number( feat->id() ) );
   featureElement.appendChild( typeNameElement );
 
-  if ( mWithGeom )
+  if ( mWithGeom && mGeometryName != "NONE" )
   {
     //add geometry column (as gml)
     QgsGeometry* geom = feat->geometry();
 
     QDomElement geomElem = doc.createElement( "qgs:geometry" );
-    QDomElement gmlElem = QgsOgcUtils::geometryToGML( geom, doc, prec );
+    QDomElement gmlElem;
+    if ( mGeometryName == "EXTENT" )
+    {
+      QgsGeometry* bbox = QgsGeometry::fromRect( geom->boundingBox() );
+      gmlElem = QgsOgcUtils::geometryToGML( bbox , doc, prec );
+      delete bbox;
+    }
+    else if ( mGeometryName == "CENTROID" )
+    {
+      QgsGeometry* centroid = geom->centroid();
+      gmlElem = QgsOgcUtils::geometryToGML( centroid, doc, prec );
+      delete centroid;
+    }
+    else
+      gmlElem = QgsOgcUtils::geometryToGML( geom, doc, prec );
     if ( !gmlElem.isNull() )
     {
       QgsRectangle box = geom->boundingBox();
@@ -1783,7 +1968,7 @@ QDomElement QgsWFSServer::createFeatureGML2( QgsFeature* feat, QDomDocument& doc
   return featureElement;
 }
 
-QDomElement QgsWFSServer::createFeatureGML3( QgsFeature* feat, QDomDocument& doc, int prec, QgsCoordinateReferenceSystem& crs, QgsAttributeList attrIndexes, QSet<QString> excludedAttributes ) /*const*/
+QDomElement QgsWFSServer::createFeatureGML3( QgsFeature* feat, QDomDocument& doc, int prec, QgsCoordinateReferenceSystem& crs, const QgsAttributeList& attrIndexes, const QSet<QString>& excludedAttributes ) /*const*/
 {
   //gml:FeatureMember
   QDomElement featureElement = doc.createElement( "gml:featureMember"/*wfs:FeatureMember*/ );
@@ -1793,13 +1978,27 @@ QDomElement QgsWFSServer::createFeatureGML3( QgsFeature* feat, QDomDocument& doc
   typeNameElement.setAttribute( "gml:id", mTypeName + "." + QString::number( feat->id() ) );
   featureElement.appendChild( typeNameElement );
 
-  if ( mWithGeom )
+  if ( mWithGeom && mGeometryName != "NONE" )
   {
     //add geometry column (as gml)
     QgsGeometry* geom = feat->geometry();
 
     QDomElement geomElem = doc.createElement( "qgs:geometry" );
-    QDomElement gmlElem = QgsOgcUtils::geometryToGML( geom, doc, "GML3", prec );
+    QDomElement gmlElem;
+    if ( mGeometryName == "EXTENT" )
+    {
+      QgsGeometry* bbox = QgsGeometry::fromRect( geom->boundingBox() );
+      gmlElem = QgsOgcUtils::geometryToGML( bbox, doc, "GML3", prec );
+      delete bbox;
+    }
+    else if ( mGeometryName == "CENTROID" )
+    {
+      QgsGeometry* centroid = geom->centroid();
+      gmlElem = QgsOgcUtils::geometryToGML( centroid, doc, "GML3", prec );
+      delete centroid;
+    }
+    else
+      gmlElem = QgsOgcUtils::geometryToGML( geom, doc, "GML3", prec );
     if ( !gmlElem.isNull() )
     {
       QgsRectangle box = geom->boundingBox();

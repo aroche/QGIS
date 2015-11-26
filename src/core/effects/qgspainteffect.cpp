@@ -23,6 +23,7 @@
 Q_GUI_EXPORT extern int qt_defaultDpiX();
 Q_GUI_EXPORT extern int qt_defaultDpiY();
 
+<<<<<<< HEAD
 static void _fixQPictureDPI( QPainter* p )
 {
   // QPicture makes an assumption that we drawing to it with system DPI.
@@ -36,6 +37,12 @@ static void _fixQPictureDPI( QPainter* p )
 QgsPaintEffect::QgsPaintEffect()
     : mEnabled( true )
     , mDrawMode( ModifyAndRender )
+=======
+QgsPaintEffect::QgsPaintEffect()
+    : mEnabled( true )
+    , mDrawMode( ModifyAndRender )
+    , requiresQPainterDpiFix( true )
+>>>>>>> upstream/master
     , mPicture( 0 )
     , mSourceImage( 0 )
     , mOwnsImage( false )
@@ -49,6 +56,10 @@ QgsPaintEffect::QgsPaintEffect()
 QgsPaintEffect::QgsPaintEffect( const QgsPaintEffect &other )
     : mEnabled( other.enabled() )
     , mDrawMode( other.drawMode() )
+<<<<<<< HEAD
+=======
+    , requiresQPainterDpiFix( true )
+>>>>>>> upstream/master
     , mPicture( 0 )
     , mSourceImage( 0 )
     , mOwnsImage( false )
@@ -180,10 +191,24 @@ void QgsPaintEffect::end( QgsRenderContext &context )
 
 void QgsPaintEffect::drawSource( QPainter &painter )
 {
+<<<<<<< HEAD
   painter.save();
   _fixQPictureDPI( &painter );
   painter.drawPicture( 0, 0, *mPicture );
   painter.restore();
+=======
+  if ( requiresQPainterDpiFix )
+  {
+    painter.save();
+    fixQPictureDpi( &painter );
+    painter.drawPicture( 0, 0, *mPicture );
+    painter.restore();
+  }
+  else
+  {
+    painter.drawPicture( 0, 0, *mPicture );
+  }
+>>>>>>> upstream/master
 }
 
 QImage* QgsPaintEffect::sourceAsImage( QgsRenderContext &context )
@@ -222,6 +247,19 @@ QRectF QgsPaintEffect::boundingRect( const QRectF &rect, const QgsRenderContext 
   return rect;
 }
 
+<<<<<<< HEAD
+=======
+void QgsPaintEffect::fixQPictureDpi( QPainter *painter ) const
+{
+  // QPicture makes an assumption that we drawing to it with system DPI.
+  // Then when being drawn, it scales the painter. The following call
+  // negates the effect. There is no way of setting QPicture's DPI.
+  // See QTBUG-20361
+  painter->scale(( double )qt_defaultDpiX() / painter->device()->logicalDpiX(),
+                 ( double )qt_defaultDpiY() / painter->device()->logicalDpiY() );
+}
+
+>>>>>>> upstream/master
 QRectF QgsPaintEffect::imageBoundingRect( const QgsRenderContext &context ) const
 {
   return boundingRect( mPicture->boundingRect(), context );
@@ -276,7 +314,11 @@ void QgsDrawSourceEffect::draw( QgsRenderContext &context )
   }
 }
 
+<<<<<<< HEAD
 QgsPaintEffect *QgsDrawSourceEffect::clone() const
+=======
+QgsDrawSourceEffect* QgsDrawSourceEffect::clone() const
+>>>>>>> upstream/master
 {
   return new QgsDrawSourceEffect( *this );
 }

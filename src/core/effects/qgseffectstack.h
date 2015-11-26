@@ -63,7 +63,11 @@ class CORE_EXPORT QgsEffectStack : public QgsPaintEffect
     virtual ~QgsEffectStack();
 
     virtual QString type() const override { return QString( "effectStack" ); }
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const override;
+=======
+    virtual QgsEffectStack* clone() const override;
+>>>>>>> upstream/master
     virtual bool saveProperties( QDomDocument& doc, QDomElement& element ) const override;
     virtual bool readProperties( const QDomElement& element ) override;
 
@@ -90,7 +94,11 @@ class CORE_EXPORT QgsEffectStack : public QgsPaintEffect
      */
     bool insertEffect( const int index, QgsPaintEffect* effect );
 
+<<<<<<< HEAD
     /** Replaces the effect at a speficied position within the stack.
+=======
+    /** Replaces the effect at a specified position within the stack.
+>>>>>>> upstream/master
      * @param index position of effect to replace
      * @param effect QgsPaintEffect to replace with. Ownership of the effect will be
      * transferred to the stack object.

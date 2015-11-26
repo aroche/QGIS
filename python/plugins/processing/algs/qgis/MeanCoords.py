@@ -25,8 +25,8 @@ __copyright__ = '(C) 2012, Victor Olaya'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from PyQt4.QtCore import QVariant
+from qgis.core import QGis, QgsField, QgsFeature, QgsGeometry, QgsPoint
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterTableField
 from processing.core.parameters import ParameterVector
@@ -43,23 +43,22 @@ class MeanCoords(GeoAlgorithm):
     WEIGHT = 'WEIGHT'
 
     def defineCharacteristics(self):
-        self.name = 'Mean coordinate(s)'
-        self.group = 'Vector analysis tools'
+        self.name, self.i18n_name = self.trAlgorithm('Mean coordinate(s)')
+        self.group, self.i18n_group = self.trAlgorithm('Vector analysis tools')
 
         self.addParameter(ParameterVector(self.POINTS,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterTableField(self.WEIGHT,
-            self.tr('Weight field'), MeanCoords.POINTS,
-            ParameterTableField.DATA_TYPE_NUMBER, optional=True))
+                                              self.tr('Weight field'), MeanCoords.POINTS,
+                                              ParameterTableField.DATA_TYPE_NUMBER, optional=True))
         self.addParameter(ParameterTableField(self.UID,
-            self.tr('Unique ID field'), MeanCoords.POINTS,
-            ParameterTableField.DATA_TYPE_NUMBER, optional=True))
+                                              self.tr('Unique ID field'), MeanCoords.POINTS,
+                                              ParameterTableField.DATA_TYPE_NUMBER, optional=True))
 
-        self.addOutput(OutputVector(MeanCoords.OUTPUT, self.tr('Result')))
+        self.addOutput(OutputVector(MeanCoords.OUTPUT, self.tr('Mean coordinates')))
 
     def processAlgorithm(self, progress):
-        layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.POINTS))
+        layer = dataobjects.getObjectFromUri(self.getParameterValue(self.POINTS))
         weightField = self.getParameterValue(self.WEIGHT)
         uniqueField = self.getParameterValue(self.UID)
 
@@ -77,9 +76,9 @@ class MeanCoords(GeoAlgorithm):
                      QgsField('MEAN_Y', QVariant.Double, '', 24, 15),
                      QgsField('UID', QVariant.String, '', 255)]
 
-        writer = self.getOutputFromName(
-                self.OUTPUT).getVectorWriter(fieldList,
-                                             QGis.WKBPoint, layer.crs())
+        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
+            fieldList, QGis.WKBPoint, layer.crs()
+        )
 
         current = 0
         features = vector.features(layer)
@@ -92,7 +91,7 @@ class MeanCoords(GeoAlgorithm):
             if uniqueIndex == -1:
                 clazz = "Single class"
             else:
-                clazz = str(feat.attributes()[uniqueIndex]).strip()
+                clazz = unicode(feat.attributes()[uniqueIndex]).strip()
             if weightIndex == -1:
                 weight = 1.00
             else:

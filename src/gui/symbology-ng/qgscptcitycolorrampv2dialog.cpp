@@ -33,6 +33,9 @@
 // - fix Diverging children when first show Selections
 // - fix crash on Diverging?
 
+///@cond
+//not part of public API
+
 class TreeFilterProxyModel : public QSortFilterProxyModel
 {
     //  Q_OBJECT
@@ -47,18 +50,21 @@ class TreeFilterProxyModel : public QSortFilterProxyModel
     {
       QgsCptCityDataItem* item = mModel->dataItem( mModel->index( sourceRow, 0, sourceParent ) );
       return ( item && !( item->type() == QgsCptCityDataItem::ColorRamp ) );
-  }
+    }
     // bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
 
   private:
     QgsCptCityBrowserModel* mModel;
 };
 
+///@endcond
 
 // ----------------------
 
 QgsCptCityColorRampV2Dialog::QgsCptCityColorRampV2Dialog( QgsCptCityColorRampV2* ramp, QWidget* parent )
-    : QDialog( parent ), mRamp( 0 )
+    : QDialog( parent )
+    , mRamp( 0 )
+    , mArchiveViewType( QgsCptCityBrowserModel::Selections )
 {
   setupUi( this );
 
@@ -92,9 +98,9 @@ QgsCptCityColorRampV2Dialog::QgsCptCityColorRampV2Dialog( QgsCptCityColorRampV2*
                            "2) Download the complete archive (in svg format) "
                            "and unzip it to your QGIS settings directory [%1] .\n\n"
                            "This file can be found at [%2]\nand current file is [%3]"
-                         ).arg( QgsApplication::qgisSettingsDirPath()
-                              ).arg( "http://soliton.vm.bytemark.co.uk/pub/cpt-city/pkg/"
-                                   ).arg( "http://soliton.vm.bytemark.co.uk/pub/cpt-city/pkg/cpt-city-svg-2.07.zip" );
+                         ).arg( QgsApplication::qgisSettingsDirPath(),
+                                "http://soliton.vm.bytemark.co.uk/pub/cpt-city/pkg/",
+                                "http://soliton.vm.bytemark.co.uk/pub/cpt-city/pkg/cpt-city-svg-2.07.zip" );
     edit->setText( helpText );
     mStackedWidget->addWidget( edit );
     mStackedWidget->setCurrentIndex( 1 );
@@ -118,7 +124,7 @@ QgsCptCityColorRampV2Dialog::QgsCptCityColorRampV2Dialog( QgsCptCityColorRampV2*
     mRamp = new QgsCptCityColorRampV2( "", "", false );
     ramp = mRamp;
   }
-  QgsDebugMsg( QString( "ramp name= %1 variant= %2 - %3 variants" ).arg( ramp->schemeName() ).arg( ramp->variantName() ).arg( ramp->variantList().count() ) );
+  QgsDebugMsg( QString( "ramp name= %1 variant= %2 - %3 variants" ).arg( ramp->schemeName(), ramp->variantName() ).arg( ramp->variantList().count() ) );
 
   // model / view
   QgsDebugMsg( "loading model/view objects" );
@@ -180,7 +186,7 @@ void QgsCptCityColorRampV2Dialog::populateVariants()
 {
   QStringList variantList = mRamp->variantList();
 
-  QgsDebugMsg( QString( "ramp %1%2 has %3 variants" ).arg( mRamp->schemeName() ).arg( mRamp->variantName() ).arg( variantList.count() ) );
+  QgsDebugMsg( QString( "ramp %1%2 has %3 variants" ).arg( mRamp->schemeName(), mRamp->variantName() ).arg( variantList.count() ) );
 
   cboVariantName->blockSignals( true );
   cboVariantName->clear();
@@ -201,12 +207,12 @@ void QgsCptCityColorRampV2Dialog::populateVariants()
     QIcon blankIcon( blankPixmap );
     int index;
 
-    foreach ( QString variant, variantList )
+    Q_FOREACH ( const QString& variant, variantList )
     {
       QString variantStr = variant;
-      if ( variantStr.startsWith( "-" ) || variantStr.startsWith( "_" ) )
+      if ( variantStr.startsWith( '-' ) || variantStr.startsWith( '_' ) )
         variantStr.remove( 0, 1 );
-      cboVariantName->addItem( " " + variantStr );
+      cboVariantName->addItem( ' ' + variantStr );
       index = cboVariantName->count() - 1;
       cboVariantName->setItemData( index, variant, Qt::UserRole );
 
@@ -227,9 +233,9 @@ void QgsCptCityColorRampV2Dialog::populateVariants()
     QgsDebugMsg( QString( "variant= %1 - %2 variants" ).arg( mRamp->variantName() ).arg( mRamp->variantList().count() ) );
     if ( newVariant != QString() )
     {
-      if ( newVariant.startsWith( "-" ) || newVariant.startsWith( "_" ) )
+      if ( newVariant.startsWith( '-' ) || newVariant.startsWith( '_' ) )
         newVariant.remove( 0, 1 );
-      newVariant = " " + newVariant;
+      newVariant = ' ' + newVariant;
       idx = cboVariantName->findText( newVariant );
     }
     else
@@ -314,7 +320,7 @@ void QgsCptCityColorRampV2Dialog::on_mListWidget_itemClicked( QListWidgetItem * 
   }
   else
   {
-    QgsDebugMsg( QString( "item %1 has invalid type %2" ).arg( rampItem->path() ).arg(( int )rampItem->type() ) );
+    QgsDebugMsg( "invalid item" );
   }
 }
 
@@ -357,8 +363,7 @@ void QgsCptCityColorRampV2Dialog::on_pbtnLicenseDetails_pressed()
   QString path, title, copyFile, descFile;
 
   // get basic information, depending on if is color ramp or directory
-  QgsCptCityDataItem *item =
-    dynamic_cast< QgsCptCityDataItem* >( mModel->dataItem( mTreeFilter->mapToSource( mTreeView->currentIndex() ) ) );
+  QgsCptCityDataItem *item = mModel->dataItem( mTreeFilter->mapToSource( mTreeView->currentIndex() ) );
   if ( ! item )
     return;
 
@@ -461,19 +466,19 @@ void QgsCptCityColorRampV2Dialog::updateCopyingInfo( const QMap< QString, QStrin
 {
   QString authorStr = copyingMap.value( "authors" );
   if ( authorStr.length() > 80 )
-    authorStr.replace( authorStr.indexOf( " ", 80 ), 1, "\n" );
+    authorStr.replace( authorStr.indexOf( ' ', 80 ), 1, "\n" );
   lblAuthorName->setText( authorStr );
   QString licenseStr = copyingMap.value( "license/informal" );
   if ( copyingMap.contains( "license/year" ) )
-    licenseStr += " (" + copyingMap.value( "license/year" ) + ")";
+    licenseStr += " (" + copyingMap.value( "license/year" ) + ')';
   if ( licenseStr.length() > 80 )
-    licenseStr.replace( licenseStr.indexOf( " ", 80 ), 1, "\n" );
+    licenseStr.replace( licenseStr.indexOf( ' ', 80 ), 1, "\n" );
   if ( copyingMap.contains( "license/url" ) )
     licenseStr += "\n[ " + copyingMap.value( "license/url" ) + " ]";
   else
-    licenseStr += "\n";
+    licenseStr += '\n';
   lblLicenseName->setText( licenseStr );
-  licenseStr.replace( "\n", "  " );
+  licenseStr.replace( '\n', "  " );
   lblLicensePreview->setText( licenseStr );
   lblLicensePreview->setCursorPosition( 0 );
   if ( copyingMap.contains( "src/link" ) )
@@ -540,7 +545,7 @@ void QgsCptCityColorRampV2Dialog::updateListWidget( QgsCptCityDataItem *item )
       QListWidgetItem* listItem = new QListWidgetItem();
       listItem->setText( rampItem->shortInfo() );
       listItem->setIcon( rampItem->icon( QSize( 75, 50 ) ) );
-      listItem->setToolTip( rampItem->path() + "\n" + rampItem->info() );
+      listItem->setToolTip( rampItem->path() + '\n' + rampItem->info() );
       listItem->setData( Qt::UserRole, QVariant( i ) );
       mListWidget->addItem( listItem );
       mListRamps << rampItem;
@@ -635,7 +640,7 @@ bool QgsCptCityColorRampV2Dialog::updateRamp()
   {
     if ( mListRamps[i] == childItem )
     {
-      QgsDebugMsg( QString( "found matching item %1 target=%2" ).arg( mListRamps[i]->path() ).arg( childItem->path() ) );
+      QgsDebugMsg( QString( "found matching item %1 target=%2" ).arg( mListRamps[i]->path(), childItem->path() ) );
       QListWidgetItem* listItem = mListWidget->item( i );
       mListWidget->setCurrentItem( listItem );
       // on_mListWidget_itemClicked( listItem );

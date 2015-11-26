@@ -39,6 +39,10 @@ from processing.tools.system import isWindows
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
 class gdalcalc(GdalAlgorithm):
 
     INPUT_A = 'INPUT_A'
@@ -62,6 +66,7 @@ class gdalcalc(GdalAlgorithm):
     #DEBUG = 'DEBUG'
 
     def defineCharacteristics(self):
+<<<<<<< HEAD
         self.name = 'Raster calculator'
         self.group = '[GDAL] Miscellaneous'
         self.addParameter(ParameterRaster(
@@ -106,6 +111,52 @@ class gdalcalc(GdalAlgorithm):
         #debug = self.getParameterValue(self.DEBUG)
         formula = self.getParameterValue(self.FORMULA)
         noData = str(self.getParameterValue(self.NO_DATA))
+=======
+        self.name, self.i18n_name = self.trAlgorithm('Raster calculator')
+        self.group, self.i18n_group = self.trAlgorithm('[GDAL] Miscellaneous')
+        self.addParameter(ParameterRaster(
+            self.INPUT_A, self.tr('Input layer A'), False))
+        self.addParameter(ParameterString(self.BAND_A,
+                                          self.tr('Number of raster band for raster A'), '1', optional=True))
+        self.addParameter(ParameterRaster(
+            self.INPUT_B, self.tr('Input layer B'), True))
+        self.addParameter(ParameterString(self.BAND_B,
+                                          self.tr('Number of raster band for raster B'), '1', optional=True))
+        self.addParameter(ParameterRaster(
+            self.INPUT_C, self.tr('Input layer C'), True))
+        self.addParameter(ParameterString(self.BAND_C,
+                                          self.tr('Number of raster band for raster C'), '1', optional=True))
+        self.addParameter(ParameterRaster(
+            self.INPUT_D, self.tr('Input layer D'), True))
+        self.addParameter(ParameterString(self.BAND_D,
+                                          self.tr('Number of raster band for raster D'), '1', optional=True))
+        self.addParameter(ParameterRaster(
+            self.INPUT_E, self.tr('Input layer E'), True))
+        self.addParameter(ParameterString(self.BAND_E,
+                                          self.tr('Number of raster band for raster E'), '1', optional=True))
+        self.addParameter(ParameterRaster(
+            self.INPUT_F, self.tr('Input layer F'), True))
+        self.addParameter(ParameterString(self.BAND_F,
+                                          self.tr('Number of raster band for raster F'), '1', optional=True))
+        self.addParameter(ParameterString(self.FORMULA,
+                                          self.tr('Calculation in gdalnumeric syntax using +-/* or any numpy array functions (i.e. logical_and())'), 'A*2', optional=False))
+        self.addParameter(ParameterString(self.NO_DATA,
+                                          self.tr('Set output nodata value'), '-9999'))
+        self.addParameter(ParameterSelection(self.RTYPE,
+                                             self.tr('Output raster type'), self.TYPE, 5))
+        #self.addParameter(ParameterBoolean(
+        #    self.DEBUG, self.tr('Print debugging information'), False))
+        self.addParameter(ParameterString(self.EXTRA,
+                                          self.tr('Additional creation parameters'), '', optional=True))
+        self.addOutput(OutputRaster(self.OUTPUT, self.tr('Calculated')))
+
+    def getConsoleCommands(self):
+        out = self.getOutputValue(self.OUTPUT)
+        extra = unicode(self.getParameterValue(self.EXTRA))
+        #debug = self.getParameterValue(self.DEBUG)
+        formula = self.getParameterValue(self.FORMULA)
+        noData = unicode(self.getParameterValue(self.NO_DATA))
+>>>>>>> upstream/master
 
         arguments = []
         arguments.append('--calc')
@@ -154,6 +205,12 @@ class gdalcalc(GdalAlgorithm):
         arguments.append(out)
 
         if isWindows():
+<<<<<<< HEAD
             GdalUtils.runGdal(['gdal_calc',  GdalUtils.escapeAndJoin(arguments)], progress)
         else:
             GdalUtils.runGdal(['gdal_calc.py', GdalUtils.escapeAndJoin(arguments)], progress)
+=======
+            return ['gdal_calc', GdalUtils.escapeAndJoin(arguments)]
+        else:
+            return ['gdal_calc.py', GdalUtils.escapeAndJoin(arguments)]
+>>>>>>> upstream/master

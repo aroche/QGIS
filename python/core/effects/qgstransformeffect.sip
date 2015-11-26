@@ -11,7 +11,11 @@ class QgsTransformEffect : QgsPaintEffect
 %TypeHeaderCode
 #include <qgstransformeffect.h>
 %End
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> upstream/master
   public:
 
     /** Creates a new QgsTransformEffect effect from a properties string map.
@@ -26,7 +30,11 @@ class QgsTransformEffect : QgsPaintEffect
     virtual QString type() const;
     virtual QgsStringMap properties() const;
     virtual void readProperties( const QgsStringMap& props );
+<<<<<<< HEAD
     virtual QgsPaintEffect* clone() const /Factory/;
+=======
+    virtual QgsTransformEffect* clone() const /Factory/;
+>>>>>>> upstream/master
 
     /** Sets the transform x translation.
      * @param translateX distance to translate along the x axis

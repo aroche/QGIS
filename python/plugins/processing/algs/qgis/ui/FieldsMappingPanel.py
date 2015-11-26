@@ -25,9 +25,17 @@ __copyright__ = '(C) 2014, Arnaud Morvan'
 
 __revision__ = '$Format:%H$'
 
+<<<<<<< HEAD
 
 from collections import OrderedDict
 
+=======
+import os
+
+from collections import OrderedDict
+
+from PyQt4 import uic
+>>>>>>> upstream/master
 from PyQt4 import QtCore, QtGui
 
 from qgis.core import QgsExpression
@@ -35,7 +43,13 @@ from qgis.gui import QgsFieldExpressionWidget
 
 from processing.tools import dataobjects
 
+<<<<<<< HEAD
 from .ui_widgetFieldsMapping import Ui_Form
+=======
+pluginPath = os.path.dirname(__file__)
+WIDGET, BASE = uic.loadUiType(
+    os.path.join(pluginPath, 'widgetFieldsMapping.ui'))
+>>>>>>> upstream/master
 
 
 class FieldsMappingModel(QtCore.QAbstractTableModel):
@@ -44,6 +58,11 @@ class FieldsMappingModel(QtCore.QAbstractTableModel):
         (QtCore.QVariant.Int, "Integer"),
         (QtCore.QVariant.Double, "Double"),
         (QtCore.QVariant.String, "String"),
+<<<<<<< HEAD
+=======
+        (QtCore.QVariant.DateTime, "Date"),
+        (QtCore.QVariant.LongLong, "Double"),
+>>>>>>> upstream/master
         (QtCore.QVariant.Date, "Date")])
 
     columns = [
@@ -295,10 +314,17 @@ class FieldDelegate(QtGui.QStyledItemDelegate):
         self.commitData.emit(self.sender())
 
 
+<<<<<<< HEAD
 class FieldsMappingPanel(QtGui.QWidget, Ui_Form):
 
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
+=======
+class FieldsMappingPanel(BASE, WIDGET):
+
+    def __init__(self, parent=None):
+        super(FieldsMappingPanel, self).__init__(parent)
+>>>>>>> upstream/master
         self.setupUi(self)
 
         self.addButton.setIcon(
@@ -346,10 +372,17 @@ class FieldsMappingPanel(QtGui.QWidget, Ui_Form):
         self.model.insertRows(rowCount, 1)
         index = self.model.index(rowCount, 0)
         self.fieldsView.selectionModel().select(index,
+<<<<<<< HEAD
             QtGui.QItemSelectionModel.SelectionFlags(QtGui.QItemSelectionModel.Clear
                                                      + QtGui.QItemSelectionModel.Select
                                                      + QtGui.QItemSelectionModel.Current
                                                      + QtGui.QItemSelectionModel.Rows))
+=======
+                                                QtGui.QItemSelectionModel.SelectionFlags(QtGui.QItemSelectionModel.Clear
+                                                                                         + QtGui.QItemSelectionModel.Select
+                                                                                         + QtGui.QItemSelectionModel.Current
+                                                                                         + QtGui.QItemSelectionModel.Rows))
+>>>>>>> upstream/master
         self.fieldsView.scrollTo(index)
         self.fieldsView.scrollTo(index)
 

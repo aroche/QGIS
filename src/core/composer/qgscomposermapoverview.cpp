@@ -36,6 +36,11 @@ QgsComposerMapOverview::QgsComposerMapOverview( const QString& name, QgsComposer
 
 QgsComposerMapOverview::QgsComposerMapOverview()
     : QgsComposerMapItem( QString(), 0 )
+    , mFrameMapId( -1 )
+    , mFrameSymbol( 0 )
+    , mBlendMode( QPainter::CompositionMode_SourceOver )
+    , mInverted( false )
+    , mCentered( false )
 {
 }
 
@@ -92,6 +97,9 @@ void QgsComposerMapOverview::draw( QPainter *painter )
   QgsRenderContext context = QgsRenderContext::fromMapSettings( ms );
   context.setForceVectorOutput( true );
   context.setPainter( painter );
+  QgsExpressionContext* expressionContext = createExpressionContext();
+  context.setExpressionContext( *expressionContext );
+  delete expressionContext;
 
   painter->save();
   painter->setCompositionMode( mBlendMode );
@@ -119,7 +127,7 @@ void QgsComposerMapOverview::draw( QPainter *painter )
   if ( !mInverted )
   {
     //Render the intersecting map extent
-    mFrameSymbol->renderPolygon( intersectPolygon, &rings, 0, context );;
+    mFrameSymbol->renderPolygon( intersectPolygon, &rings, 0, context );
   }
   else
   {
@@ -183,7 +191,7 @@ bool QgsComposerMapOverview::readXML( const QDomElement &itemElem, const QDomDoc
   if ( !frameStyleElem.isNull() )
   {
     delete mFrameSymbol;
-    mFrameSymbol = dynamic_cast<QgsFillSymbolV2*>( QgsSymbolLayerV2Utils::loadSymbol( frameStyleElem ) );
+    mFrameSymbol = QgsSymbolLayerV2Utils::loadSymbol<QgsFillSymbolV2>( frameStyleElem );
   }
   return ok;
 }

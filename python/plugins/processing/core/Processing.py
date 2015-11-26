@@ -17,7 +17,6 @@
 ***************************************************************************
 """
 
-
 __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
@@ -28,31 +27,28 @@ __revision__ = '$Format:%H$'
 
 import sys
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4.QtCore import Qt, QCoreApplication
+from PyQt4.QtGui import QApplication, QCursor
 
-from qgis.core import *
 from qgis.utils import iface
+from qgis.core import QgsMessageLog
 
 import processing
+from processing.gui import AlgorithmClassification
 from processing.modeler.ModelerUtils import ModelerUtils
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.ProcessingLog import ProcessingLog
-from processing.gui.AlgorithmClassification import AlgorithmDecorator
 from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.RenderingStyles import RenderingStyles
 from processing.gui.Postprocessing import handleAlgorithmResults
 from processing.gui.AlgorithmExecutor import runalg
-from processing.modeler.ModelerAlgorithmProvider import \
-        ModelerAlgorithmProvider
-from processing.modeler.ModelerOnlyAlgorithmProvider import \
-        ModelerOnlyAlgorithmProvider
+from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
+from processing.modeler.ModelerOnlyAlgorithmProvider import ModelerOnlyAlgorithmProvider
 from processing.algs.qgis.QGISAlgorithmProvider import QGISAlgorithmProvider
 from processing.algs.grass.GrassAlgorithmProvider import GrassAlgorithmProvider
 from processing.algs.grass7.Grass7AlgorithmProvider import Grass7AlgorithmProvider
-from processing.algs.lidar.LidarToolsAlgorithmProvider import \
-        LidarToolsAlgorithmProvider
+from processing.algs.lidar.LidarToolsAlgorithmProvider import LidarToolsAlgorithmProvider
 from processing.algs.gdal.GdalOgrAlgorithmProvider import GdalOgrAlgorithmProvider
 from processing.algs.otb.OTBAlgorithmProvider import OTBAlgorithmProvider
 from processing.algs.r.RAlgorithmProvider import RAlgorithmProvider
@@ -80,7 +76,7 @@ class Processing:
     modeler = ModelerAlgorithmProvider()
 
     @staticmethod
-    def addProvider(provider, updateList=False):
+    def addProvider(provider, updateList=True):
         """Use this method to add algorithms from external providers.
         """
 
@@ -94,7 +90,8 @@ class Processing:
             if updateList:
                 Processing.updateAlgsList()
         except:
-            ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
+            ProcessingLog.addToLog(
+                ProcessingLog.LOG_ERROR,
                 Processing.tr('Could not load provider: %s\n%s')
                 % (provider.getDescription(), unicode(sys.exc_info()[1])))
             Processing.removeProvider(provider)
@@ -126,26 +123,26 @@ class Processing:
                 return provider
         return Processing.modeler
 
-
     @staticmethod
     def initialize():
         # Add the basic providers
-        Processing.addProvider(QGISAlgorithmProvider())
-        Processing.addProvider(ModelerOnlyAlgorithmProvider())
-        Processing.addProvider(GdalOgrAlgorithmProvider())
-        Processing.addProvider(LidarToolsAlgorithmProvider())
-        Processing.addProvider(OTBAlgorithmProvider())
-        Processing.addProvider(RAlgorithmProvider())
-        Processing.addProvider(SagaAlgorithmProvider())
-        Processing.addProvider(GrassAlgorithmProvider())
-        Processing.addProvider(Grass7AlgorithmProvider())
-        Processing.addProvider(ScriptAlgorithmProvider())
-        Processing.addProvider(TauDEMAlgorithmProvider())
-        Processing.addProvider(Processing.modeler)
+        Processing.addProvider(QGISAlgorithmProvider(), updateList=False)
+        Processing.addProvider(ModelerOnlyAlgorithmProvider(), updateList=False)
+        Processing.addProvider(GdalOgrAlgorithmProvider(), updateList=False)
+        Processing.addProvider(LidarToolsAlgorithmProvider(), updateList=False)
+        Processing.addProvider(OTBAlgorithmProvider(), updateList=False)
+        Processing.addProvider(RAlgorithmProvider(), updateList=False)
+        Processing.addProvider(SagaAlgorithmProvider(), updateList=False)
+        Processing.addProvider(GrassAlgorithmProvider(), updateList=False)
+        Processing.addProvider(Grass7AlgorithmProvider(), updateList=False)
+        Processing.addProvider(ScriptAlgorithmProvider(), updateList=False)
+        Processing.addProvider(TauDEMAlgorithmProvider(), updateList=False)
+        Processing.addProvider(Processing.modeler, updateList=False)
         Processing.modeler.initializeSettings()
 
         # And initialize
-        AlgorithmDecorator.loadClassification()
+        AlgorithmClassification.loadClassification()
+        AlgorithmClassification.loadDisplayNames()
         ProcessingLog.startLogging()
         ProcessingConfig.initialize()
         ProcessingConfig.readSettings()
@@ -224,7 +221,6 @@ class Processing:
             algs[alg.commandLineName()] = alg
         Processing.algs[Processing.modeler.getName()] = algs
 
-
     @staticmethod
     def loadActions():
         for provider in Processing.providers:
@@ -269,13 +265,14 @@ class Processing:
         Processing.runAlgorithm(name, handleAlgorithmResults, *args)
 
     @staticmethod
-    def runAlgorithm(algOrName, onFinish, *args):
+    def runAlgorithm(algOrName, onFinish, *args, **kwargs):
         if isinstance(algOrName, GeoAlgorithm):
             alg = algOrName
         else:
             alg = Processing.getAlgorithm(algOrName)
         if alg is None:
             print 'Error: Algorithm not found\n'
+            QgsMessageLog.logMessage(Processing.tr('Error: Algorithm {0} not found\n').format(algOrName), Processing.tr("Processing"))
             return
         alg = alg.getCopy()
 
@@ -291,25 +288,30 @@ class Processing:
                 output = alg.getOutputFromName(name)
                 if output and output.setValue(value):
                     continue
-                print 'Error: Wrong parameter value %s for parameter %s.' \
-                    % (value, name)
-                ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                    Processing.tr('Error in %s. Wrong parameter value %s for parameter %s.') \
-                    % (alg.name, value, name))
+                print 'Error: Wrong parameter value %s for parameter %s.' % (value, name)
+                QgsMessageLog.logMessage(Processing.tr('Error: Wrong parameter value {0} for parameter {1}.').format(value, name), Processing.tr("Processing"))
+                ProcessingLog.addToLog(
+                    ProcessingLog.LOG_ERROR,
+                    Processing.tr('Error in %s. Wrong parameter value %s for parameter %s.') % (
+                        alg.name, value, name)
+                )
                 return
             # fill any missing parameters with default values if allowed
             for param in alg.parameters:
                 if param.name not in setParams:
                     if not param.setValue(None):
                         print ('Error: Missing parameter value for parameter %s.' % (param.name))
-                        ProcessingLog.addToLog(ProcessingLog.LOG_ERROR,
-                            Processing.tr('Error in %s. Missing parameter value for parameter %s.') \
-                            % (alg.name, param.name))
+                        QgsMessageLog.logMessage(Processing.tr('Error: Missing parameter value for parameter {0}.').format(param.name), Processing.tr("Processing"))
+                        ProcessingLog.addToLog(
+                            ProcessingLog.LOG_ERROR,
+                            Processing.tr('Error in %s. Missing parameter value for parameter %s.') % (
+                                alg.name, param.name)
+                        )
                         return
         else:
-            if len(args) != alg.getVisibleParametersCount() \
-                    + alg.getVisibleOutputsCount():
+            if len(args) != alg.getVisibleParametersCount() + alg.getVisibleOutputsCount():
                 print 'Error: Wrong number of parameters'
+                QgsMessageLog.logMessage(Processing.tr('Error: Wrong number of parameters'), Processing.tr("Processing"))
                 processing.alghelp(algOrName)
                 return
             i = 0
@@ -318,6 +320,7 @@ class Processing:
                     if not param.setValue(args[i]):
                         print 'Error: Wrong parameter value: ' \
                             + unicode(args[i])
+                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong parameter value: ') + unicode(args[i]), Processing.tr("Processing"))
                         return
                     i = i + 1
 
@@ -325,37 +328,50 @@ class Processing:
                 if not output.hidden:
                     if not output.setValue(args[i]):
                         print 'Error: Wrong output value: ' + unicode(args[i])
+                        QgsMessageLog.logMessage(Processing.tr('Error: Wrong output value: ') + unicode(args[i]), Processing.tr("Processing"))
                         return
                     i = i + 1
 
-        msg = alg.checkParameterValuesBeforeExecuting()
+        msg = alg._checkParameterValuesBeforeExecuting()
         if msg:
             print 'Unable to execute algorithm\n' + msg
+            QgsMessageLog.logMessage(Processing.tr('Unable to execute algorithm\n{0}').format(msg), Processing.tr("Processing"))
             return
 
         if not alg.checkInputCRS():
             print 'Warning: Not all input layers use the same CRS.\n' \
                 + 'This can cause unexpected results.'
+            QgsMessageLog.logMessage(Processing.tr('Warning: Not all input layers use the same CRS.\nThis can cause unexpected results.'), Processing.tr("Processing"))
 
+        # Don't set the wait cursor twice, because then when you
+        # restore it, it will still be a wait cursor.
+        overrideCursor = False
         if iface is not None:
-          # Don't set the wait cursor twice, because then when you
-          # restore it, it will still be a wait cursor.
-          cursor = QApplication.overrideCursor()
-          if cursor is None or cursor == 0:
-              QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
-          elif cursor.shape() != Qt.WaitCursor:
-              QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+            cursor = QApplication.overrideCursor()
+            if cursor is None or cursor == 0:
+                QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+                overrideCursor = True
+            elif cursor.shape() != Qt.WaitCursor:
+                QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+                overrideCursor = True
 
         progress = None
-        if iface is not None :
+        if kwargs is not None and "progress" in kwargs.keys():
+            progress = kwargs["progress"]
+        elif iface is not None:
             progress = MessageBarProgress()
-        ret = runalg(alg, progress)
-        if onFinish is not None and ret:
-            onFinish(alg, progress)
 
-        if iface is not None:
-          QApplication.restoreOverrideCursor()
-          progress.close()
+        ret = runalg(alg, progress)
+        if ret:
+            if onFinish is not None:
+                onFinish(alg, progress)
+        else:
+            QgsMessageLog.logMessage(Processing.tr("There were errors executing the algorithm."), Processing.tr("Processing"))
+
+        if overrideCursor:
+            QApplication.restoreOverrideCursor()
+        if isinstance(progress, MessageBarProgress):
+            progress.close()
         return alg
 
     @staticmethod
@@ -363,4 +379,3 @@ class Processing:
         if context == '':
             context = 'Processing'
         return QCoreApplication.translate(context, string)
-

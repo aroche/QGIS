@@ -27,12 +27,10 @@ __revision__ = '$Format:%H$'
 
 from sets import Set
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QGis, QgsFeatureRequest, QgsFeature, QgsGeometry, QgsPoint
 
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterNumber
 from processing.core.outputs import OutputVector
@@ -47,25 +45,23 @@ class VoronoiPolygons(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Voronoi polygons'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Voronoi polygons')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POINT]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POINT]))
         self.addParameter(ParameterNumber(self.BUFFER,
-            self.tr('Buffer region'), 0.0, 100.0, 0.0))
+                                          self.tr('Buffer region'), 0.0, 100.0, 0.0))
 
         self.addOutput(OutputVector(self.OUTPUT, self.tr('Voronoi polygons')))
 
     def processAlgorithm(self, progress):
-        layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+        layer = dataobjects.getObjectFromUri(self.getParameterValue(self.INPUT))
 
         buf = self.getParameterValue(self.BUFFER)
 
-        writer = self.getOutputFromName(
-                self.OUTPUT).getVectorWriter(layer.pendingFields().toList(),
-                                             QGis.WKBPolygon, layer.crs())
+        writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(
+            layer.pendingFields().toList(), QGis.WKBPolygon, layer.crs())
 
         inFeat = QgsFeature()
         outFeat = QgsFeature()
@@ -179,7 +175,7 @@ class VoronoiPolygons(GeoAlgorithm):
                     height,
                     exX,
                     exY,
-                    )
+                )
             elif edge[1] >= 0:
                 # Only one vertex
                 if c.lines[edge[0]][1] == 0:
@@ -202,7 +198,7 @@ class VoronoiPolygons(GeoAlgorithm):
                     height,
                     exX,
                     exY,
-                    )
+                )
             elif edge[2] >= 0:
                 # Only one vertex
                 if c.lines[edge[0]][1] == 0:
@@ -224,7 +220,7 @@ class VoronoiPolygons(GeoAlgorithm):
                     height,
                     exX,
                     exY,
-                    )
+                )
             if x1 or x2 or y1 or y2:
                 lines.append(QgsPoint(x1 + extent.xMinimum(), y1
                              + extent.yMinimum()))

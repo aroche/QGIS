@@ -25,11 +25,10 @@ __copyright__ = '(C) 2010, Michael Minn'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from PyQt4.QtCore import QVariant
+from qgis.core import QgsExpression, QgsFeatureRequest
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTableField
 from processing.core.parameters import ParameterSelection
@@ -53,32 +52,40 @@ class ExtractByAttribute(GeoAlgorithm):
                  '<=',
                  'begins with',
                  'contains'
-                ]
+                 ]
 
     def defineCharacteristics(self):
-        self.name = 'Extract by attribute'
-        self.group = 'Vector selection tools'
+        self.name, self.i18n_name = self.trAlgorithm('Extract by attribute')
+        self.group, self.i18n_group = self.trAlgorithm('Vector selection tools')
+
+        self.i18n_operators = ['=',
+                               '!=',
+                               '>',
+                               '>=',
+                               '<',
+                               '<=',
+                               self.tr('begins with'),
+                               self.tr('contains')]
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input Layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input Layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterTableField(self.FIELD,
-            self.tr('Selection attribute'), self.INPUT))
+                                              self.tr('Selection attribute'), self.INPUT))
         self.addParameter(ParameterSelection(self.OPERATOR,
-            self.tr('Operator'), self.OPERATORS))
+                                             self.tr('Operator'), self.i18n_operators))
         self.addParameter(ParameterString(self.VALUE, self.tr('Value')))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Extracted (attribute)')))
 
     def processAlgorithm(self, progress):
-        layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+        layer = dataobjects.getObjectFromUri(self.getParameterValue(self.INPUT))
         fieldName = self.getParameterValue(self.FIELD)
         operator = self.OPERATORS[self.getParameterValue(self.OPERATOR)]
         value = self.getParameterValue(self.VALUE)
 
         fields = layer.pendingFields()
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(fields,
-            layer.wkbType(), layer.crs())
+                                                                     layer.wkbType(), layer.crs())
 
         idx = layer.fieldNameIndex(fieldName)
         fieldType = fields[idx].type()
@@ -103,22 +110,19 @@ class ExtractByAttribute(GeoAlgorithm):
             progress.setInfo(expr)
         elif fieldType in [QVariant.Date, QVariant.DateTime]:
             progress.setInfo(self.tr('Date field'))
-            expr = """"%s" %s '%s'""" % (fieldX, operator, value)
+            expr = """"%s" %s '%s'""" % (fieldName, operator, value)
             progress.setInfo(expr)
         else:
             raise GeoAlgorithmExecutionException(
                 self.tr('Unsupported field type "%s"' % fields[idx].typeName()))
 
         expression = QgsExpression(expr)
-        expression.prepare(fields)
+        if not expression.hasParserError():
+            req = QgsFeatureRequest(expression)
+        else:
+            raise GeoAlgorithmExecutionException(expression.parserErrorString())
 
-        features = vector.features(layer)
-
-        count = len(features)
-        total = 100.0 / float(count)
-        for count, f in enumerate(features):
-            if expression.evaluate(f, fields):
-                writer.addFeature(f)
-            progress.setPercentage(int(count * total))
+        for f in layer.getFeatures(req):
+            writer.addFeature(f)
 
         del writer

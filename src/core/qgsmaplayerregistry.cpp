@@ -20,6 +20,15 @@
 #include "qgslogger.h"
 
 //
+// Static calls to enforce singleton behaviour
+//
+QgsMapLayerRegistry *QgsMapLayerRegistry::instance()
+{
+  static QgsMapLayerRegistry sInstance;
+  return &sInstance;
+}
+
+//
 // Main class begins now...
 //
 
@@ -39,15 +48,15 @@ int QgsMapLayerRegistry::count()
   return mMapLayers.size();
 }
 
-QgsMapLayer * QgsMapLayerRegistry::mapLayer( QString theLayerId )
+QgsMapLayer * QgsMapLayerRegistry::mapLayer( const QString& theLayerId )
 {
   return mMapLayers.value( theLayerId );
 }
 
-QList<QgsMapLayer *> QgsMapLayerRegistry::mapLayersByName( QString layerName )
+QList<QgsMapLayer *> QgsMapLayerRegistry::mapLayersByName( const QString& layerName )
 {
   QList<QgsMapLayer *> myResultList;
-  foreach ( QgsMapLayer* layer, mMapLayers )
+  Q_FOREACH ( QgsMapLayer* layer, mMapLayers )
   {
     if ( layer->name() == layerName )
     {
@@ -59,7 +68,7 @@ QList<QgsMapLayer *> QgsMapLayerRegistry::mapLayersByName( QString layerName )
 
 //introduced in 1.8
 QList<QgsMapLayer *> QgsMapLayerRegistry::addMapLayers(
-  QList<QgsMapLayer *> theMapLayers,
+  const QList<QgsMapLayer *>& theMapLayers,
   bool addToLegend,
   bool takeOwnership )
 {
@@ -105,11 +114,11 @@ QgsMapLayerRegistry::addMapLayer( QgsMapLayer* theMapLayer,
 
 
 //introduced in 1.8
-void QgsMapLayerRegistry::removeMapLayers( QStringList theLayerIds )
+void QgsMapLayerRegistry::removeMapLayers( const QStringList& theLayerIds )
 {
   emit layersWillBeRemoved( theLayerIds );
 
-  foreach ( const QString &myId, theLayerIds )
+  Q_FOREACH ( const QString &myId, theLayerIds )
   {
     QgsMapLayer* lyr = mMapLayers[myId];
     if ( mOwnedLayers.contains( lyr ) )
@@ -161,9 +170,10 @@ const QMap<QString, QgsMapLayer*>& QgsMapLayerRegistry::mapLayers()
 }
 
 
-
+#if 0
 void QgsMapLayerRegistry::connectNotify( const char * signal )
 {
   Q_UNUSED( signal );
   //QgsDebugMsg("QgsMapLayerRegistry connected to " + QString(signal));
 } //  QgsMapLayerRegistry::connectNotify
+#endif

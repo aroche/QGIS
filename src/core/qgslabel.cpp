@@ -39,15 +39,15 @@
 #include "qgslabel.h"
 
 // use M_PI define PI 3.141592654
-#ifdef WIN32
+#ifdef Q_OS_WIN
 #undef M_PI
 #define M_PI 4*atan(1.0)
 #endif
 
 QgsLabel::QgsLabel( const QgsFields & fields )
-    : mMinScale( 0 ),
-    mMaxScale( 100000000 ),
-    mScaleBasedVisibility( false )
+    : mMinScale( 0 )
+    , mMaxScale( 100000000 )
+    , mScaleBasedVisibility( false )
 {
   mFields = fields;
   mLabelFieldIdx.resize( LabelFieldCount );
@@ -228,7 +228,7 @@ void QgsLabel::renderLabel( QgsRenderContext &renderContext,
 
   if ( mLabelAttributes->multilineEnabled() )
   {
-    QStringList texts = text.split( "\n" );
+    QStringList texts = text.split( '\n' );
 
     width = 0;
     for ( int i = 0; i < texts.size(); i++ )
@@ -369,7 +369,7 @@ void QgsLabel::renderLabel( QgsRenderContext &renderContext,
 
 void QgsLabel::renderLabel( QgsRenderContext &renderContext,
                             QgsPoint point,
-                            QString text, QFont font, QPen pen,
+                            const QString& text, const QFont& font, const QPen& pen,
                             int dx, int dy,
                             double xoffset, double yoffset,
                             double ang,
@@ -514,7 +514,7 @@ QgsLabelAttributes *QgsLabel::labelAttributes( void )
 
 void QgsLabel::labelPoint( std::vector<labelpoint>& points, QgsFeature & feature )
 {
-  QgsGeometry *geometry = feature.geometry();
+  const QgsGeometry *geometry = feature.constGeometry();
   const unsigned char *geom = geometry->asWkb();
   size_t geomlen = geometry->wkbSize();
   QGis::WkbType wkbType = geometry->wkbType();
@@ -576,10 +576,10 @@ const unsigned char* QgsLabel::labelPoint( labelpoint& point, const unsigned cha
   QGis::WkbType wkbType;
 #ifndef QT_NO_DEBUG
   const unsigned char *geomend = geom + geomlen;
+  Q_ASSERT( geom + 1 + sizeof( wkbType ) <= geomend );
 #else
   Q_UNUSED( geomlen );
 #endif
-  Q_ASSERT( geom + 1 + sizeof( wkbType ) <= geomend );
 
   geom++; // skip endianness
   memcpy( &wkbType, geom, sizeof( wkbType ) );
@@ -592,7 +592,9 @@ const unsigned char* QgsLabel::labelPoint( labelpoint& point, const unsigned cha
     case QGis::WKBPoint25D:
     case QGis::WKBPoint:
     {
+#ifndef QT_NO_DEBUG
       Q_ASSERT( geom + 2*sizeof( double ) <= geomend );
+#endif
       double *pts = ( double * )geom;
       point.p.set( pts[0], pts[1] );
       point.angle = 0.0;
@@ -602,13 +604,18 @@ const unsigned char* QgsLabel::labelPoint( labelpoint& point, const unsigned cha
 
     case QGis::WKBLineString25D:
       dims = 3;
+      //intentional fall-through
     case QGis::WKBLineString: // Line center
     {
+#ifndef QT_NO_DEBUG
       Q_ASSERT( geom + sizeof( int ) <= geomend );
+#endif
       int nPoints = *( unsigned int * )geom;
       geom += sizeof( int );
 
+#ifndef QT_NO_DEBUG
       Q_ASSERT( geom + nPoints*sizeof( double )*dims <= geomend );
+#endif
 
       // get line center
       double *pts = ( double * )geom;
@@ -648,19 +655,26 @@ const unsigned char* QgsLabel::labelPoint( labelpoint& point, const unsigned cha
 
     case QGis::WKBPolygon25D:
       dims = 3;
+      //intentional fall-through
     case QGis::WKBPolygon: // centroid of outer ring
     {
+#ifndef QT_NO_DEBUG
       Q_ASSERT( geom + sizeof( int ) <= geomend );
+#endif
       int nRings = *( unsigned int * )geom;
       geom += sizeof( int );
 
       for ( int i = 0; i < nRings; ++i )
       {
+#ifndef QT_NO_DEBUG
         Q_ASSERT( geom + sizeof( int ) <= geomend );
+#endif
         int nPoints = *( unsigned int * )geom;
         geom += sizeof( int );
 
+#ifndef QT_NO_DEBUG
         Q_ASSERT( geom + nPoints*sizeof( double )*dims <= geomend );
+#endif
 
         if ( i == 0 )
         {
@@ -691,7 +705,7 @@ const unsigned char* QgsLabel::labelPoint( labelpoint& point, const unsigned cha
   return geom;
 }
 
-bool QgsLabel::readLabelField( QDomElement &el, int attr, QString prefix = "field" )
+bool QgsLabel::readLabelField( QDomElement &el, int attr, const QString& prefix = "field" )
 {
   QString name = prefix + "name";
 
@@ -702,7 +716,7 @@ bool QgsLabel::readLabelField( QDomElement &el, int attr, QString prefix = "fiel
     int idx = 0;
     for ( ; idx < mFields.count(); ++idx )
     {
-      if ( mFields[idx].name() == name )
+      if ( mFields.at( idx ).name() == name )
       {
         break;
       }

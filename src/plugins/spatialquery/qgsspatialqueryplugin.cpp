@@ -40,12 +40,6 @@
 #include <QMessageBox>
 
 
-#ifdef WIN32
-#define QGISEXTERN extern "C" __declspec( dllexport )
-#else
-#define QGISEXTERN extern "C"
-#endif
-
 static const QString name_ = QObject::tr( "Spatial Query Plugin" );
 static const QString description_ = QObject::tr( "A plugin that makes spatial queries on vector layers" );
 static const QString category_ = QObject::tr( "Vector" );
@@ -139,7 +133,7 @@ void QgsSpatialQueryPlugin::run()
 }
 
 //! Set icons to the current theme
-void QgsSpatialQueryPlugin::setCurrentTheme( QString )
+void QgsSpatialQueryPlugin::setCurrentTheme( const QString& )
 {
   if ( mSpatialQueryAction )
     mSpatialQueryAction->setIcon( getThemeIcon( "/spatialquery.png" ) );

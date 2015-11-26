@@ -149,6 +149,15 @@
    <header>qgseffectdrawmodecombobox.h</header>
   </customwidget>
  </customwidgets>
+<<<<<<< HEAD
+=======
+ <tabstops>
+  <tabstop>mTransparencySlider</tabstop>
+  <tabstop>mTransparencySpnBx</tabstop>
+  <tabstop>mBlendCmbBx</tabstop>
+  <tabstop>mDrawModeComboBox</tabstop>
+ </tabstops>
+>>>>>>> upstream/master
  <resources/>
  <connections/>
 </ui>

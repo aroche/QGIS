@@ -26,11 +26,10 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 from sets import Set
-from PyQt4.QtCore import *
-from qgis.core import *
+from PyQt4.QtCore import QVariant
+from qgis.core import QGis, QgsField, QgsFeatureRequest, QgsFeature, QgsGeometry, QgsPoint
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.tools import dataobjects, vector
 from processing.core.parameters import ParameterVector
 from processing.core.outputs import OutputVector
@@ -43,25 +42,25 @@ class Delaunay(GeoAlgorithm):
     OUTPUT = 'OUTPUT'
 
     def defineCharacteristics(self):
-        self.name = 'Delaunay triangulation'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Delaunay triangulation')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POINT]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_POINT]))
 
         self.addOutput(OutputVector(self.OUTPUT,
-            self.tr('Delaunay triangulation')))
+                                    self.tr('Delaunay triangulation')))
 
     def processAlgorithm(self, progress):
         layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT))
+            self.getParameterValue(self.INPUT))
 
         fields = [QgsField('POINTA', QVariant.Double, '', 24, 15),
                   QgsField('POINTB', QVariant.Double, '', 24, 15),
                   QgsField('POINTC', QVariant.Double, '', 24, 15)]
 
         writer = self.getOutputFromName(self.OUTPUT).getVectorWriter(fields,
-                QGis.WKBPolygon, layer.crs())
+                                                                     QGis.WKBPolygon, layer.crs())
 
         pts = []
         ptDict = {}

@@ -26,11 +26,9 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import random
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QgsFeature
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterSelection
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterNumber
@@ -47,24 +45,24 @@ class RandomSelectionWithinSubsets(GeoAlgorithm):
     FIELD = 'FIELD'
     OUTPUT = 'OUTPUT'
 
-    METHODS = ['Number of selected features',
-               'Percentage of selected features']
-
     def defineCharacteristics(self):
         self.allowOnlyOpenedLayers = True
-        self.name = 'Random selection within subsets'
-        self.group = 'Vector selection tools'
+        self.name, self.i18n_name = self.trAlgorithm('Random selection within subsets')
+        self.group, self.i18n_group = self.trAlgorithm('Vector selection tools')
+
+        self.methods = [self.tr('Number of selected features'),
+                        self.tr('Percentage of selected features')]
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterTableField(self.FIELD,
-            self.tr('ID Field'), self.INPUT))
+                                              self.tr('ID Field'), self.INPUT))
         self.addParameter(ParameterSelection(self.METHOD,
-            self.tr('Method'), self.METHODS, 0))
+                                             self.tr('Method'), self.methods, 0))
         self.addParameter(ParameterNumber(self.NUMBER,
-            self.tr('Number/percentage of selected features'), 1, None, 10))
+                                          self.tr('Number/percentage of selected features'), 1, None, 10))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Selection'), True))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Selection stratified'), True))
 
     def processAlgorithm(self, progress):
         filename = self.getParameterValue(self.INPUT)

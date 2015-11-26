@@ -26,8 +26,11 @@
 #include <QMessageBox>
 #include <QSettings>
 
-QgsProjectionSelector::QgsProjectionSelector( QWidget* parent, const char *name, Qt::WindowFlags fl )
+QgsProjectionSelector::QgsProjectionSelector( QWidget* parent, const char *name, const Qt::WindowFlags& fl )
     : QWidget( parent, fl )
+    , mUserProjList( NULL )
+    , mGeoList( NULL )
+    , mProjList( NULL )
     , mProjListDone( false )
     , mUserProjListDone( false )
     , mRecentProjListDone( false )
@@ -168,9 +171,9 @@ QString QgsProjectionSelector::ogcWmsCrsFilterAsSqlExpression( QSet<QString> * c
 
   // iterate through all incoming CRSs
 
-  foreach ( QString auth_id, crsFilter->values() )
+  Q_FOREACH ( const QString& auth_id, crsFilter->values() )
   {
-    QStringList parts = auth_id.split( ":" );
+    QStringList parts = auth_id.split( ':' );
 
     if ( parts.size() < 2 )
       continue;
@@ -184,15 +187,15 @@ QString QgsProjectionSelector::ogcWmsCrsFilterAsSqlExpression( QSet<QString> * c
   if ( authParts.size() > 0 )
   {
     QString prefix = " AND (";
-    foreach ( QString auth_name, authParts.keys() )
+    Q_FOREACH ( const QString& auth_name, authParts.keys() )
     {
       sqlExpression += QString( "%1(upper(auth_name)='%2' AND upper(auth_id) IN ('%3'))" )
-                       .arg( prefix )
-                       .arg( auth_name )
-                       .arg( authParts[auth_name].join( "','" ) );
+                       .arg( prefix,
+                             auth_name,
+                             authParts[auth_name].join( "','" ) );
       prefix = " OR ";
     }
-    sqlExpression += ")";
+    sqlExpression += ')';
   }
 
   QgsDebugMsg( "exiting with '" + sqlExpression + "'." );
@@ -200,7 +203,7 @@ QString QgsProjectionSelector::ogcWmsCrsFilterAsSqlExpression( QSet<QString> * c
   return sqlExpression;
 }
 
-void QgsProjectionSelector::setSelectedCrsName( QString theCRSName )
+void QgsProjectionSelector::setSelectedCrsName( const QString& theCRSName )
 {
   applySelection( NAME_COLUMN, theCRSName );
 }
@@ -210,7 +213,7 @@ void QgsProjectionSelector::setSelectedCrsId( long theCRSID )
   applySelection( QGIS_CRS_ID_COLUMN, QString::number( theCRSID ) );
 }
 
-void QgsProjectionSelector::setSelectedAuthId( QString id )
+void QgsProjectionSelector::setSelectedAuthId( const QString& id )
 {
   applySelection( AUTHID_COLUMN, id );
 }
@@ -305,7 +308,7 @@ QString QgsProjectionSelector::selectedProj4String()
   {
     databaseFileName = QgsApplication::qgisUserDbFilePath();
     if ( !QFileInfo( databaseFileName ).exists() ) //its unlikely that this condition will ever be reached
-      return QString( "" );
+      return QString();
   }
   else //must be a system projection then
   {
@@ -347,7 +350,7 @@ QString QgsProjectionSelector::selectedProj4String()
   return projString;
 }
 
-QString QgsProjectionSelector::getSelectedExpression( QString expression )
+QString QgsProjectionSelector::getSelectedExpression( const QString& expression )
 {
   // Only return the attribute if there is a node in the tree
   // selected that has an srs_id.  This prevents error if the user
@@ -395,8 +398,8 @@ QString QgsProjectionSelector::getSelectedExpression( QString expression )
   const char *tail;
   sqlite3_stmt *stmt;
   QString sql = QString( "select %1 from tbl_srs where srs_id=%2" )
-                .arg( expression )
-                .arg( lvi->text( QGIS_CRS_ID_COLUMN ) );
+                .arg( expression,
+                      lvi->text( QGIS_CRS_ID_COLUMN ) );
 
   QgsDebugMsg( QString( "Finding selected attribute using : %1" ).arg( sql ) );
   rc = sqlite3_prepare( database, sql.toUtf8(), sql.toUtf8().length(), &stmt, &tail );
@@ -444,7 +447,7 @@ long QgsProjectionSelector::selectedCrsId()
 }
 
 
-void QgsProjectionSelector::setOgcWmsCrsFilter( QSet<QString> crsFilter )
+void QgsProjectionSelector::setOgcWmsCrsFilter( const QSet<QString>& crsFilter )
 {
   mCrsFilter = crsFilter;
   mProjListDone = false;
@@ -578,22 +581,14 @@ void QgsProjectionSelector::loadCrsList( QSet<QString> *crsFilter )
     showDBMissingWarning( mSrsDatabaseFileName );
     return;
   }
-  // prepare the sql statement
+
   const char *tail;
   sqlite3_stmt *stmt;
-  // get total count of records in the projection table
-  QString sql = "select count(*) from tbl_srs";
-
-  rc = sqlite3_prepare( database, sql.toUtf8(), sql.toUtf8().length(), &stmt, &tail );
-  Q_ASSERT( rc == SQLITE_OK );
-  sqlite3_step( stmt );
-  sqlite3_finalize( stmt );
-
   // Set up the query to retrieve the projection information needed to populate the list
   //note I am giving the full field names for clarity here and in case someone
   //changes the underlying view TS
-  sql = QString( "select description, srs_id, upper(auth_name||':'||auth_id), is_geo, name, parameters, deprecated from vw_srs where %1 order by name,description" )
-        .arg( sqlFilter );
+  QString sql = QString( "select description, srs_id, upper(auth_name||':'||auth_id), is_geo, name, parameters, deprecated from vw_srs where %1 order by name,description" )
+                .arg( sqlFilter );
 
   rc = sqlite3_prepare( database, sql.toUtf8(), sql.toUtf8().length(), &stmt, &tail );
   // XXX Need to free memory from the error msg if one is set
@@ -840,7 +835,7 @@ void QgsProjectionSelector::pushProjectionToFront()
 }
 
 
-long QgsProjectionSelector::getLargestCRSIDMatch( QString theSql )
+long QgsProjectionSelector::getLargestCRSIDMatch( const QString& theSql )
 {
   long srsId = 0;
 
@@ -943,7 +938,7 @@ QStringList QgsProjectionSelector::authorities()
   return authorities;
 }
 
-/*!linfinity qtcreator qgis
+/** Linfinity qtcreator qgis
 * \brief Make the string safe for use in SQL statements.
 *  This involves escaping single quotes, double quotes, backslashes,
 *  and optionally, percentage symbols.  Percentage symbols are used
@@ -952,17 +947,17 @@ QStringList QgsProjectionSelector::authorities()
 * \arg const QString in The input string to make safe.
 * \return The string made safe for SQL statements.
 */
-const QString QgsProjectionSelector::sqlSafeString( const QString theSQL )
+const QString QgsProjectionSelector::sqlSafeString( const QString& theSQL )
 {
   QString retval = theSQL;
-  retval.replace( "\\", "\\\\" );
+  retval.replace( '\\', "\\\\" );
   retval.replace( '\"', "\\\"" );
-  retval.replace( "\'", "\\'" );
-  retval.replace( "%", "\\%" );
+  retval.replace( '\'', "\\'" );
+  retval.replace( '%', "\\%" );
   return retval;
 }
 
-void QgsProjectionSelector::showDBMissingWarning( const QString theFileName )
+void QgsProjectionSelector::showDBMissingWarning( const QString& theFileName )
 {
 
   QMessageBox::critical( this, tr( "Resource Location Error" ),

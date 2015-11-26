@@ -2,10 +2,16 @@
         version=0,
         keyword_arguments="Optional")
 
-%Import QtCore/QtCoremod.sip
-%Import QtGui/QtGuimod.sip
+%Feature QT5_SUPPORT
+
 %Import QtXml/QtXmlmod.sip
 %Import QtNetwork/QtNetworkmod.sip
+%Import QtSql/QtSqlmod.sip
+
+%If (QT5_SUPPORT)
+  %Import QtPrintSupport/QtPrintSupportmod.sip
+  %Import QtWidgets/QtWidgetsmod.sip
+%End
 
 %Include conversions.sip
 %Include qgsexception.sip
@@ -22,29 +28,37 @@
 %Include qgscontexthelp.sip
 %Include qgscoordinatereferencesystem.sip
 %Include qgscoordinatetransform.sip
+%Include qgsconditionalstyle.sip
 %Include qgscredentials.sip
 %Include qgscrscache.sip
 %Include qgsdatadefined.sip
 %Include qgsdataitem.sip
+%Include qgsdataitemprovider.sip
+%Include qgsdataitemproviderregistry.sip
 %Include qgsdataprovider.sip
 %Include qgsdatasourceuri.sip
 %Include qgsdatumtransformstore.sip
 %Include qgsdbfilterproxymodel.sip
 %Include qgsdistancearea.sip
+%Include qgseditformconfig.sip
 %Include qgseditorwidgetconfig.sip
 %Include qgserror.sip
 %Include qgsexpression.sip
+%Include qgsexpressioncontext.sip
 %Include qgsfeature.sip
 %Include qgsfeatureiterator.sip
 %Include qgsfeaturerequest.sip
+%Include qgsfeaturefilterprovider.sip
 %Include qgsfield.sip
-%Include qgsgeometry.sip
 %Include qgsgeometryvalidator.sip
 %Include qgsgeometrysimplifier.sip
+%Include qgshistogram.sip
 %Include qgsmaptopixelgeometrysimplifier.sip
 %Include qgsgml.sip
 %Include qgsgmlschema.sip
-%Include qgshttptransaction.sip
+%If(!QT5_SUPPORT)
+  %Include qgshttptransaction.sip
+%End
 %Include qgslabel.sip
 %Include qgslabelattributes.sip
 %Include qgslabelsearchtree.sip
@@ -95,11 +109,14 @@
 %Include qgsrendercontext.sip
 %Include qgsrunprocess.sip
 %Include qgsscalecalculator.sip
+%Include qgsscaleexpression.sip
 %Include qgsscaleutils.sip
 %Include qgssimplifymethod.sip
 %Include qgssnapper.sip
 %Include qgssnappingutils.sip
 %Include qgsspatialindex.sip
+%Include qgsstatisticalsummary.sip
+%Include qgsstringutils.sip
 %Include qgstolerance.sip
 %Include qgsvectordataprovider.sip
 %Include qgsvectorfilewriter.sip
@@ -111,6 +128,8 @@
 %Include qgsvectorlayerundocommand.sip
 %Include qgsvectorsimplifymethod.sip
 %Include qgsfontutils.sip
+%Include qgsdartmeasurement.sip
+%Include qgsexpressionfieldbuffer.sip
 
 %Include qgscachedfeatureiterator.sip
 %Include qgscacheindex.sip
@@ -120,6 +139,14 @@
 %Include qgsprojectfiletransform.sip
 %Include qgsvectorlayereditutils.sip
 %Include qgsvectorlayerfeatureiterator.sip
+%Include qgsvisibilitypresetcollection.sip
+%Include qgslayerdefinition.sip
+
+%Include auth/qgsauthcertutils.sip
+%Include auth/qgsauthconfig.sip
+// %Include auth/qgsauthcrypto.sip
+%Include auth/qgsauthmanager.sip
+%Include auth/qgsauthmethod.sip
 
 %Include composer/qgsaddremoveitemcommand.sip
 %Include composer/qgsaddremovemultiframecommand.sip
@@ -171,6 +198,14 @@
 %Include diagram/qgstextdiagram.sip
 
 %Include effects/qgsimageoperation.sip
+%Include effects/qgspainteffect.sip
+%Include effects/qgseffectstack.sip
+%Include effects/qgsblureffect.sip
+%Include effects/qgsshadoweffect.sip
+%Include effects/qgsgloweffect.sip
+%Include effects/qgstransformeffect.sip
+%Include effects/qgscoloreffect.sip
+%Include effects/qgspainteffectregistry.sip
 
 %Include gps/qgsgpsconnection.sip
 %Include gps/qgsgpsconnectionregistry.sip
@@ -259,3 +294,22 @@
 %Include symbology-ng/qgssymbologyv2conversion.sip
 
 %Include dxf/qgsdxfexport.sip
+
+%Include geometry/qgsgeometry.sip
+%Include geometry/qgsabstractgeometryv2.sip
+%Include geometry/qgscircularstringv2.sip
+%Include geometry/qgscompoundcurvev2.sip
+%Include geometry/qgscurvepolygonv2.sip
+%Include geometry/qgscurvev2.sip
+%Include geometry/qgsgeometrycollectionv2.sip
+%Include geometry/qgsgeometryengine.sip
+%Include geometry/qgslinestringv2.sip
+%Include geometry/qgsmulticurvev2.sip
+%Include geometry/qgsmultilinestringv2.sip
+%Include geometry/qgsmultipointv2.sip
+%Include geometry/qgsmultipolygonv2.sip
+%Include geometry/qgsmultisurfacev2.sip
+%Include geometry/qgspointv2.sip
+%Include geometry/qgspolygonv2.sip
+%Include geometry/qgssurfacev2.sip
+%Include geometry/qgswkbtypes.sip

@@ -7,6 +7,7 @@
 #include "qgscomposerlegenditem.h"
 #include "qgsfontutils.h"
 #include "qgslayertree.h"
+#include "qgslayertreeutils.h"
 #include "qgslayertreemodel.h"
 #include "qgslayertreemodellegendnode.h"
 #include "qgslegendmodel.h"
@@ -17,12 +18,14 @@
 #include "qgsrenderchecker.h"
 #include "qgssinglesymbolrendererv2.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectordataprovider.h"
+#include "qgsgeometry.h"
 
 
 
-static QString _fileNameForTest( QString testName )
+static QString _fileNameForTest( const QString& testName )
 {
-  return QDir::tempPath() + QDir::separator() + testName + ".png";
+  return QDir::tempPath() + '/' + testName + ".png";
 }
 
 static void _setStandardTestFont( QgsLegendSettings& settings )
@@ -32,7 +35,7 @@ static void _setStandardTestFont( QgsLegendSettings& settings )
   << QgsComposerLegendStyle::Group
   << QgsComposerLegendStyle::Subgroup
   << QgsComposerLegendStyle::SymbolLabel;
-  foreach ( QgsComposerLegendStyle::Style st, styles )
+  Q_FOREACH ( QgsComposerLegendStyle::Style st, styles )
   {
     QFont font( QgsFontUtils::getStandardTestFont() );
     font.setPointSizeF( settings.style( st ).font().pointSizeF() );
@@ -48,6 +51,7 @@ static void _renderLegend( const QString& testName, QgsLayerTreeModel* legendMod
   int dpi = 96;
   qreal dpmm = dpi / 25.4;
   QSize s( size.width() * dpmm, size.height() * dpmm );
+  qDebug() << QString( "testName:%1 size=%2x%3 dpmm=%4 s=%5x%6" ).arg( testName ).arg( size.width() ).arg( size.height() ).arg( dpmm ).arg( s.width() ).arg( s.height() );
   QImage img( s, QImage::Format_ARGB32_Premultiplied );
   img.fill( Qt::white );
 
@@ -59,13 +63,16 @@ static void _renderLegend( const QString& testName, QgsLayerTreeModel* legendMod
   img.save( _fileNameForTest( testName ) );
 }
 
-static void _verifyImage( const QString& testName )
+static bool _verifyImage( const QString& testName, QString &report )
 {
   QgsRenderChecker checker;
+  checker.setControlPathPrefix( "legend" );
   checker.setControlName( "expected_" + testName );
   checker.setRenderedImage( _fileNameForTest( testName ) );
+  checker.setSizeTolerance( 3, 3 );
   bool equal = checker.compareImages( testName, 500 );
-  QVERIFY( equal );
+  report += checker.report();
+  return equal;
 }
 
 
@@ -73,6 +80,12 @@ static void _verifyImage( const QString& testName )
 class TestQgsLegendRenderer : public QObject
 {
     Q_OBJECT
+
+  public:
+    TestQgsLegendRenderer()
+        : mRoot( 0 ), mVL1( 0 ), mVL2( 0 ), mVL3( 0 ), mRL( 0 )
+    {}
+
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
@@ -85,6 +98,10 @@ class TestQgsLegendRenderer : public QObject
     void testBigMarker();
     void testLongSymbolText();
     void testThreeColumns();
+    void testFilterByMap();
+    void testRasterBorder();
+    void testFilterByPolygon();
+    void testFilterByExpression();
 
   private:
     QgsLayerTreeGroup* mRoot;
@@ -92,6 +109,7 @@ class TestQgsLegendRenderer : public QObject
     QgsVectorLayer* mVL2; // polygon
     QgsVectorLayer* mVL3; // point
     QgsRasterLayer* mRL;
+    QString mReport;
 };
 
 
@@ -99,10 +117,21 @@ void TestQgsLegendRenderer::initTestCase()
 {
   QgsApplication::init();
   QgsApplication::initQgis();
+
+  mReport += "<h1>Legend Renderer Tests</h1>\n";
 }
 
 void TestQgsLegendRenderer::cleanupTestCase()
 {
+  QString myReportFile = QDir::tempPath() + "/qgistest.html";
+  QFile myFile( myReportFile );
+  if ( myFile.open( QIODevice::WriteOnly | QIODevice::Append ) )
+  {
+    QTextStream myQTextStream( &myFile );
+    myQTextStream << mReport;
+    myFile.close();
+  }
+
   QgsApplication::exitQgis();
 }
 
@@ -123,11 +152,34 @@ void TestQgsLegendRenderer::init()
   mVL2->setRendererV2( new QgsSingleSymbolRendererV2( sym2 ) );
 
   mVL3 = new QgsVectorLayer( "Point", "Point Layer", "memory" );
+  {
+    QgsVectorDataProvider* pr = mVL3->dataProvider();
+    QList<QgsField> attrs;
+    attrs << QgsField( "test_attr", QVariant::Int );
+    pr->addAttributes( attrs );
+
+    QgsFields fields;
+    fields.append( attrs.back() );
+
+    QList<QgsFeature> features;
+    QgsFeature f1( fields, 1 );
+    f1.setAttribute( 0, 1 );
+    f1.setGeometry( QgsGeometry::fromPoint( QgsPoint( 1.0, 1.0 ) ) );
+    QgsFeature f2( fields, 2 );
+    f2.setAttribute( 0, 2 );
+    f2.setGeometry( QgsGeometry::fromPoint( QgsPoint( 9.0, 1.0 ) ) );
+    QgsFeature f3( fields, 3 );
+    f3.setAttribute( 0, 3 );
+    f3.setGeometry( QgsGeometry::fromPoint( QgsPoint( 5.0, 5.0 ) ) );
+    features << f1 << f2 << f3;
+    pr->addFeatures( features );
+    mVL3->updateFields();
+  }
   QgsMapLayerRegistry::instance()->addMapLayer( mVL3 );
 
   static char raster_array[] = { 1, 2, 2, 1 };
   QString rasterUri = QString( "MEM:::DATAPOINTER=%1,PIXELS=2,LINES=2" ).arg(( qulonglong ) raster_array );
-  mRL = new QgsRasterLayer( rasterUri, "Raster Layer", "gdal" );
+  mRL = new QgsRasterLayer( rasterUri, QString( "Raster Layer" ), QString( "gdal" ) );
   QgsMapLayerRegistry::instance()->addMapLayer( mRL );
 
   QgsCategoryList cats;
@@ -164,9 +216,9 @@ void TestQgsLegendRenderer::testModel()
 {
   QgsLayerTreeModel legendModel( mRoot );
 
-  QgsLayerTreeNode* nodeGroup0 = mRoot->children()[0];
+  QgsLayerTreeNode* nodeGroup0 = mRoot->children().at( 0 );
   QVERIFY( nodeGroup0 );
-  QgsLayerTreeNode* nodeLayer0 = nodeGroup0->children()[0];
+  QgsLayerTreeNode* nodeLayer0 = nodeGroup0->children().at( 0 );
   QVERIFY( QgsLayerTree::isLayer( nodeLayer0 ) );
   QModelIndex idx = legendModel.node2index( nodeLayer0 );
   QVERIFY( idx.isValid() );
@@ -199,7 +251,7 @@ void TestQgsLegendRenderer::testBasic()
   QgsLegendSettings settings;
   _setStandardTestFont( settings );
   _renderLegend( testName, &legendModel, settings );
-  _verifyImage( testName );
+  QVERIFY( _verifyImage( testName, mReport ) );
 }
 
 void TestQgsLegendRenderer::testBigMarker()
@@ -209,7 +261,9 @@ void TestQgsLegendRenderer::testBigMarker()
   QgsMarkerSymbolV2* sym = new QgsMarkerSymbolV2();
   sym->setColor( Qt::red );
   sym->setSize( sym->size() * 6 );
-  dynamic_cast<QgsCategorizedSymbolRendererV2*>( mVL3->rendererV2() )->updateCategorySymbol( 0, sym );
+  QgsCategorizedSymbolRendererV2* catRenderer = dynamic_cast<QgsCategorizedSymbolRendererV2*>( mVL3->rendererV2() );
+  QVERIFY( catRenderer );
+  catRenderer->updateCategorySymbol( 0, sym );
 
   //dynamic_cast<QgsCategorizedSymbolRendererV2*>( mVL3->rendererV2() )->updateCategoryLabel( 2, "This is a long symbol label" );
 
@@ -218,14 +272,16 @@ void TestQgsLegendRenderer::testBigMarker()
   QgsLegendSettings settings;
   _setStandardTestFont( settings );
   _renderLegend( testName, &legendModel, settings );
-  _verifyImage( testName );
+  QVERIFY( _verifyImage( testName, mReport ) );
 }
 
 void TestQgsLegendRenderer::testLongSymbolText()
 {
   QString testName = "legend_long_symbol_text";
 
-  dynamic_cast<QgsCategorizedSymbolRendererV2*>( mVL3->rendererV2() )->updateCategoryLabel( 1, "This is\nthree lines\nlong label" );
+  QgsCategorizedSymbolRendererV2* catRenderer = dynamic_cast<QgsCategorizedSymbolRendererV2*>( mVL3->rendererV2() );
+  QVERIFY( catRenderer );
+  catRenderer->updateCategoryLabel( 1, "This is\nthree lines\nlong label" );
 
   QgsLayerTreeModel legendModel( mRoot );
 
@@ -233,7 +289,7 @@ void TestQgsLegendRenderer::testLongSymbolText()
   settings.setWrapChar( "\n" );
   _setStandardTestFont( settings );
   _renderLegend( testName, &legendModel, settings );
-  _verifyImage( testName );
+  QVERIFY( _verifyImage( testName, mReport ) );
 }
 
 void TestQgsLegendRenderer::testThreeColumns()
@@ -246,9 +302,125 @@ void TestQgsLegendRenderer::testThreeColumns()
   settings.setColumnCount( 3 );
   _setStandardTestFont( settings );
   _renderLegend( testName, &legendModel, settings );
-  _verifyImage( testName );
+  QVERIFY( _verifyImage( testName, mReport ) );
 }
 
+void TestQgsLegendRenderer::testFilterByMap()
+{
+  QString testName = "legend_filter_by_map";
+
+  QgsLayerTreeModel legendModel( mRoot );
+
+  QgsMapSettings mapSettings;
+  // extent and size to include only the red and green points
+  mapSettings.setExtent( QgsRectangle( 0, 0, 10.0, 4.0 ) );
+  mapSettings.setOutputSize( QSize( 400, 100 ) );
+  mapSettings.setOutputDpi( 96 );
+  QStringList ll;
+  Q_FOREACH ( QgsMapLayer *l, QgsMapLayerRegistry::instance()->mapLayers() )
+  {
+    ll << l->id();
+  }
+  mapSettings.setLayers( ll );
+
+  legendModel.setLegendFilterByMap( &mapSettings );
+
+  QgsLegendSettings settings;
+  _setStandardTestFont( settings );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+}
+
+void TestQgsLegendRenderer::testRasterBorder()
+{
+  QString testName = "legend_raster_border";
+
+  QgsLayerTreeGroup* root = new QgsLayerTreeGroup();
+  root->addLayer( mRL );
+
+  QgsLayerTreeModel legendModel( root );
+
+  QgsLegendSettings settings;
+  _setStandardTestFont( settings );
+  settings.setRasterBorderWidth( 2 );
+  settings.setRasterBorderColor( Qt::green );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+}
+
+void TestQgsLegendRenderer::testFilterByPolygon()
+{
+  QString testName = "legend_filter_by_polygon";
+
+  QgsLayerTreeModel legendModel( mRoot );
+
+  QgsMapSettings mapSettings;
+  // extent and size to include only the red and green points
+  mapSettings.setExtent( QgsRectangle( 0, 0, 10.0, 4.0 ) );
+  mapSettings.setOutputSize( QSize( 400, 100 ) );
+  mapSettings.setOutputDpi( 96 );
+  QStringList ll;
+  foreach ( QgsMapLayer *l, QgsMapLayerRegistry::instance()->mapLayers() )
+  {
+    ll << l->id();
+  }
+  mapSettings.setLayers( ll );
+
+  // select only within a polygon
+  QScopedPointer<QgsGeometry> geom( QgsGeometry::fromWkt( "POLYGON((0 0,2 0,2 2,0 2,0 0))" ) );
+  legendModel.setLegendFilter( &mapSettings, /*useExtent*/ false, *geom.data() );
+
+  QgsLegendSettings settings;
+  _setStandardTestFont( settings );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+
+  // again with useExtent to true
+  legendModel.setLegendFilter( &mapSettings, /*useExtent*/ true, *geom.data() );
+
+  _setStandardTestFont( settings );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+}
+
+void TestQgsLegendRenderer::testFilterByExpression()
+{
+  QString testName = "legend_filter_by_expression";
+
+  QgsLayerTreeModel legendModel( mRoot );
+
+  QgsMapSettings mapSettings;
+  // extent and size to include only the red and green points
+  mapSettings.setExtent( QgsRectangle( 0, 0, 10.0, 4.0 ) );
+  mapSettings.setOutputSize( QSize( 400, 100 ) );
+  mapSettings.setOutputDpi( 96 );
+  QStringList ll;
+  foreach ( QgsMapLayer *l, QgsMapLayerRegistry::instance()->mapLayers() )
+  {
+    ll << l->id();
+  }
+  mapSettings.setLayers( ll );
+
+  // use an expression to only include the red point
+  QgsLayerTreeLayer* layer = legendModel.rootGroup()->findLayer( mVL3->id() );
+  QVERIFY( layer );
+  QgsLayerTreeUtils::setLegendFilterByExpression( *layer, "test_attr=1" );
+
+  legendModel.setLegendFilterByMap( &mapSettings );
+
+  QgsLegendSettings settings;
+  _setStandardTestFont( settings );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+
+  // test again with setLegendFilter and only expressions
+  legendModel.setLegendFilterByMap( 0 );
+  legendModel.setLegendFilter( &mapSettings, /*useExtent*/ false );
+
+  _setStandardTestFont( settings );
+  _renderLegend( testName, &legendModel, settings );
+  QVERIFY( _verifyImage( testName, mReport ) );
+}
 
 QTEST_MAIN( TestQgsLegendRenderer )
 #include "testqgslegendrenderer.moc"

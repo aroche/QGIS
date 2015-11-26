@@ -30,10 +30,11 @@
 
 QgsMapToolPinLabels::QgsMapToolPinLabels( QgsMapCanvas* canvas )
     : QgsMapToolLabel( canvas )
+    , mDragging( false )
+    , mShowPinned( false )
+    , mRubberBand( 0 )
 {
   mToolName = tr( "Pin labels" );
-  mRubberBand = 0;
-  mShowPinned = false;
 
   connect( QgisApp::instance()->actionToggleEditing(), SIGNAL( triggered() ), this, SLOT( updatePinnedLabels() ) );
   connect( canvas, SIGNAL( renderComplete( QPainter * ) ), this, SLOT( highlightPinnedLabels() ) );
@@ -45,7 +46,7 @@ QgsMapToolPinLabels::~QgsMapToolPinLabels()
   removePinnedHighlights();
 }
 
-void QgsMapToolPinLabels::canvasPressEvent( QMouseEvent * e )
+void QgsMapToolPinLabels::canvasPressEvent( QgsMapMouseEvent* e )
 {
   Q_UNUSED( e );
   mSelectRect.setRect( 0, 0, 0, 0 );
@@ -54,7 +55,7 @@ void QgsMapToolPinLabels::canvasPressEvent( QMouseEvent * e )
   mRubberBand = new QgsRubberBand( mCanvas, QGis::Polygon );
 }
 
-void QgsMapToolPinLabels::canvasMoveEvent( QMouseEvent * e )
+void QgsMapToolPinLabels::canvasMoveEvent( QgsMapMouseEvent* e )
 {
   if ( e->buttons() != Qt::LeftButton )
     return;
@@ -68,7 +69,7 @@ void QgsMapToolPinLabels::canvasMoveEvent( QMouseEvent * e )
   QgsMapToolSelectUtils::setRubberBand( mCanvas, mSelectRect, mRubberBand );
 }
 
-void QgsMapToolPinLabels::canvasReleaseEvent( QMouseEvent * e )
+void QgsMapToolPinLabels::canvasReleaseEvent( QgsMapMouseEvent* e )
 {
   //if the user simply clicked without dragging a rect
   //we will fabricate a small 1x1 pix rect and then continue
@@ -222,7 +223,7 @@ void QgsMapToolPinLabels::highlightPinnedLabels()
 void QgsMapToolPinLabels::removePinnedHighlights()
 {
   QApplication::setOverrideCursor( Qt::BusyCursor );
-  foreach ( QgsRubberBand *rb, mHighlights )
+  Q_FOREACH ( QgsRubberBand *rb, mHighlights )
   {
     delete rb;
   }
@@ -232,9 +233,8 @@ void QgsMapToolPinLabels::removePinnedHighlights()
 
 void QgsMapToolPinLabels::pinUnpinLabels( const QgsRectangle& ext, QMouseEvent * e )
 {
-
-  bool doUnpin = e->modifiers() & Qt::ShiftModifier ? true : false;
-  bool toggleUnpinOrPin = e->modifiers() & Qt::ControlModifier ? true : false;
+  bool doUnpin = e->modifiers() & Qt::ShiftModifier;
+  bool toggleUnpinOrPin = e->modifiers() & Qt::ControlModifier;
 
   // get list of all drawn labels from all layers within, or touching, chosen extent
   bool labelChanged = false;

@@ -30,11 +30,10 @@ import os
 import stat
 import subprocess
 
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt4.QtCore import QSettings, QCoreApplication
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingLog import ProcessingLog
-from processing.tools.system import *
+from processing.tools.system import userFolder, isWindows, mkdir
 
 
 class RUtils:
@@ -42,12 +41,22 @@ class RUtils:
     RSCRIPTS_FOLDER = 'R_SCRIPTS_FOLDER'
     R_FOLDER = 'R_FOLDER'
     R_USE64 = 'R_USE64'
+    R_LIBS_USER = 'R_LIBS_USER'
 
     @staticmethod
     def RFolder():
         folder = ProcessingConfig.getSetting(RUtils.R_FOLDER)
         if folder is None:
             folder = ''
+
+        return os.path.abspath(unicode(folder))
+
+    @staticmethod
+    def RLibs():
+        folder = ProcessingConfig.getSetting(RUtils.R_LIBS_USER)
+        if folder is None:
+            folder = unicode(os.path.join(userFolder(), 'rlibs'))
+        mkdir(folder)
 
         return os.path.abspath(unicode(folder))
 
@@ -86,13 +95,14 @@ class RUtils:
                 execDir = 'i386'
             command = [
                 RUtils.RFolder() + os.sep + 'bin' + os.sep + execDir + os.sep
-                    + 'R.exe',
+                + 'R.exe',
                 'CMD',
                 'BATCH',
                 '--vanilla',
                 RUtils.getRScriptFilename(),
-                RUtils.getConsoleOutputFilename(),
-                ]
+                RUtils.getConsoleOutputFilename()
+            ]
+
         else:
             os.chmod(RUtils.getRScriptFilename(), stat.S_IEXEC | stat.S_IREAD
                      | stat.S_IWRITE)
@@ -106,7 +116,7 @@ class RUtils:
             stdin=open(os.devnull),
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-            )
+        )
         proc.wait()
         RUtils.createConsoleOutput()
         loglines = []
@@ -174,7 +184,7 @@ class RUtils:
             stdin=open(os.devnull),
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-            ).stdout
+        ).stdout
 
         for line in iter(proc.readline, ''):
             if 'R version' in line:

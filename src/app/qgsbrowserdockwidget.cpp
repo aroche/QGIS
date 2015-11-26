@@ -14,29 +14,28 @@
  ***************************************************************************/
 #include "qgsbrowserdockwidget.h"
 
+#include <QAbstractTextDocumentLayout>
 #include <QHeaderView>
 #include <QTreeView>
 #include <QMenu>
 #include <QSettings>
 #include <QToolButton>
 #include <QFileDialog>
+#include <QPlainTextDocumentLayout>
 #include <QSortFilterProxyModel>
 
+#include "qgisapp.h"
 #include "qgsbrowsermodel.h"
 #include "qgsbrowsertreeview.h"
 #include "qgslogger.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsrasterlayer.h"
 #include "qgsvectorlayer.h"
-#include "qgisapp.h"
 #include "qgsproject.h"
 
 // browser layer properties dialog
 #include "qgsapplication.h"
 #include "qgsmapcanvas.h"
-#include <ui_qgsbrowserlayerpropertiesbase.h>
-#include <ui_qgsbrowserdirectorypropertiesbase.h>
-
 
 #include <QDragEnterEvent>
 /**
@@ -50,7 +49,7 @@ items on the tree view although the drop is actually managed by qgis app.
 class QgsDockBrowserTreeView : public QgsBrowserTreeView
 {
   public:
-    QgsDockBrowserTreeView( QWidget* parent ) : QgsBrowserTreeView( parent )
+    explicit QgsDockBrowserTreeView( QWidget* parent ) : QgsBrowserTreeView( parent )
     {
       setDragDropMode( QTreeView::DragDrop ); // sets also acceptDrops + dragEnabled
       setSelectionMode( QAbstractItemView::ExtendedSelection );
@@ -92,8 +91,7 @@ Utility class for filtering browser items
 class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
 {
   public:
-
-    QgsBrowserTreeFilterProxyModel( QObject *parent )
+    explicit QgsBrowserTreeFilterProxyModel( QObject *parent )
         : QSortFilterProxyModel( parent ), mModel( 0 )
         , mFilter( "" ), mPatternSyntax( "normal" ), mCaseSensitivity( Qt::CaseInsensitive )
     {
@@ -132,11 +130,11 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
 
     void updateFilter()
     {
-      QgsDebugMsg( QString( "filter = %1 syntax = %2" ).arg( mFilter ).arg( mPatternSyntax ) );
+      QgsDebugMsg( QString( "filter = %1 syntax = %2" ).arg( mFilter, mPatternSyntax ) );
       mREList.clear();
       if ( mPatternSyntax == "normal" )
       {
-        foreach ( QString f, mFilter.split( "|" ) )
+        Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
         {
           QRegExp rx( QString( "*%1*" ).arg( f.trimmed() ) );
           rx.setPatternSyntax( QRegExp::Wildcard );
@@ -146,7 +144,7 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
       }
       else if ( mPatternSyntax == "wildcard" )
       {
-        foreach ( QString f, mFilter.split( "|" ) )
+        Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
         {
           QRegExp rx( f.trimmed() );
           rx.setPatternSyntax( QRegExp::Wildcard );
@@ -176,18 +174,18 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
     {
       if ( mPatternSyntax == "normal" || mPatternSyntax == "wildcard" )
       {
-        foreach ( QRegExp rx, mREList )
+        Q_FOREACH ( const QRegExp& rx, mREList )
         {
-          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value ).arg( rx.pattern() ).arg( rx.exactMatch( value ) ) );
+          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.exactMatch( value ) ) );
           if ( rx.exactMatch( value ) )
             return true;
         }
       }
       else
       {
-        foreach ( QRegExp rx, mREList )
+        Q_FOREACH ( const QRegExp& rx, mREList )
         {
-          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value ).arg( rx.pattern() ).arg( rx.indexIn( value ) ) );
+          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.indexIn( value ) ) );
           if ( rx.indexIn( value ) != -1 )
             return true;
         }
@@ -201,23 +199,26 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
       if ( mFilter == "" || !mModel ) return true;
 
       QModelIndex sourceIndex = mModel->index( sourceRow, 0, sourceParent );
-      return filterAcceptsItem( sourceIndex ) || filterAcceptsAncestor( sourceIndex ) || filterAcceptsDescendant( sourceIndex );
+      // also look into the comment column
+      QModelIndex commentIndex = mModel->index( sourceRow, 1, sourceParent );
+      return filterAcceptsItem( sourceIndex ) || filterAcceptsAncestor( sourceIndex ) || filterAcceptsDescendant( sourceIndex ) ||
+             filterAcceptsItem( commentIndex ) || filterAcceptsAncestor( commentIndex ) || filterAcceptsDescendant( commentIndex );
     }
 
     // returns true if at least one ancestor is accepted by filter
     bool filterAcceptsAncestor( const QModelIndex &sourceIndex ) const
-      {
-        if ( !mModel )
-          return true;
+    {
+      if ( !mModel )
+        return true;
 
-        QModelIndex sourceParentIndex = mModel->parent( sourceIndex );
-        if ( !sourceParentIndex.isValid() )
-          return false;
-        if ( filterAcceptsItem( sourceParentIndex ) )
-          return true;
+      QModelIndex sourceParentIndex = mModel->parent( sourceIndex );
+      if ( !sourceParentIndex.isValid() )
+        return false;
+      if ( filterAcceptsItem( sourceParentIndex ) )
+        return true;
 
-        return filterAcceptsAncestor( sourceParentIndex );
-      }
+      return filterAcceptsAncestor( sourceParentIndex );
+    }
 
     // returns true if at least one descendant s accepted by filter
     bool filterAcceptsDescendant( const QModelIndex &sourceIndex ) const
@@ -229,6 +230,11 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
       {
         QgsDebugMsg( QString( "i = %1" ).arg( i ) );
         QModelIndex sourceChildIndex = mModel->index( i, 0, sourceIndex );
+        if ( filterAcceptsItem( sourceChildIndex ) )
+          return true;
+        if ( filterAcceptsDescendant( sourceChildIndex ) )
+          return true;
+        sourceChildIndex = mModel->index( i, 1, sourceIndex );
         if ( filterAcceptsItem( sourceChildIndex ) )
           return true;
         if ( filterAcceptsDescendant( sourceChildIndex ) )
@@ -246,8 +252,235 @@ class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
     }
 };
 
-QgsBrowserDockWidget::QgsBrowserDockWidget( QString name, QWidget * parent ) :
-    QDockWidget( parent ), mModel( NULL ), mProxyModel( NULL )
+QgsBrowserPropertiesWrapLabel::QgsBrowserPropertiesWrapLabel( const QString& text, QWidget* parent )
+    : QTextEdit( text, parent )
+{
+  setReadOnly( true );
+  setFrameStyle( QFrame::NoFrame );
+  setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Minimum );
+  QPalette pal = palette();
+  pal.setColor( QPalette::Base, Qt::transparent );
+  setPalette( pal );
+  setLineWrapMode( QTextEdit::WidgetWidth );
+  setWordWrapMode( QTextOption::WrapAnywhere );
+  connect( qobject_cast<QObject*>( document()->documentLayout() ), SIGNAL( documentSizeChanged( QSizeF ) ),
+           this, SLOT( adjustHeight( QSizeF ) ) );
+  setMaximumHeight( 20 );
+}
+
+void QgsBrowserPropertiesWrapLabel::adjustHeight( const QSizeF& size )
+{
+  int height = size.height() + 2 * frameWidth();
+  setMinimumHeight( height );
+  setMaximumHeight( height );
+}
+
+QgsBrowserPropertiesWidget::QgsBrowserPropertiesWidget( QWidget* parent ) :
+    QWidget( parent )
+{
+}
+
+void QgsBrowserPropertiesWidget::setWidget( QWidget* paramWidget )
+{
+  QVBoxLayout *layout = new QVBoxLayout( this );
+  paramWidget->setParent( this );
+  layout->addWidget( paramWidget );
+}
+
+QgsBrowserPropertiesWidget* QgsBrowserPropertiesWidget::createWidget( QgsDataItem* item, QWidget* parent )
+{
+  QgsBrowserPropertiesWidget* propertiesWidget = 0;
+  // In general, we would like to show all items' paramWidget, but top level items like
+  // WMS etc. have currently too large widgets which do not fit well to browser properties widget
+  if ( item->type() == QgsDataItem::Directory )
+  {
+    propertiesWidget = new QgsBrowserDirectoryProperties( parent );
+    propertiesWidget->setItem( item );
+  }
+  else if ( item->type() == QgsDataItem::Layer )
+  {
+    // prefer item's widget over standard layer widget
+    QWidget *paramWidget = item->paramWidget();
+    if ( paramWidget )
+    {
+      propertiesWidget = new QgsBrowserPropertiesWidget( parent );
+      propertiesWidget->setWidget( paramWidget );
+    }
+    else
+    {
+      propertiesWidget = new QgsBrowserLayerProperties( parent );
+      propertiesWidget->setItem( item );
+    }
+  }
+  return propertiesWidget;
+}
+
+QgsBrowserLayerProperties::QgsBrowserLayerProperties( QWidget* parent ) :
+    QgsBrowserPropertiesWidget( parent )
+{
+  setupUi( this );
+
+  mUriLabel = new QgsBrowserPropertiesWrapLabel( "", this );
+  mHeaderGridLayout->addItem( new QWidgetItem( mUriLabel ), 1, 1 );
+}
+
+void QgsBrowserLayerProperties::setItem( QgsDataItem* item )
+{
+  QgsLayerItem *layerItem = qobject_cast<QgsLayerItem*>( item );
+  if ( !layerItem )
+    return;
+
+  mNoticeLabel->clear();
+
+  QgsMapLayer::LayerType type = layerItem->mapLayerType();
+  QString layerMetadata = tr( "Error" );
+  QgsCoordinateReferenceSystem layerCrs;
+  QString notice;
+
+  // temporarily override /Projections/defaultBehaviour to avoid dialog prompt
+  QSettings settings;
+  QString defaultProjectionOption = settings.value( "/Projections/defaultBehaviour", "prompt" ).toString();
+  if ( settings.value( "/Projections/defaultBehaviour", "prompt" ).toString() == "prompt" )
+  {
+    settings.setValue( "/Projections/defaultBehaviour", "useProject" );
+  }
+
+  // find root item
+  // we need to create a temporary layer to get metadata
+  // we could use a provider but the metadata is not as complete and "pretty"  and this is easier
+  QgsDebugMsg( QString( "creating temporary layer using path %1" ).arg( layerItem->path() ) );
+  if ( type == QgsMapLayer::RasterLayer )
+  {
+    QgsDebugMsg( "creating raster layer" );
+    // should copy code from addLayer() to split uri ?
+    QgsRasterLayer* layer = new QgsRasterLayer( layerItem->uri(), layerItem->uri(), layerItem->providerKey() );
+    if ( layer != NULL )
+    {
+      if ( layer->isValid() )
+      {
+        layerCrs = layer->crs();
+        layerMetadata = layer->metadata();
+      }
+      delete layer;
+    }
+  }
+  else if ( type == QgsMapLayer::VectorLayer )
+  {
+    QgsDebugMsg( "creating vector layer" );
+    QgsVectorLayer* layer = new QgsVectorLayer( layerItem->uri(), layerItem->name(), layerItem->providerKey() );
+    if ( layer != NULL )
+    {
+      if ( layer->isValid() )
+      {
+        layerCrs = layer->crs();
+        layerMetadata = layer->metadata();
+      }
+      delete layer;
+    }
+  }
+  else if ( type == QgsMapLayer::PluginLayer )
+  {
+    // TODO: support display of properties for plugin layers
+    return;
+  }
+
+  // restore /Projections/defaultBehaviour
+  if ( defaultProjectionOption == "prompt" )
+  {
+    settings.setValue( "/Projections/defaultBehaviour", defaultProjectionOption );
+  }
+
+  mNameLabel->setText( layerItem->name() );
+  mUriLabel->setText( layerItem->uri() );
+  mProviderLabel->setText( layerItem->providerKey() );
+  QString myStyle = QgsApplication::reportStyleSheet();
+  mMetadataTextBrowser->document()->setDefaultStyleSheet( myStyle );
+  mMetadataTextBrowser->setHtml( layerMetadata );
+
+  // report if layer was set to to project crs without prompt (may give a false positive)
+  if ( defaultProjectionOption == "prompt" )
+  {
+    QgsCoordinateReferenceSystem defaultCrs =
+      QgisApp::instance()->mapCanvas()->mapSettings().destinationCrs();
+    if ( layerCrs == defaultCrs )
+      mNoticeLabel->setText( "NOTICE: Layer srs set from project (" + defaultCrs.authid() + ')' );
+  }
+
+  if ( mNoticeLabel->text().isEmpty() )
+  {
+    mNoticeLabel->hide();
+  }
+}
+
+void QgsBrowserLayerProperties::setCondensedMode( bool condensedMode )
+{
+  if ( condensedMode )
+  {
+    mUriLabel->setLineWrapMode( QTextEdit::NoWrap );
+    mUriLabel->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    mUriLabel->setVerticalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+  }
+  else
+  {
+    mUriLabel->setLineWrapMode( QTextEdit::WidgetWidth );
+    mUriLabel->setHorizontalScrollBarPolicy( Qt::ScrollBarAsNeeded );
+    mUriLabel->setVerticalScrollBarPolicy( Qt::ScrollBarAsNeeded );
+  }
+}
+
+QgsBrowserDirectoryProperties::QgsBrowserDirectoryProperties( QWidget* parent ) :
+    QgsBrowserPropertiesWidget( parent )
+    , mDirectoryWidget( 0 )
+{
+  setupUi( this );
+
+  mPathLabel = new QgsBrowserPropertiesWrapLabel( "", mHeaderWidget );
+  mHeaderGridLayout->addItem( new QWidgetItem( mPathLabel ), 0, 1 );
+}
+
+void QgsBrowserDirectoryProperties::setItem( QgsDataItem* item )
+{
+  QgsDirectoryItem* directoryItem = qobject_cast<QgsDirectoryItem*>( item );
+  if ( !item )
+    return;
+
+  mPathLabel->setText( directoryItem->dirPath() );
+  mDirectoryWidget = new QgsDirectoryParamWidget( directoryItem->dirPath(), this );
+  mLayout->addWidget( mDirectoryWidget );
+}
+
+QgsBrowserPropertiesDialog::QgsBrowserPropertiesDialog( const QString& settingsSection, QWidget* parent ) :
+    QDialog( parent )
+    , mPropertiesWidget( 0 )
+    , mSettingsSection( settingsSection )
+{
+  setupUi( this );
+  QSettings settings;
+  restoreGeometry( settings.value( mSettingsSection + "/propertiesDialog/geometry" ).toByteArray() );
+}
+
+QgsBrowserPropertiesDialog::~QgsBrowserPropertiesDialog()
+{
+  QSettings settings;
+  settings.setValue( mSettingsSection + "/propertiesDialog/geometry", saveGeometry() );
+}
+
+void QgsBrowserPropertiesDialog::setItem( QgsDataItem* item )
+{
+  if ( !item )
+    return;
+
+  mPropertiesWidget = QgsBrowserPropertiesWidget::createWidget( item, this );
+  mLayout->addWidget( mPropertiesWidget );
+  setWindowTitle( item->type() == QgsDataItem::Layer ? tr( "Layer Properties" ) : tr( "Directory Properties" ) );
+}
+
+QgsBrowserDockWidget::QgsBrowserDockWidget( const QString& name, QWidget * parent ) :
+    QDockWidget( parent )
+    , mModel( 0 )
+    , mProxyModel( 0 )
+    , mPropertiesWidgetEnabled( false )
+    , mPropertiesWidgetHeight( 0 )
 {
   setupUi( this );
 
@@ -255,10 +488,6 @@ QgsBrowserDockWidget::QgsBrowserDockWidget( QString name, QWidget * parent ) :
 
   mBrowserView = new QgsDockBrowserTreeView( this );
   mLayoutBrowser->addWidget( mBrowserView );
-
-  mBtnRefresh->setIcon( QgsApplication::getThemeIcon( "mActionDraw.svg" ) );
-  mBtnAddLayers->setIcon( QgsApplication::getThemeIcon( "mActionAdd.svg" ) );
-  mBtnCollapse->setIcon( QgsApplication::getThemeIcon( "mActionCollapseTree.png" ) );
 
   mWidgetFilter->hide();
   mLeFilter->setPlaceholderText( tr( "Type here to filter current item..." ) );
@@ -291,17 +520,26 @@ QgsBrowserDockWidget::QgsBrowserDockWidget( QString name, QWidget * parent ) :
   action->setCheckable( true );
   menu->addAction( action );
 
-  connect( mBtnRefresh, SIGNAL( clicked() ), this, SLOT( refresh() ) );
-  connect( mBtnAddLayers, SIGNAL( clicked() ), this, SLOT( addSelectedLayers() ) );
-  connect( mBtnCollapse, SIGNAL( clicked() ), mBrowserView, SLOT( collapseAll() ) );
-  connect( mBtnFilterShow, SIGNAL( toggled( bool ) ), this, SLOT( showFilterWidget( bool ) ) );
+  connect( mActionRefresh, SIGNAL( triggered( bool ) ), this, SLOT( refresh() ) );
+  connect( mActionAddLayers, SIGNAL( triggered( bool ) ), this, SLOT( addSelectedLayers() ) );
+  connect( mActionCollapse, SIGNAL( triggered( bool ) ), mBrowserView, SLOT( collapseAll() ) );
+  connect( mActionShowFilter, SIGNAL( triggered( bool ) ), this, SLOT( showFilterWidget( bool ) ) );
+  connect( mActionPropertiesWidget, SIGNAL( triggered( bool ) ), this, SLOT( enablePropertiesWidget( bool ) ) );
   connect( mLeFilter, SIGNAL( returnPressed() ), this, SLOT( setFilter() ) );
   connect( mLeFilter, SIGNAL( cleared() ), this, SLOT( setFilter() ) );
   connect( mLeFilter, SIGNAL( textChanged( const QString & ) ), this, SLOT( setFilter() ) );
   connect( group, SIGNAL( triggered( QAction * ) ), this, SLOT( setFilterSyntax( QAction * ) ) );
-
   connect( mBrowserView, SIGNAL( customContextMenuRequested( const QPoint & ) ), this, SLOT( showContextMenu( const QPoint & ) ) );
   connect( mBrowserView, SIGNAL( doubleClicked( const QModelIndex& ) ), this, SLOT( addLayerAtIndex( const QModelIndex& ) ) );
+  connect( mSplitter, SIGNAL( splitterMoved( int, int ) ), this, SLOT( splitterMoved() ) );
+}
+
+QgsBrowserDockWidget::~QgsBrowserDockWidget()
+{
+  QSettings settings;
+  settings.setValue( settingsSection() + "/propertiesWidgetEnabled", mPropertiesWidgetEnabled );
+  //settings.setValue(settingsSection() + "/propertiesWidgetHeight", mPropertiesWidget->size().height() );
+  settings.setValue( settingsSection() + "/propertiesWidgetHeight", mPropertiesWidgetHeight );
 }
 
 void QgsBrowserDockWidget::showEvent( QShowEvent * e )
@@ -321,6 +559,24 @@ void QgsBrowserDockWidget::showEvent( QShowEvent * e )
     mBrowserView->setTextElideMode( Qt::ElideNone );
     mBrowserView->header()->setResizeMode( 0, QHeaderView::ResizeToContents );
     mBrowserView->header()->setStretchLastSection( false );
+
+    // selectionModel is created when model is set on tree
+    connect( mBrowserView->selectionModel(), SIGNAL( selectionChanged( const QItemSelection &, const QItemSelection & ) ),
+             this, SLOT( selectionChanged( const QItemSelection &, const QItemSelection & ) ) );
+
+    // objectName used by settingsSection() is not yet set in constructor
+    QSettings settings;
+    mPropertiesWidgetEnabled = settings.value( settingsSection() + "/propertiesWidgetEnabled", false ).toBool();
+    mActionPropertiesWidget->setChecked( mPropertiesWidgetEnabled );
+    mPropertiesWidget->setVisible( false ); // false until item is selected
+
+    mPropertiesWidgetHeight = settings.value( settingsSection() + "/propertiesWidgetHeight" ).toFloat();
+    QList<int> sizes = mSplitter->sizes();
+    int total = sizes.value( 0 ) + sizes.value( 1 );
+    int height = ( int )total * mPropertiesWidgetHeight;
+    sizes.clear();
+    sizes << total - height << height;
+    mSplitter->setSizes( sizes );
   }
 
   QDockWidget::showEvent( e );
@@ -410,7 +666,7 @@ void QgsBrowserDockWidget::addFavouriteDirectory()
   }
 }
 
-void QgsBrowserDockWidget::addFavouriteDirectory( QString favDir )
+void QgsBrowserDockWidget::addFavouriteDirectory( const QString& favDir )
 {
   mModel->addFavouriteDirectory( favDir );
 }
@@ -486,6 +742,10 @@ void QgsBrowserDockWidget::addLayer( QgsLayerItem *layerItem )
   {
     QgisApp::instance()->addRasterLayer( uri, layerItem->layerName(), providerKey );
   }
+  if ( type == QgsMapLayer::PluginLayer )
+  {
+    QgisApp::instance()->addPluginLayer( uri, layerItem->layerName(), providerKey );
+  }
 }
 
 void QgsBrowserDockWidget::addLayerAtIndex( const QModelIndex& index )
@@ -540,101 +800,10 @@ void QgsBrowserDockWidget::showProperties()
   if ( ! item )
     return;
 
-  if ( item->type() == QgsDataItem::Layer )
+  if ( item->type() == QgsDataItem::Layer || item->type() == QgsDataItem::Directory )
   {
-    QgsLayerItem *layerItem = qobject_cast<QgsLayerItem*>( item );
-    if ( layerItem != NULL )
-    {
-      QgsMapLayer::LayerType type = layerItem->mapLayerType();
-      QString layerMetadata = tr( "Error" );
-      QgsCoordinateReferenceSystem layerCrs;
-      QString notice;
-
-      // temporarily override /Projections/defaultBehaviour to avoid dialog prompt
-      QSettings settings;
-      QString defaultProjectionOption = settings.value( "/Projections/defaultBehaviour", "prompt" ).toString();
-      if ( settings.value( "/Projections/defaultBehaviour", "prompt" ).toString() == "prompt" )
-      {
-        settings.setValue( "/Projections/defaultBehaviour", "useProject" );
-      }
-
-      // find root item
-      // we need to create a temporary layer to get metadata
-      // we could use a provider but the metadata is not as complete and "pretty"  and this is easier
-      QgsDebugMsg( QString( "creating temporary layer using path %1" ).arg( layerItem->path() ) );
-      if ( type == QgsMapLayer::RasterLayer )
-      {
-        QgsDebugMsg( "creating raster layer" );
-        // should copy code from addLayer() to split uri ?
-        QgsRasterLayer* layer = new QgsRasterLayer( layerItem->uri(), layerItem->uri(), layerItem->providerKey() );
-        if ( layer != NULL )
-        {
-          if ( layer->isValid() )
-          {
-            layerCrs = layer->crs();
-            layerMetadata = layer->metadata();
-          }
-          delete layer;
-        }
-      }
-      else if ( type == QgsMapLayer::VectorLayer )
-      {
-        QgsDebugMsg( "creating vector layer" );
-        QgsVectorLayer* layer = new QgsVectorLayer( layerItem->uri(), layerItem->name(), layerItem->providerKey() );
-        if ( layer != NULL )
-        {
-          if ( layer->isValid() )
-          {
-            layerCrs = layer->crs();
-            layerMetadata = layer->metadata();
-          }
-          delete layer;
-        }
-      }
-
-      // restore /Projections/defaultBehaviour
-      if ( defaultProjectionOption == "prompt" )
-      {
-        settings.setValue( "/Projections/defaultBehaviour", defaultProjectionOption );
-      }
-
-      // initialize dialog
-      QDialog *dialog = new QDialog( this );
-      Ui::QgsBrowserLayerPropertiesBase ui;
-      ui.setupUi( dialog );
-
-      dialog->setWindowTitle( tr( "Layer Properties" ) );
-      ui.leName->setText( layerItem->name() );
-      ui.leSource->setText( layerItem->path() );
-      ui.leProvider->setText( layerItem->providerKey() );
-      QString myStyle = QgsApplication::reportStyleSheet();
-      ui.txtbMetadata->document()->setDefaultStyleSheet( myStyle );
-      ui.txtbMetadata->setHtml( layerMetadata );
-
-      // report if layer was set to to project crs without prompt (may give a false positive)
-      if ( defaultProjectionOption == "prompt" )
-      {
-        QgsCoordinateReferenceSystem defaultCrs =
-          QgisApp::instance()->mapCanvas()->mapSettings().destinationCrs();
-        if ( layerCrs == defaultCrs )
-          ui.lblNotice->setText( "NOTICE: Layer srs set from project (" + defaultCrs.authid() + ")" );
-      }
-
-      dialog->show();
-    }
-  }
-  else if ( item->type() == QgsDataItem::Directory )
-  {
-    // initialize dialog
-    QDialog *dialog = new QDialog( this );
-    Ui::QgsBrowserDirectoryPropertiesBase ui;
-    ui.setupUi( dialog );
-
-    dialog->setWindowTitle( tr( "Directory Properties" ) );
-    ui.leSource->setText( item->path() );
-    QgsDirectoryParamWidget *paramWidget = new QgsDirectoryParamWidget( item->path(), dialog );
-    ui.lytWidget->addWidget( paramWidget );
-
+    QgsBrowserPropertiesDialog* dialog = new QgsBrowserPropertiesDialog( settingsSection(), this );
+    dialog->setItem( item );
     dialog->show();
   }
 }
@@ -694,3 +863,75 @@ void QgsBrowserDockWidget::setCaseSensitive( bool caseSensitive )
     return;
   mProxyModel->setCaseSensitive( caseSensitive );
 }
+
+int QgsBrowserDockWidget::selectedItemsCount()
+{
+  QItemSelectionModel *selectonModel = mBrowserView->selectionModel();
+  if ( selectonModel )
+  {
+    return selectonModel->selectedIndexes().size();
+  }
+  return 0;
+}
+
+void QgsBrowserDockWidget::selectionChanged( const QItemSelection & selected, const QItemSelection & deselected )
+{
+  Q_UNUSED( selected );
+  Q_UNUSED( deselected );
+  if ( mPropertiesWidgetEnabled )
+  {
+    setPropertiesWidget();
+  }
+}
+
+void QgsBrowserDockWidget::clearPropertiesWidget()
+{
+  while ( mPropertiesLayout->count() > 0 )
+  {
+    delete mPropertiesLayout->itemAt( 0 )->widget();
+  }
+  mPropertiesWidget->setVisible( false );
+}
+
+void QgsBrowserDockWidget::setPropertiesWidget()
+{
+  clearPropertiesWidget();
+  QItemSelectionModel *selectonModel = mBrowserView->selectionModel();
+  if ( selectonModel )
+  {
+    QModelIndexList indexes = selectonModel->selectedIndexes();
+    if ( indexes.size() == 1 )
+    {
+      QModelIndex index = mProxyModel->mapToSource( indexes.value( 0 ) );
+      QgsDataItem* item = mModel->dataItem( index );
+      QgsBrowserPropertiesWidget* propertiesWidget = QgsBrowserPropertiesWidget::createWidget( item, mPropertiesWidget );
+      if ( propertiesWidget )
+      {
+        propertiesWidget->setCondensedMode( true );
+        mPropertiesLayout->addWidget( propertiesWidget );
+      }
+    }
+  }
+  mPropertiesWidget->setVisible( mPropertiesLayout->count() > 0 );
+}
+
+void QgsBrowserDockWidget::enablePropertiesWidget( bool enable )
+{
+  mPropertiesWidgetEnabled = enable;
+  if ( enable && selectedItemsCount() == 1 )
+  {
+    setPropertiesWidget();
+  }
+  else
+  {
+    clearPropertiesWidget();
+  }
+}
+
+void QgsBrowserDockWidget::splitterMoved()
+{
+  QList<int> sizes = mSplitter->sizes();
+  float total = sizes.value( 0 ) + sizes.value( 1 );
+  mPropertiesWidgetHeight = total > 0 ? sizes.value( 1 ) / total : 0;
+}
+

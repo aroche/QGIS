@@ -24,7 +24,7 @@
 #include <QFileInfo>
 #include <QSettings>
 
-QgsWCSConnectionItem::QgsWCSConnectionItem( QgsDataItem* parent, QString name, QString path , QString uri )
+QgsWCSConnectionItem::QgsWCSConnectionItem( QgsDataItem* parent, QString name, QString path, QString uri )
     : QgsDataCollectionItem( parent, name, path )
     , mUri( uri )
 {
@@ -55,13 +55,13 @@ QVector<QgsDataItem*> QgsWCSConnectionItem::createChildren()
     return children;
   }
 
-  foreach ( QgsWcsCoverageSummary coverageSummary, mCapabilities.capabilities().contents.coverageSummary )
+  Q_FOREACH ( const QgsWcsCoverageSummary& coverageSummary, mCapabilities.capabilities().contents.coverageSummary )
   {
     // Attention, the name may be empty
-    QgsDebugMsg( QString::number( coverageSummary.orderId ) + " " + coverageSummary.identifier + " " + coverageSummary.title );
+    QgsDebugMsg( QString::number( coverageSummary.orderId ) + ' ' + coverageSummary.identifier + ' ' + coverageSummary.title );
     QString pathName = coverageSummary.identifier.isEmpty() ? QString::number( coverageSummary.orderId ) : coverageSummary.identifier;
 
-    QgsWCSLayerItem * layer = new QgsWCSLayerItem( this, coverageSummary.title, mPath + "/" + pathName, mCapabilities.capabilities(), uri, coverageSummary );
+    QgsWCSLayerItem * layer = new QgsWCSLayerItem( this, coverageSummary.title, mPath + '/' + pathName, mCapabilities.capabilities(), uri, coverageSummary );
 
     children.append( layer );
   }
@@ -119,22 +119,22 @@ void QgsWCSConnectionItem::deleteConnection()
 
 // ---------------------------------------------------------------------------
 
-QgsWCSLayerItem::QgsWCSLayerItem( QgsDataItem* parent, QString name, QString path, QgsWcsCapabilitiesProperty capabilitiesProperty, QgsDataSourceURI dataSourceUri, QgsWcsCoverageSummary coverageSummary )
-    : QgsLayerItem( parent, name, path, QString(), QgsLayerItem::Raster, "wcs" ),
-    mCapabilities( capabilitiesProperty ),
-    mDataSourceUri( dataSourceUri ),
-    mCoverageSummary( coverageSummary )
+QgsWCSLayerItem::QgsWCSLayerItem( QgsDataItem* parent, QString name, QString path, const QgsWcsCapabilitiesProperty& capabilitiesProperty, QgsDataSourceURI dataSourceUri, const QgsWcsCoverageSummary& coverageSummary )
+    : QgsLayerItem( parent, name, path, QString(), QgsLayerItem::Raster, "wcs" )
+    , mCapabilities( capabilitiesProperty )
+    , mDataSourceUri( dataSourceUri )
+    , mCoverageSummary( coverageSummary )
 {
   mSupportedCRS = mCoverageSummary.supportedCrs;
   QgsDebugMsg( "uri = " + mDataSourceUri.encodedUri() );
   mUri = createUri();
   // Populate everything, it costs nothing, all info about layers is collected
-  foreach ( QgsWcsCoverageSummary coverageSummary, mCoverageSummary.coverageSummary )
+  Q_FOREACH ( const QgsWcsCoverageSummary& coverageSummary, mCoverageSummary.coverageSummary )
   {
     // Attention, the name may be empty
-    QgsDebugMsg( QString::number( coverageSummary.orderId ) + " " + coverageSummary.identifier + " " + coverageSummary.title );
+    QgsDebugMsg( QString::number( coverageSummary.orderId ) + ' ' + coverageSummary.identifier + ' ' + coverageSummary.title );
     QString pathName = coverageSummary.identifier.isEmpty() ? QString::number( coverageSummary.orderId ) : coverageSummary.identifier;
-    QgsWCSLayerItem * layer = new QgsWCSLayerItem( this, coverageSummary.title, mPath + "/" + pathName, mCapabilities, mDataSourceUri, coverageSummary );
+    QgsWCSLayerItem * layer = new QgsWCSLayerItem( this, coverageSummary.title, mPath + '/' + pathName, mCapabilities, mDataSourceUri, coverageSummary );
     mChildren.append( layer );
   }
 
@@ -175,7 +175,7 @@ QString QgsWCSLayerItem::createUri()
   }
   else
   {
-    foreach ( QString f, mimes )
+    Q_FOREACH ( const QString& f, mimes )
     {
       if ( mCoverageSummary.supportedFormat.indexOf( f ) >= 0 )
       {
@@ -194,7 +194,7 @@ QString QgsWCSLayerItem::createUri()
   // TODO: prefer project CRS
   // get first known if possible
   QgsCoordinateReferenceSystem testCrs;
-  foreach ( QString c, mCoverageSummary.supportedCrs )
+  Q_FOREACH ( const QString& c, mCoverageSummary.supportedCrs )
   {
     testCrs.createFromOgcWmsCrs( c );
     if ( testCrs.isValid() )
@@ -232,10 +232,10 @@ QgsWCSRootItem::~QgsWCSRootItem()
 QVector<QgsDataItem*>QgsWCSRootItem::createChildren()
 {
   QVector<QgsDataItem*> connections;
-  foreach ( QString connName, QgsOWSConnection::connectionList( "WCS" ) )
+  Q_FOREACH ( const QString& connName, QgsOWSConnection::connectionList( "WCS" ) )
   {
     QgsOWSConnection connection( "WCS", connName );
-    QgsDataItem * conn = new QgsWCSConnectionItem( this, connName, mPath + "/" + connName, connection.uri().encodedUri() );
+    QgsDataItem * conn = new QgsWCSConnectionItem( this, connName, mPath + '/' + connName, connection.uri().encodedUri() );
     connections.append( conn );
   }
   return connections;

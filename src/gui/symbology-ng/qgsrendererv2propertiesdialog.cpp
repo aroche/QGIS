@@ -33,7 +33,7 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 
-static bool _initRenderer( QString name, QgsRendererV2WidgetFunc f, QString iconName = QString() )
+static bool _initRenderer( const QString& name, QgsRendererV2WidgetFunc f, const QString& iconName = QString() )
 {
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QgsRendererV2AbstractMetadata* am = reg->rendererMetadata( name );
@@ -74,7 +74,11 @@ static void _initRendererWidgetFunctions()
 }
 
 QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* layer, QgsStyleV2* style, bool embedded )
-    : mLayer( layer ), mStyle( style ), mActiveWidget( NULL )
+    : mLayer( layer )
+    , mStyle( style )
+    , mActiveWidget( NULL )
+    , mPaintEffect( 0 )
+    , mMapCanvas( 0 )
 {
   setupUi( this );
 
@@ -104,10 +108,17 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
   connect( mLayerTransparencySlider, SIGNAL( valueChanged( int ) ), mLayerTransparencySpnBx, SLOT( setValue( int ) ) );
   connect( mLayerTransparencySpnBx, SIGNAL( valueChanged( int ) ), mLayerTransparencySlider, SLOT( setValue( int ) ) );
 
+  //paint effect widget
+  if ( mLayer->rendererV2() && mLayer->rendererV2()->paintEffect() )
+  {
+    mPaintEffect = mLayer->rendererV2()->paintEffect()->clone();
+    mEffectWidget->setPaintEffect( mPaintEffect );
+  }
+
   QPixmap pix;
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QStringList renderers = reg->renderersList();
-  foreach ( QString name, renderers )
+  Q_FOREACH ( const QString& name, renderers )
   {
     QgsRendererV2AbstractMetadata* m = reg->rendererMetadata( name );
     cboRenderers->addItem( m->icon(), m->visibleName(), name );
@@ -132,6 +143,18 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
   // no renderer found... this mustn't happen
   Q_ASSERT( false && "there must be a renderer!" );
 
+}
+
+QgsRendererV2PropertiesDialog::~QgsRendererV2PropertiesDialog()
+{
+  delete mPaintEffect;
+}
+
+void QgsRendererV2PropertiesDialog::setMapCanvas( QgsMapCanvas* canvas )
+{
+  mMapCanvas = canvas;
+  if ( mActiveWidget )
+    mActiveWidget->setMapCanvas( mMapCanvas );
 }
 
 
@@ -170,6 +193,7 @@ void QgsRendererV2PropertiesDialog::rendererChanged()
   QgsRendererV2AbstractMetadata* m = QgsRendererV2Registry::instance()->rendererMetadata( rendererName );
   if ( m != NULL )
     w = m->createRendererWidget( mLayer, mStyle, oldRenderer );
+  delete oldRenderer;
 
   if ( w != NULL )
   {
@@ -177,6 +201,8 @@ void QgsRendererV2PropertiesDialog::rendererChanged()
     mActiveWidget = w;
     stackedWidget->addWidget( mActiveWidget );
     stackedWidget->setCurrentWidget( mActiveWidget );
+    if ( mMapCanvas && mActiveWidget->renderer() )
+      mActiveWidget->setMapCanvas( mMapCanvas );
   }
   else
   {
@@ -196,6 +222,7 @@ void QgsRendererV2PropertiesDialog::apply()
   QgsFeatureRendererV2* renderer = mActiveWidget->renderer();
   if ( renderer )
   {
+    renderer->setPaintEffect( mPaintEffect->clone() );
     mLayer->setRendererV2( renderer->clone() );
   }
 

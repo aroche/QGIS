@@ -17,6 +17,7 @@
 
 #include "qgsgeometry.h"
 #include "qgsvectorlayer.h"
+#include "qgswkbptr.h"
 
 #include <spatialindex/SpatialIndex.h>
 
@@ -59,7 +60,7 @@ static const double POINT_LOC_EPSILON = 1e-12;
 class QgsPointLocator_Stream : public IDataStream
 {
   public:
-    QgsPointLocator_Stream( const QLinkedList<RTree::Data*>& dataList ) : mDataList( dataList ), mIt( mDataList ) { }
+    explicit QgsPointLocator_Stream( const QLinkedList<RTree::Data*>& dataList ) : mDataList( dataList ), mIt( mDataList ) { }
     ~QgsPointLocator_Stream() { }
 
     virtual IData* getNext() override { return mIt.next(); }
@@ -191,7 +192,7 @@ class QgsPointLocator_VisitorArea : public IVisitor
 // http://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
 struct _CohenSutherland
 {
-  _CohenSutherland( const QgsRectangle& rect ) : mRect( rect ) {}
+  explicit _CohenSutherland( const QgsRectangle& rect ) : mRect( rect ) {}
 
   typedef int OutCode;
 
@@ -268,6 +269,8 @@ struct _CohenSutherland
           y = y0 + ( y1 - y0 ) * ( mRect.xMinimum() - x0 ) / ( x1 - x0 );
           x = mRect.xMinimum();
         }
+        else
+          break;
 
         // Now we move outside point to intersection point to clip
         // and get ready for next pass.
@@ -320,6 +323,7 @@ static QgsPointLocator::MatchList _geometrySegmentsInRect( QgsGeometry* geom, co
 
     case QGis::WKBLineString25D:
       hasZValue = true;
+      //intentional fall-through
     case QGis::WKBLineString:
     {
       int nPoints;
@@ -352,6 +356,7 @@ static QgsPointLocator::MatchList _geometrySegmentsInRect( QgsGeometry* geom, co
 
     case QGis::WKBMultiLineString25D:
       hasZValue = true;
+      //intentional fall-through
     case QGis::WKBMultiLineString:
     {
       int nLines;
@@ -391,6 +396,7 @@ static QgsPointLocator::MatchList _geometrySegmentsInRect( QgsGeometry* geom, co
 
     case QGis::WKBPolygon25D:
       hasZValue = true;
+      //intentional fall-through
     case QGis::WKBPolygon:
     {
       int nRings;
@@ -430,6 +436,7 @@ static QgsPointLocator::MatchList _geometrySegmentsInRect( QgsGeometry* geom, co
 
     case QGis::WKBMultiPolygon25D:
       hasZValue = true;
+      //intentional fall-through
     case QGis::WKBMultiPolygon:
     {
       int nPolygons;
@@ -496,7 +503,7 @@ class QgsPointLocator_VisitorEdgesInRect : public IVisitor
       QgsFeatureId id = d.getIdentifier();
       QgsGeometry* geom = mLocator->mGeoms.value( id );
 
-      foreach ( const QgsPointLocator::Match& m, _geometrySegmentsInRect( geom, mSrcRect, mLocator->mLayer, id ) )
+      Q_FOREACH ( const QgsPointLocator::Match& m, _geometrySegmentsInRect( geom, mSrcRect, mLocator->mLayer, id ) )
       {
         // in range queries the filter may reject some matches
         if ( mFilter && !mFilter->acceptMatch( m ) )
@@ -529,13 +536,16 @@ class QgsPointLocator_DumpTree : public SpatialIndex::IQueryStrategy
     void getNextEntry( const IEntry& entry, id_type& nextEntry, bool& hasNext ) override
     {
       const INode* n = dynamic_cast<const INode*>( &entry );
-      qDebug( "NODE: %ld", n->getIdentifier() );
+      if ( !n )
+        return;
+
+      QgsDebugMsg( QString( "NODE: %1" ).arg( n->getIdentifier() ) );
       if ( n->getLevel() > 0 )
       {
         // inner nodes
         for ( uint32_t cChild = 0; cChild < n->getChildrenCount(); cChild++ )
         {
-          qDebug( "- CH: %ld", n->getChildIdentifier( cChild ) );
+          QgsDebugMsg( QString( "- CH: %1" ).arg( n->getChildIdentifier( cChild ) ) );
           ids.push( n->getChildIdentifier( cChild ) );
         }
       }
@@ -544,7 +554,7 @@ class QgsPointLocator_DumpTree : public SpatialIndex::IQueryStrategy
         // leaves
         for ( uint32_t cChild = 0; cChild < n->getChildrenCount(); cChild++ )
         {
-          qDebug( "- L: %ld", n->getChildIdentifier( cChild ) );
+          QgsDebugMsg( QString( "- L: %1" ).arg( n->getChildIdentifier( cChild ) ) );
         }
       }
 
@@ -564,6 +574,7 @@ class QgsPointLocator_DumpTree : public SpatialIndex::IQueryStrategy
 QgsPointLocator::QgsPointLocator( QgsVectorLayer* layer, const QgsCoordinateReferenceSystem* destCRS, const QgsRectangle* extent )
     : mStorage( 0 )
     , mRTree( 0 )
+    , mIsEmptyLayer( false )
     , mTransform( 0 )
     , mLayer( layer )
     , mExtent( 0 )
@@ -602,7 +613,7 @@ bool QgsPointLocator::init( int maxFeaturesToIndex )
 
 bool QgsPointLocator::hasIndex() const
 {
-  return mRTree != 0;
+  return mRTree != 0 || mIsEmptyLayer;
 }
 
 
@@ -623,22 +634,46 @@ bool QgsPointLocator::rebuildIndex( int maxFeaturesToIndex )
   {
     QgsRectangle rect = *mExtent;
     if ( mTransform )
-      rect = mTransform->transformBoundingBox( rect, QgsCoordinateTransform::ReverseTransform );
+    {
+      try
+      {
+        rect = mTransform->transformBoundingBox( rect, QgsCoordinateTransform::ReverseTransform );
+      }
+      catch ( const QgsException& e )
+      {
+        // See http://hub.qgis.org/issues/12634
+        QgsDebugMsg( QString( "could not transform bounding box to map, skipping the snap filter (%1)" ).arg( e.what() ) );
+      }
+    }
     request.setFilterRect( rect );
   }
   QgsFeatureIterator fi = mLayer->getFeatures( request );
   int indexedCount = 0;
   while ( fi.nextFeature( f ) )
   {
-    if ( !f.geometry() )
+    if ( !f.constGeometry() )
       continue;
 
     if ( mTransform )
-      f.geometry()->transform( *mTransform );
+    {
+      try
+      {
+        f.geometry()->transform( *mTransform );
+      }
+      catch ( const QgsException& e )
+      {
+        // See http://hub.qgis.org/issues/12634
+        QgsDebugMsg( QString( "could not transform geometry to map, skipping the snap for it (%1)" ).arg( e.what() ) );
+        continue;
+      }
+    }
 
-    SpatialIndex::Region r( rect2region( f.geometry()->boundingBox() ) );
+    SpatialIndex::Region r( rect2region( f.constGeometry()->boundingBox() ) );
     dataList << new RTree::Data( 0, 0, r, f.id() );
-    mGeoms[f.id()] = new QgsGeometry( *f.geometry() );
+
+    if ( mGeoms.contains( f.id() ) )
+      delete mGeoms.take( f.id() );
+    mGeoms[f.id()] = new QgsGeometry( *f.constGeometry() );
     ++indexedCount;
 
     if ( maxFeaturesToIndex != -1 && indexedCount > maxFeaturesToIndex )
@@ -658,7 +693,10 @@ bool QgsPointLocator::rebuildIndex( int maxFeaturesToIndex )
   SpatialIndex::id_type indexId;
 
   if ( dataList.isEmpty() )
+  {
+    mIsEmptyLayer = true;
     return true; // no features
+  }
 
   QgsPointLocator_Stream stream( dataList );
   mRTree = RTree::createAndBulkLoadNewRTree( RTree::BLM_STR, stream, *mStorage, fillFactor, indexCapacity,
@@ -672,28 +710,52 @@ void QgsPointLocator::destroyIndex()
   delete mRTree;
   mRTree = 0;
 
-  foreach ( QgsGeometry* g, mGeoms )
-    delete g;
+  mIsEmptyLayer = false;
+
+  qDeleteAll( mGeoms );
+
   mGeoms.clear();
 }
 
 void QgsPointLocator::onFeatureAdded( QgsFeatureId fid )
 {
   if ( !mRTree )
+  {
+    if ( mIsEmptyLayer )
+      rebuildIndex(); // first feature - let's built the index
     return; // nothing to do if we are not initialized yet
+  }
 
   QgsFeature f;
   if ( mLayer->getFeatures( QgsFeatureRequest( fid ) ).nextFeature( f ) )
   {
-    if ( !f.geometry() )
+    if ( !f.constGeometry() )
       return;
 
     if ( mTransform )
-      f.geometry()->transform( *mTransform );
+    {
+      try
+      {
+        f.geometry()->transform( *mTransform );
+      }
+      catch ( const QgsException& e )
+      {
+        // See http://hub.qgis.org/issues/12634
+        QgsDebugMsg( QString( "could not transform geometry to map, skipping the snap for it (%1)" ).arg( e.what() ) );
+        return;
+      }
+    }
 
-    SpatialIndex::Region r( rect2region( f.geometry()->boundingBox() ) );
-    mRTree->insertData( 0, 0, r, f.id() );
-    mGeoms[fid] = new QgsGeometry( *f.geometry() );
+    QgsRectangle bbox = f.constGeometry()->boundingBox();
+    if ( !bbox.isNull() )
+    {
+      SpatialIndex::Region r( rect2region( bbox ) );
+      mRTree->insertData( 0, 0, r, f.id() );
+
+      if ( mGeoms.contains( f.id() ) )
+        delete mGeoms.take( f.id() );
+      mGeoms[fid] = new QgsGeometry( *f.constGeometry() );
+    }
   }
 }
 
@@ -705,7 +767,7 @@ void QgsPointLocator::onFeatureDeleted( QgsFeatureId fid )
   if ( mGeoms.contains( fid ) )
   {
     mRTree->deleteData( rect2region( mGeoms[fid]->boundingBox() ), fid );
-    mGeoms.remove( fid );
+    delete mGeoms.take( fid );
   }
 }
 

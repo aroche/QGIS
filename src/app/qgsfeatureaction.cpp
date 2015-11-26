@@ -141,7 +141,7 @@ bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes, boo
   QgsDebugMsg( QString( "reuseLastValues: %1" ).arg( reuseLastValues ) );
 
   // add the fields to the QgsFeature
-  const QgsFields& fields = mLayer->pendingFields();
+  const QgsFields& fields = mLayer->fields();
   mFeature.initAttributes( fields.count() );
   for ( int idx = 0; idx < fields.count(); ++idx )
   {
@@ -163,18 +163,20 @@ bool QgsFeatureAction::addFeature( const QgsAttributeMap& defaultAttributes, boo
     mFeature.setAttribute( idx, v );
   }
 
-  // show the dialog to enter attribute values
-  bool isDisabledAttributeValuesDlg = settings.value( "/qgis/digitizing/disable_enter_attribute_values_dialog", false ).toBool();
+  //show the dialog to enter attribute values
+  //only show if enabled in settings and layer has fields
+  bool isDisabledAttributeValuesDlg = ( fields.count() == 0 ) || settings.value( "/qgis/digitizing/disable_enter_attribute_values_dialog", false ).toBool();
+
   // override application-wide setting with any layer setting
-  switch ( mLayer->featureFormSuppress() )
+  switch ( mLayer->editFormConfig()->suppress() )
   {
-    case QgsVectorLayer::SuppressOn:
+    case QgsEditFormConfig::SuppressOn:
       isDisabledAttributeValuesDlg = true;
       break;
-    case QgsVectorLayer::SuppressOff:
+    case QgsEditFormConfig::SuppressOff:
       isDisabledAttributeValuesDlg = false;
       break;
-    case QgsVectorLayer::SuppressDefault:
+    case QgsEditFormConfig::SuppressDefault:
       break;
   }
   if ( isDisabledAttributeValuesDlg )
@@ -224,15 +226,15 @@ void QgsFeatureAction::onFeatureSaved( const QgsFeature& feature )
 
   if ( reuseLastValues )
   {
-    QgsFields fields = mLayer->pendingFields();
+    QgsFields fields = mLayer->fields();
     for ( int idx = 0; idx < fields.count(); ++idx )
     {
-      const QgsAttributes &newValues = feature.attributes();
+      QgsAttributes newValues = feature.attributes();
       QgsAttributeMap origValues = sLastUsedValues[ mLayer ];
-      if ( origValues[idx] != newValues[idx] )
+      if ( origValues[idx] != newValues.at( idx ) )
       {
         QgsDebugMsg( QString( "saving %1 for %2" ).arg( sLastUsedValues[ mLayer ][idx].toString() ).arg( idx ) );
-        sLastUsedValues[ mLayer ][idx] = newValues[idx];
+        sLastUsedValues[ mLayer ][idx] = newValues.at( idx );
       }
     }
   }

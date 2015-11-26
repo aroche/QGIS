@@ -25,39 +25,37 @@ __copyright__ = '(C) 2010, Michael Minn'
 
 __revision__ = '$Format:%H$'
 
-from PyQt4.QtCore import *
-from qgis.core import *
+from qgis.core import QGis, QgsFeature, QgsGeometry
 from processing.core.GeoAlgorithm import GeoAlgorithm
-from processing.core.GeoAlgorithmExecutionException import \
-        GeoAlgorithmExecutionException
+from processing.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterSelection
 from processing.core.outputs import OutputVector
 
 from processing.tools import dataobjects, vector
 
+
 class GeometryConvert(GeoAlgorithm):
     INPUT = 'INPUT'
     TYPE = 'TYPE'
     OUTPUT = 'OUTPUT'
 
-    TYPES = ['Centroids',
-             'Nodes',
-             'Linestrings',
-             'Multilinestrings',
-             'Polygons'
-            ]
-
     def defineCharacteristics(self):
-        self.name = 'Convert geometry type'
-        self.group = 'Vector geometry tools'
+        self.name, self.i18n_name = self.trAlgorithm('Convert geometry type')
+        self.group, self.i18n_group = self.trAlgorithm('Vector geometry tools')
+
+        self.types = [self.tr('Centroids'),
+                      self.tr('Nodes'),
+                      self.tr('Linestrings'),
+                      self.tr('Multilinestrings'),
+                      self.tr('Polygons')]
 
         self.addParameter(ParameterVector(self.INPUT,
-            self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
+                                          self.tr('Input layer'), [ParameterVector.VECTOR_TYPE_ANY]))
         self.addParameter(ParameterSelection(self.TYPE,
-            self.tr('New geometry type'), self.TYPES))
+                                             self.tr('New geometry type'), self.types))
 
-        self.addOutput(OutputVector(self.OUTPUT, self.tr('Output')))
+        self.addOutput(OutputVector(self.OUTPUT, self.tr('Converted')))
 
     def processAlgorithm(self, progress):
         layer = dataobjects.getObjectFromUri(
@@ -176,7 +174,7 @@ class GeometryConvert(GeoAlgorithm):
                     feat.setAttributes(f.attributes())
                     feat.setGeometry(QgsGeometry.fromMultiPolyline(rings))
                     writer.addFeature(feat)
-                elif newtype == QGis.WKBPolygon:
+                elif newType == QGis.WKBPolygon:
                     writer.addFeature(f)
                 else:
                     raise GeoAlgorithmExecutionException(

@@ -122,12 +122,17 @@ GlobePlugin::GlobePlugin( QgisInterface* theQgisInterface )
     , mQActionUnload( 0 )
     , mOsgViewer( 0 )
     , mViewerWidget( 0 )
+    , mRootNode( 0 )
     , mMapNode( 0 )
     , mBaseLayer( 0 )
     , mQgisMapLayer( 0 )
     , mTileSource( 0 )
+    , mControlCanvas( 0 )
     , mElevationManager( 0 )
     , mObjectPlacer( 0 )
+    , mSelectedLat( 0. )
+    , mSelectedLon( 0. )
+    , mSelectedElevation( 0. )
 {
   mIsGlobeRunning = false;
   //needed to be "seen" by other plugins by doing
@@ -211,7 +216,7 @@ private:
 
 struct HomeControlHandler : public NavigationControlHandler
 {
-  HomeControlHandler( osgEarth::Util::EarthManipulator* manip ) : _manip( manip ) { }
+  explicit HomeControlHandler( osgEarth::Util::EarthManipulator* manip ) : _manip( manip ) { }
   virtual void onClick( Control* /*control*/, int /*mouseButtonMask*/, const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa ) override
   {
     _manip->home( ea, aa );
@@ -222,7 +227,7 @@ private:
 
 struct RefreshControlHandler : public ControlEventHandler
 {
-  RefreshControlHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
+  explicit RefreshControlHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
   virtual void onClick( Control* /*control*/, int /*mouseButtonMask*/ ) override
   {
     mGlobe->imageLayersChanged();
@@ -233,7 +238,7 @@ private:
 
 struct SyncExtentControlHandler : public ControlEventHandler
 {
-  SyncExtentControlHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
+  explicit SyncExtentControlHandler( GlobePlugin* globe ) : mGlobe( globe ) { }
   virtual void onClick( Control* /*control*/, int /*mouseButtonMask*/ ) override
   {
     mGlobe->syncExtent();
@@ -783,14 +788,14 @@ void GlobePlugin::setupProxy()
     if ( !settings.value( "/proxyUser" ).toString().isEmpty() )
     {
       QString auth = settings.value( "/proxyUser" ).toString() + ":" + settings.value( "/proxyPassword" ).toString();
-#ifdef WIN32
+#ifdef Q_OS_WIN
       putenv( QString( "OSGEARTH_CURL_PROXYAUTH=%1" ).arg( auth ).toAscii() );
 #else
       setenv( "OSGEARTH_CURL_PROXYAUTH", auth.toStdString().c_str(), 0 );
 #endif
     }
     //TODO: settings.value("/proxyType")
-    //TODO: URL exlusions
+    //TODO: URL exclusions
     HTTPClient::setProxySettings( proxySettings );
   }
   settings.endGroup();

@@ -27,15 +27,25 @@
 #endif
 
 QgsNineCellFilter::QgsNineCellFilter( const QString& inputFile, const QString& outputFile, const QString& outputFormat )
-    : mInputFile( inputFile ), mOutputFile( outputFile ), mOutputFormat( outputFormat ), mCellSizeX( -1 ), mCellSizeY( -1 ),
-    mInputNodataValue( -1 ), mOutputNodataValue( -1 ), mZFactor( 1.0 )
+    : mInputFile( inputFile )
+    , mOutputFile( outputFile )
+    , mOutputFormat( outputFormat )
+    , mCellSizeX( -1.0 )
+    , mCellSizeY( -1.0 )
+    , mInputNodataValue( -1.0 )
+    , mOutputNodataValue( -1.0 )
+    , mZFactor( 1.0 )
 {
 
 }
 
 QgsNineCellFilter::QgsNineCellFilter()
+    : mCellSizeX( -1.0 )
+    , mCellSizeY( -1.0 )
+    , mInputNodataValue( -1.0 )
+    , mOutputNodataValue( -1.0 )
+    , mZFactor( 1.0 )
 {
-
 }
 
 QgsNineCellFilter::~QgsNineCellFilter()
@@ -243,7 +253,7 @@ GDALDatasetH QgsNineCellFilter::openOutputFile( GDALDatasetH inputDataset, GDALD
   }
 
   int xSize = GDALGetRasterXSize( inputDataset );
-  int ySize = GDALGetRasterYSize( inputDataset );;
+  int ySize = GDALGetRasterYSize( inputDataset );
 
   //open output file
   char **papszOptions = NULL;

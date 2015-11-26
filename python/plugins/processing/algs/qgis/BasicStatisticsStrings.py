@@ -26,8 +26,7 @@ __copyright__ = '(C) 2012, Victor Olaya'
 __revision__ = '$Format:%H$'
 
 import codecs
-from PyQt4.QtCore import *
-from qgis.core import *
+
 from processing.core.GeoAlgorithm import GeoAlgorithm
 from processing.core.parameters import ParameterVector
 from processing.core.parameters import ParameterTableField
@@ -51,18 +50,18 @@ class BasicStatisticsStrings(GeoAlgorithm):
     UNIQUE = 'UNIQUE'
 
     def defineCharacteristics(self):
-        self.name = 'Basic statistics for text fields'
-        self.group = 'Vector table tools'
+        self.name, self.i18n_name = self.trAlgorithm('Basic statistics for text fields')
+        self.group, self.i18n_group = self.trAlgorithm('Vector table tools')
 
         self.addParameter(ParameterVector(self.INPUT_LAYER,
-            self.tr('Input vector layer'),
-            ParameterVector.VECTOR_TYPE_ANY, False))
+                                          self.tr('Input vector layer'),
+                                          ParameterVector.VECTOR_TYPE_ANY, False))
         self.addParameter(ParameterTableField(self.FIELD_NAME,
-            self.tr('Field to calculate statistics on'),
-            self.INPUT_LAYER, ParameterTableField.DATA_TYPE_STRING))
+                                              self.tr('Field to calculate statistics on'),
+                                              self.INPUT_LAYER, ParameterTableField.DATA_TYPE_STRING))
 
         self.addOutput(OutputHTML(self.OUTPUT_HTML_FILE,
-            self.tr('Statistics for text field')))
+                                  self.tr('Statistics for text')))
 
         self.addOutput(OutputNumber(self.MIN_LEN, self.tr('Minimum length')))
         self.addOutput(OutputNumber(self.MAX_LEN, self.tr('Maximum length')))
@@ -74,7 +73,7 @@ class BasicStatisticsStrings(GeoAlgorithm):
 
     def processAlgorithm(self, progress):
         layer = dataobjects.getObjectFromUri(
-                self.getParameterValue(self.INPUT_LAYER))
+            self.getParameterValue(self.INPUT_LAYER))
         fieldName = self.getParameterValue(self.FIELD_NAME)
 
         outputFile = self.getOutputValue(self.OUTPUT_HTML_FILE)
@@ -150,6 +149,6 @@ class BasicStatisticsStrings(GeoAlgorithm):
         f.write('<meta http-equiv="Content-Type" content="text/html; \
                 charset=utf-8" /></head><body>')
         for s in algData:
-            f.write('<p>' + str(s) + '</p>')
+            f.write('<p>' + unicode(s) + '</p>')
         f.write('</body></html>')
         f.close()

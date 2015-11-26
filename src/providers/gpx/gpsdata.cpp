@@ -33,11 +33,11 @@
 QString QgsGPSObject::xmlify( const QString& str )
 {
   QString tmp = str;
-  tmp.replace( "&", "&amp;" );
-  tmp.replace( "<", "&lt;" );
-  tmp.replace( ">", "&gt;" );
-  tmp.replace( "\"", "&quot;" );
-  tmp.replace( "\'", "&apos;" );
+  tmp.replace( '&', "&amp;" );
+  tmp.replace( '<', "&lt;" );
+  tmp.replace( '>', "&gt;" );
+  tmp.replace( '\"', "&quot;" );
+  tmp.replace( '\'', "&apos;" );
   return tmp;
 }
 
@@ -60,6 +60,8 @@ void QgsGPSObject::writeXML( QTextStream& stream )
 
 
 QgsGPSPoint::QgsGPSPoint()
+    : lat( 0. )
+    , lon( 0. )
 {
   ele = -std::numeric_limits<double>::max();
 }
@@ -76,11 +78,11 @@ void QgsGPSPoint::writeXML( QTextStream& stream )
 
 
 QgsGPSExtended::QgsGPSExtended()
-    : xMin( std::numeric_limits<double>::max() ),
-    xMax( -std::numeric_limits<double>::max() ),
-    yMin( std::numeric_limits<double>::max() ),
-    yMax( -std::numeric_limits<double>::max() ),
-    number( std::numeric_limits<int>::max() )
+    : xMin( std::numeric_limits<double>::max() )
+    , xMax( -std::numeric_limits<double>::max() )
+    , yMin( std::numeric_limits<double>::max() )
+    , yMax( -std::numeric_limits<double>::max() )
+    , number( std::numeric_limits<int>::max() )
 {
 
 }
@@ -223,7 +225,7 @@ QgsGPSData::TrackIterator QgsGPSData::tracksEnd()
 
 
 QgsGPSData::WaypointIterator QgsGPSData::addWaypoint( double lat, double lon,
-    QString name, double ele )
+    const QString& name, double ele )
 {
   QgsWaypoint wpt;
   wpt.lat = lat;
@@ -246,7 +248,7 @@ QgsGPSData::WaypointIterator QgsGPSData::addWaypoint( const QgsWaypoint& wpt )
 }
 
 
-QgsGPSData::RouteIterator QgsGPSData::addRoute( QString name )
+QgsGPSData::RouteIterator QgsGPSData::addRoute( const QString& name )
 {
   QgsRoute rte;
   rte.name = name;
@@ -266,7 +268,7 @@ QgsGPSData::RouteIterator QgsGPSData::addRoute( const QgsRoute& rte )
 }
 
 
-QgsGPSData::TrackIterator QgsGPSData::addTrack( QString name )
+QgsGPSData::TrackIterator QgsGPSData::addTrack( const QString& name )
 {
   QgsTrack trk;
   trk.name = name;
