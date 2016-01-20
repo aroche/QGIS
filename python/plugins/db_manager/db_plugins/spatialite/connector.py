@@ -29,6 +29,7 @@ from ..plugin import ConnectionError, DbError, Table
 from pyspatialite import dbapi2 as sqlite
 
 
+
 def classFactory():
     return SpatiaLiteDBConnector
 
@@ -163,7 +164,7 @@ class SpatiaLiteDBConnector(DBConnector):
         return QGis.QGIS_VERSION[0:3] >= "1.6"
 
     def hasTableColumnEditingSupport(self):
-        return False
+        return True
 
     def hasCreateSpatialViewSupport(self):
         return True
@@ -607,13 +608,50 @@ class SpatiaLiteDBConnector(DBConnector):
 
     def deleteTableColumn(self, table, column):
         """ delete column from a table """
-        if not self.isGeometryColumn(table, column):
-            return False  # column editing not supported
-
-        # delete geometry column correctly
         schema, tablename = self.getSchemaTableName(table)
-        sql = u"SELECT DiscardGeometryColumn(%s, %s)" % (self.quoteString(tablename), self.quoteString(column))
-        self._execute_and_commit(sql)
+        if self.isGeometryColumn(table, column):
+            # delete geometry column correctly
+            sql = u"SELECT DiscardGeometryColumn(%s, %s)" % (self.quoteString(tablename), self.quoteString(column))
+            self._execute_and_commit(sql)
+        else:
+            columns = self.getTableFields(table)
+            columnList = []
+            columnDefList = []
+            for col in columns:
+                if col[1] == column:
+                    continue
+                coldef = self.quoteId(col[1]) + u" " + col[2]
+                if col[3] == 1:
+                    coldef += " NOT NULL"
+                if col[4]:
+                    coldef += " DEFAULT " + self.quoteString(col[4])
+                if col[5] == 1:
+                    coldef += " PRIMARY KEY"
+                columnDefList.append(coldef)
+                columnList.append(col[1])
+            temp_table = self.quoteId(tablename + "_backup")
+            # we need this to do all in one transaction
+            old_isolation_level = self.connection.isolation_level
+            self.connection.isolation_level = None
+            c = self._get_cursor()
+            try:
+                c.execute("BEGIN")
+                sql = u"CREATE TEMPORARY TABLE %s (%s)" % (temp_table, ','.join(columnDefList))
+                self._execute(c, sql)
+                sql = u"INSERT INTO %s SELECT %s FROM %s" % (temp_table, ','.join(columnList), self.quoteId(table))
+                self._execute(c, sql)
+                self._execute(c, u"DROP TABLE %s" % self.quoteId(table))
+                sql = u"CREATE TABLE %s (%s)" % (self.quoteId(table), ','.join(columnDefList))
+                self._execute(c, sql)
+                sql = u"INSERT INTO %s SELECT %s FROM %s" % (self.quoteId(table), ','.join(columnList), temp_table)
+                self._execute(c, sql)
+                self._execute(c, u"DROP TABLE %s" % temp_table)
+                self._commit()
+            finally:
+                self._execute_and_commit(u"DROP TABLE IF EXISTS %s" % temp_table)
+                self.connection.isolation_level = old_isolation_level
+                
+            
 
     def updateTableColumn(self, table, column, new_name, new_data_type=None, new_not_null=None, new_default=None):
         return False  # column editing not supported
