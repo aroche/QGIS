@@ -68,7 +68,7 @@ QgsWKBTypes::Type QgsWKBTypes::flatType( Type type )
 QgsWKBTypes::Type QgsWKBTypes::parseType( const QString &wktStr )
 {
   QString typestr = wktStr.left( wktStr.indexOf( '(' ) ).simplified().remove( ' ' );
-  Q_FOREACH ( const Type& type, entries()->keys() )
+  Q_FOREACH ( Type type, entries()->keys() )
   {
     QMap< Type, wkbEntry >::const_iterator it = entries()->constFind( type );
     if ( it != entries()->constEnd() && it.value().mName.compare( typestr, Qt::CaseInsensitive ) == 0 )
@@ -185,9 +185,9 @@ QgsWKBTypes::Type QgsWKBTypes::addZ( QgsWKBTypes::Type type )
   //upgrade with z dimension
   Type flat = flatType( type );
   if ( hasM( type ) )
-    return ( QgsWKBTypes::Type )( flat + 3000 );
+    return static_cast< QgsWKBTypes::Type >( flat + 3000 );
   else
-    return ( QgsWKBTypes::Type )( flat + 1000 );
+    return static_cast< QgsWKBTypes::Type >( flat + 1000 );
 }
 
 QgsWKBTypes::Type QgsWKBTypes::addM( QgsWKBTypes::Type type )
@@ -209,9 +209,43 @@ QgsWKBTypes::Type QgsWKBTypes::addM( QgsWKBTypes::Type type )
   //upgrade with m dimension
   Type flat = flatType( type );
   if ( hasZ( type ) )
-    return ( QgsWKBTypes::Type )( flat + 3000 );
+    return static_cast< QgsWKBTypes::Type >( flat + 3000 );
   else
-    return ( QgsWKBTypes::Type )( flat + 2000 );
+    return static_cast< QgsWKBTypes::Type >( flat + 2000 );
+}
+
+QgsWKBTypes::Type QgsWKBTypes::dropZ( QgsWKBTypes::Type type )
+{
+  if ( !hasZ( type ) )
+    return type;
+
+  QgsWKBTypes::Type returnType = flatType( type );
+  if ( hasM( type ) )
+    returnType = addM( returnType );
+  return returnType;
+}
+
+QgsWKBTypes::Type QgsWKBTypes::dropM( QgsWKBTypes::Type type )
+{
+  if ( !hasM( type ) )
+    return type;
+
+  QgsWKBTypes::Type returnType = flatType( type );
+  if ( hasZ( type ) )
+    returnType = addZ( returnType );
+  return returnType;
+}
+
+QgsWKBTypes::Type QgsWKBTypes::to25D( QgsWKBTypes::Type type )
+{
+  QgsWKBTypes::Type flat = flatType( type );
+
+  if ( flat >= Point && flat <= MultiPolygon )
+    return static_cast< QgsWKBTypes::Type >( flat + 0x80000000 );
+  else if ( type == QgsWKBTypes::NoGeometry )
+    return QgsWKBTypes::NoGeometry;
+  else
+    return Unknown;
 }
 
 /***************************************************************************

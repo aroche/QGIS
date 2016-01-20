@@ -303,22 +303,23 @@ tar -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-common/%PACKAGENAME
 	"apps/%PACKAGENAME%/bin/qgis_core.dll" ^
 	"apps/%PACKAGENAME%/bin/qgis_gui.dll" ^
 	"apps/%PACKAGENAME%/doc/" ^
+	"apps/%PACKAGENAME%/plugins/basicauthmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/delimitedtextprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/gdalprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/gpxprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/identcertauthmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/memoryprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/mssqlprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/ogrprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/owsprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/pkcs12authmethod.dll" ^
+	"apps/%PACKAGENAME%/plugins/pkipathsauthmethod.dll" ^
 	"apps/%PACKAGENAME%/plugins/postgresprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/spatialiteprovider.dll" ^
+	"apps/%PACKAGENAME%/plugins/virtuallayerprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/wcsprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/wfsprovider.dll" ^
 	"apps/%PACKAGENAME%/plugins/wmsprovider.dll" ^
-	"apps/%PACKAGENAME%/plugins/basicauthmethod.dll" ^
-	"apps/%PACKAGENAME%/plugins/identcertauthmethod.dll" ^
-	"apps/%PACKAGENAME%/plugins/pkcs12authmethod.dll" ^
-	"apps/%PACKAGENAME%/plugins/pkipathsauthmethod.dll" ^
 	"apps/%PACKAGENAME%/resources/qgis.db" ^
 	"apps/%PACKAGENAME%/resources/spatialite.db" ^
 	"apps/%PACKAGENAME%/resources/srs.db" ^
@@ -391,7 +392,6 @@ tar -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%/%PACKAGENAME%-%VERS
 	"apps/%PACKAGENAME%/plugins/rasterterrainplugin.dll" ^
 	"apps/%PACKAGENAME%/plugins/roadgraphplugin.dll" ^
 	"apps/%PACKAGENAME%/plugins/spatialqueryplugin.dll" ^
-	"apps/%PACKAGENAME%/plugins/spitplugin.dll" ^
 	"apps/%PACKAGENAME%/plugins/topolplugin.dll" ^
 	"apps/%PACKAGENAME%/plugins/zonalstatisticsplugin.dll" ^
 	"apps/%PACKAGENAME%/plugins/geometrycheckerplugin.dll" ^
@@ -430,24 +430,20 @@ for %%g IN (%GRASS_VERSIONS%) do (
 	set w=!v!
 	if !v!==6 set w=
 
-	set files="apps/%PACKAGENAME%/bin/qgisgrass!v!.dll" ^
+	tar -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin!w!/%PACKAGENAME%-grass-plugin!w!-%VERSION%-%PACKAGE%.tar.bz2 ^
+		"apps/%PACKAGENAME%/bin/qgisgrass!v!.dll" ^
+		"apps/%PACKAGENAME%/grass/bin/qgis.g.browser!v!.exe" ^
 		"apps/%PACKAGENAME%/grass/modules/qgis.d.rast!v!.exe" ^
 		"apps/%PACKAGENAME%/grass/modules/qgis.g.info!v!.exe" ^
 		"apps/%PACKAGENAME%/grass/modules/qgis.r.in!v!.exe" ^
 		"apps/%PACKAGENAME%/grass/modules/qgis.v.in!v!.exe" ^
-		"apps/%PACKAGENAME%/plugins/grassrasterprovider!v!.dll" ^
+		"apps/%PACKAGENAME%/plugins/grassplugin!v!.dll" ^
 		"apps/%PACKAGENAME%/plugins/grassprovider!v!.dll" ^
-		"bin/%PACKAGENAME%-grass!v!.bat.tmpl" ^
+		"apps/%PACKAGENAME%/plugins/grassrasterprovider!v!.dll" ^
 		"bin/%PACKAGENAME%-browser-grass!v!.bat.tmpl" ^
+		"bin/%PACKAGENAME%-grass!v!.bat.tmpl" ^
 		"etc/postinstall/%PACKAGENAME%-grass-plugin!w!.bat" ^
 		"etc/preremove/%PACKAGENAME%-grass-plugin!w!.bat"
-
-	if !v!==6 set files=!files! ^
-		"apps/%PACKAGENAME%/plugins/grassplugin!v!.dll" ^
-		"apps/%PACKAGENAME%/grass/bin/qgis.g.browser!v!.exe"
-
-	tar -C %OSGEO4W_ROOT% -cjf %ARCH%/release/qgis/%PACKAGENAME%-grass-plugin!w!/%PACKAGENAME%-grass-plugin!w!-%VERSION%-%PACKAGE%.tar.bz2 ^
-		!files!
 	if errorlevel 1 (echo tar grass-plugin!w! failed & goto error)
 )
 

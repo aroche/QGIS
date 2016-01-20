@@ -126,7 +126,7 @@ void TestQgsPaintEffectRegistry::addEffect()
   QCOMPARE( registry->effects().length(), previousCount + 1 );
 
   //try adding empty metadata
-  registry->addEffectType( NULL );
+  registry->addEffectType( nullptr );
   QCOMPARE( registry->effects().length(), previousCount + 1 );
 }
 

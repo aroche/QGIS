@@ -17,13 +17,15 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/core/geometry
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/core/raster
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/core/symbology-ng
+)
+INCLUDE_DIRECTORIES(SYSTEM
   ${QT_INCLUDE_DIR}
   ${GDAL_INCLUDE_DIR}
   ${PROJ_INCLUDE_DIR}
   ${GEOS_INCLUDE_DIR}
   ${QWT_INCLUDE_DIR}
   ${QCA_INCLUDE_DIR}
-  )
+)
 
 #############################################################
 # Compiler defines
@@ -119,12 +121,14 @@ ADD_QGIS_TEST(zoomtest testqgsmaptoolzoom.cpp)
 #ADD_EXECUTABLE(qgis_rendererv2gui ${rendererv2gui_SRCS} ${rendererv2gui_MOC_SRCS})
 
 #ADD_QGIS_TEST(histogramtest testqgsrasterhistogram.cpp)
+ADD_QGIS_TEST(doublespinbox testqgsdoublespinbox.cpp)
+ADD_QGIS_TEST(dualviewtest testqgsdualview.cpp )
+ADD_QGIS_TEST(filewidget testqgsfilewidget.cpp )
+ADD_QGIS_TEST(mapcanvastest testqgsmapcanvas.cpp )
 ADD_QGIS_TEST(projectionissues testprojectionissues.cpp)
 ADD_QGIS_TEST(qgsguitest testqgsgui.cpp)
-ADD_QGIS_TEST(scalecombobox testqgsscalecombobox.cpp)
-ADD_QGIS_TEST(dualviewtest testqgsdualview.cpp )
-ADD_QGIS_TEST(doublespinbox testqgsdoublespinbox.cpp)
-ADD_QGIS_TEST(spinbox testqgsspinbox.cpp)
 ADD_QGIS_TEST(rubberbandtest testqgsrubberband.cpp )
-ADD_QGIS_TEST(mapcanvastest testqgsmapcanvas.cpp )
+ADD_QGIS_TEST(scalecombobox testqgsscalecombobox.cpp)
+ADD_QGIS_TEST(spinbox testqgsspinbox.cpp)
+
 

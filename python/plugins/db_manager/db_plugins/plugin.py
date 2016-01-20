@@ -260,7 +260,7 @@ class Database(DbItemObject):
         # may be overloaded by derived classes
         return "row_number() over ()"
 
-    def toSqlLayer(self, sql, geomCol, uniqueCol, layerName="QueryLayer", layerType=None, avoidSelectById=False):
+    def toSqlLayer(self, sql, geomCol, uniqueCol, layerName="QueryLayer", layerType=None, avoidSelectById=False, filter=""):
         from qgis.core import QgsMapLayer, QgsVectorLayer, QgsRasterLayer
 
         if uniqueCol is None:
@@ -274,13 +274,13 @@ class Database(DbItemObject):
                     uniqueCol = "_uid_"
 
         uri = self.uri()
-        uri.setDataSource("", u"(%s\n)" % sql, geomCol, "", uniqueCol)
+        uri.setDataSource("", u"(%s\n)" % sql, geomCol, filter, uniqueCol)
         if avoidSelectById:
             uri.disableSelectAtId(True)
         provider = self.dbplugin().providerName()
         if layerType == QgsMapLayer.RasterLayer:
-            return QgsRasterLayer(uri.uri(), layerName, provider)
-        return QgsVectorLayer(uri.uri(), layerName, provider)
+            return QgsRasterLayer(uri.uri(False), layerName, provider)
+        return QgsVectorLayer(uri.uri(False), layerName, provider)
 
     def registerAllActions(self, mainWindow):
         self.registerDatabaseActions(mainWindow)
@@ -668,13 +668,13 @@ class Table(DbItemObject):
 
     def mimeUri(self):
         layerType = "raster" if self.type == Table.RasterType else "vector"
-        return u"%s:%s:%s:%s" % (layerType, self.database().dbplugin().providerName(), self.name, self.uri().uri())
+        return u"%s:%s:%s:%s" % (layerType, self.database().dbplugin().providerName(), self.name, self.uri().uri(False))
 
     def toMapLayer(self):
         from qgis.core import QgsVectorLayer, QgsRasterLayer
 
         provider = self.database().dbplugin().providerName()
-        uri = self.uri().uri()
+        uri = self.uri().uri(False)
         if self.type == Table.RasterType:
             return QgsRasterLayer(uri, self.name, provider)
         return QgsVectorLayer(uri, self.name, provider)

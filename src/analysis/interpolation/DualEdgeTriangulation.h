@@ -181,7 +181,7 @@ inline DualEdgeTriangulation::DualEdgeTriangulation()
     , xMin( 0 )
     , yMax( 0 )
     , yMin( 0 )
-    , mTriangleInterpolator( 0 )
+    , mTriangleInterpolator( nullptr )
     , mForcedCrossBehaviour( Triangulation::DELETE_FIRST )
     , mEdgeColor( 0, 255, 0 )
     , mForcedEdgeColor( 0, 0, 255 )
@@ -202,7 +202,7 @@ inline DualEdgeTriangulation::DualEdgeTriangulation( int nop, Triangulation* dec
     , xMin( 0 )
     , yMax( 0 )
     , yMin( 0 )
-    , mTriangleInterpolator( 0 )
+    , mTriangleInterpolator( nullptr )
     , mForcedCrossBehaviour( Triangulation::DELETE_FIRST )
     , mEdgeColor( 0, 255, 0 )
     , mForcedEdgeColor( 0, 0, 255 )
@@ -220,7 +220,7 @@ inline DualEdgeTriangulation::DualEdgeTriangulation( int nop, Triangulation* dec
 
 inline int DualEdgeTriangulation::getNumberOfPoints() const
 {
-  return (( int )( mPointVector.count() ) );
+  return mPointVector.count();
 }
 
 inline Point3D* DualEdgeTriangulation::getPoint( unsigned int i ) const

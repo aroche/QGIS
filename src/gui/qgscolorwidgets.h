@@ -16,6 +16,7 @@
 #ifndef QGSCOLORWIDGETS_H
 #define QGSCOLORWIDGETS_H
 
+#include <QWidgetAction>
 #include <QWidget>
 
 class QColor;
@@ -56,7 +57,7 @@ class GUI_EXPORT QgsColorWidget : public QWidget
      * @param parent parent QWidget for the widget
      * @param component color component the widget alters
      */
-    QgsColorWidget( QWidget* parent = 0, const ColorComponent component = Multiple );
+    QgsColorWidget( QWidget* parent = nullptr, const ColorComponent component = Multiple );
 
     virtual ~QgsColorWidget();
 
@@ -117,6 +118,11 @@ class GUI_EXPORT QgsColorWidget : public QWidget
      */
     void colorChanged( const QColor &color );
 
+    /** Emitted when mouse hovers over widget.
+     * @note added in QGIS 2.14
+     */
+    void hovered();
+
   protected:
 
     QColor mCurrentColor;
@@ -170,7 +176,81 @@ class GUI_EXPORT QgsColorWidget : public QWidget
 
     //Reimplemented to accept dropped colors
     void dropEvent( QDropEvent *e ) override;
+
+    void mouseMoveEvent( QMouseEvent* e ) override;
+    void mousePressEvent( QMouseEvent* e ) override;
+    void mouseReleaseEvent( QMouseEvent* e ) override;
 };
+
+
+/** \ingroup gui
+ * \class QgsColorWidgetAction
+ * An action containing a color widget, which can be embedded into a menu.
+ * @see QgsColorWidget
+ * @note introduced in QGIS 2.14
+ */
+
+class GUI_EXPORT QgsColorWidgetAction: public QWidgetAction
+{
+    Q_OBJECT
+
+  public:
+
+    /** Construct a new color widget action.
+     * @param colorWidget QgsColorWidget to show in action
+     * @param menu parent menu
+     * @param parent parent widget
+     */
+    QgsColorWidgetAction( QgsColorWidget* colorWidget, QMenu* menu = nullptr, QWidget *parent = nullptr );
+
+    virtual ~QgsColorWidgetAction();
+
+    /** Returns the color widget contained in the widget action.
+     */
+    QgsColorWidget* colorWidget() { return mColorWidget; }
+
+    /** Sets whether the parent menu should be dismissed and closed when a color is selected
+     * from the action's color widget.
+     * @param dismiss set to true (default) to immediately close the menu when a color is selected
+     * from the widget. If set to false, the colorChanged signal will be emitted but the menu will
+     * stay open.
+     * @see dismissOnColorSelection()
+     */
+    void setDismissOnColorSelection( bool dismiss ) { mDismissOnColorSelection = dismiss; }
+
+    /** Returns whether the parent menu will be dismissed after a color is selected from the
+     * action's color widget.
+     * @see setDismissOnColorSelection
+     */
+    bool dismissOnColorSelection() const { return mDismissOnColorSelection; }
+
+  signals:
+
+    /** Emitted when a color has been selected from the widget
+     * @param color selected color
+     */
+    void colorChanged( const QColor &color );
+
+  private:
+    QMenu* mMenu;
+    QgsColorWidget* mColorWidget;
+
+    //used to supress recursion with hover events
+    bool mSuppressRecurse;
+
+    bool mDismissOnColorSelection;
+
+  private slots:
+
+    /** Handles setting the active action for the menu when cursor hovers over color widget
+     */
+    void onHover();
+
+    /** Emits color changed signal and closes parent menu
+     */
+    void setColor( const QColor &color );
+};
+
 
 
 /** \ingroup gui
@@ -189,10 +269,11 @@ class GUI_EXPORT QgsColorWheel : public QgsColorWidget
     /** Constructs a new color wheel widget.
      * @param parent parent QWidget for the widget
      */
-    QgsColorWheel( QWidget* parent = 0 );
+    QgsColorWheel( QWidget* parent = nullptr );
 
     virtual ~QgsColorWheel();
 
+    virtual QSize sizeHint() const override;
     void paintEvent( QPaintEvent* event ) override;
 
   public slots:
@@ -281,7 +362,7 @@ class GUI_EXPORT QgsColorBox : public QgsColorWidget
      * which vary along the horizontal and vertical axis are automatically assigned
      * based on this constant color component.
      */
-    QgsColorBox( QWidget* parent = 0, const ColorComponent component = Value );
+    QgsColorBox( QWidget* parent = nullptr, const ColorComponent component = Value );
 
     virtual ~QgsColorBox();
 
@@ -374,7 +455,7 @@ class GUI_EXPORT QgsColorRampWidget : public QgsColorWidget
      * @param component color component which varies along the ramp
      * @param orientation orientation for widget
      */
-    QgsColorRampWidget( QWidget* parent = 0,
+    QgsColorRampWidget( QWidget* parent = nullptr,
                         const ColorComponent component = QgsColorWidget::Red,
                         const Orientation orientation = QgsColorRampWidget::Horizontal );
 
@@ -478,7 +559,7 @@ class GUI_EXPORT QgsColorSliderWidget : public QgsColorWidget
      * @param parent parent QWidget for the widget
      * @param component color component which is controlled by the slider
      */
-    QgsColorSliderWidget( QWidget* parent = 0, const ColorComponent component = QgsColorWidget::Red );
+    QgsColorSliderWidget( QWidget* parent = nullptr, const ColorComponent component = QgsColorWidget::Red );
 
     virtual ~QgsColorSliderWidget();
 
@@ -542,7 +623,7 @@ class GUI_EXPORT QgsColorTextWidget : public QgsColorWidget
     /** Construct a new color line edit widget.
      * @param parent parent QWidget for the widget
      */
-    QgsColorTextWidget( QWidget* parent = 0 );
+    QgsColorTextWidget( QWidget* parent = nullptr );
 
     virtual ~QgsColorTextWidget();
 
@@ -602,11 +683,12 @@ class GUI_EXPORT QgsColorPreviewWidget : public QgsColorWidget
     /** Construct a new color preview widget.
      * @param parent parent QWidget for the widget
      */
-    QgsColorPreviewWidget( QWidget* parent = 0 );
+    QgsColorPreviewWidget( QWidget* parent = nullptr );
 
     virtual ~QgsColorPreviewWidget();
 
     void paintEvent( QPaintEvent* event ) override;
+    virtual QSize sizeHint() const override;
 
     /** Returns the secondary color for the widget
      * @returns secondary widget color, or an invalid color if the widget

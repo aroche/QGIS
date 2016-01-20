@@ -157,12 +157,21 @@ class QgsAbstractGeometryV2
     /** Returns a geometry without curves. Caller takes ownership*/
     virtual QgsAbstractGeometryV2* segmentize() const /Factory/;
 
-    /** Returns approximate rotation angle for a vertex. Usually average angle between adjacent segments.
-        @return rotation in radians, clockwise from north*/
+    /** Returns approximate angle at a vertex. This is usually the average angle between adjacent
+     * segments, and can be pictured as the orientation of a line following the curvature of the
+     * geometry at the specified vertex.
+     * @param vertex the vertex id
+     * @return rotation in radians, clockwise from north
+    */
     virtual double vertexAngle( const QgsVertexId& vertex ) const = 0;
 
     virtual int vertexCount(int part = 0, int ring = 0) const = 0;
     virtual int ringCount(int part = 0) const = 0;
+
+    /** Returns count of parts contained in the geometry.
+     * @see vertexCount
+     * @see ringCount
+     */
     virtual int partCount() const = 0;
 
     /** Adds a z-dimension to the geometry, initialized to a preset value.
@@ -180,6 +189,28 @@ class QgsAbstractGeometryV2
      * @see addZValue
      */
     virtual bool addMValue( double mValue = 0 ) = 0;
+
+    /** Drops any z-dimensions which exist in the geometry.
+     * @returns true if Z values were present and have been removed
+     * @see addZValue()
+     * @see dropMValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropZValue() = 0;
+
+    /** Drops any measure values which exist in the geometry.
+     * @returns true if m-values were present and have been removed
+     * @see addMValue()
+     * @see dropZValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropMValue() = 0;
+
+    /** Converts the geometry to a specified type.
+     * @returns true if conversion was successful
+     * @note added in QGIS 2.14
+     */
+    virtual bool convertTo( QgsWKBTypes::Type type );
 
   protected:
 

@@ -41,7 +41,7 @@ class GUI_EXPORT QgsMapOverviewCanvas : public QWidget
     Q_OBJECT
 
   public:
-    QgsMapOverviewCanvas( QWidget * parent = 0, QgsMapCanvas* mapCanvas = NULL );
+    QgsMapOverviewCanvas( QWidget * parent = nullptr, QgsMapCanvas* mapCanvas = nullptr );
 
     ~QgsMapOverviewCanvas();
 
@@ -114,5 +114,24 @@ class GUI_EXPORT QgsMapOverviewCanvas : public QWidget
     //! for rendering overview
     QgsMapRendererQImageJob* mJob;
 };
+
+
+/// @cond PRIVATE
+// Widget that serves as rectangle showing current extent in overview
+class QgsPanningWidget : public QWidget
+{
+    Q_OBJECT
+
+    QPolygon mPoly;
+
+  public:
+    explicit QgsPanningWidget( QWidget* parent );
+
+    void setPolygon( const QPolygon& p );
+
+    void paintEvent( QPaintEvent* pe ) override;
+
+};
+///@endcond
 
 #endif

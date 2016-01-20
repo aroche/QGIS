@@ -135,7 +135,7 @@ class QgsWFSProvider : public QgsVectorDataProvider
      *                       The second map parameter being the new geometries themselves
      * @return               True in case of success and false in case of failure
      */
-    virtual bool changeGeometryValues( QgsGeometryMap & geometry_map ) override;
+    virtual bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
 
     /**
      * Changes attribute values of existing features.
@@ -203,6 +203,7 @@ class QgsWFSProvider : public QgsVectorDataProvider
     /** Source CRS*/
     QgsCoordinateReferenceSystem mSourceCRS;
     int mFeatureCount;
+    int mMaxFeatureCount;
     /** Flag if provider is valid*/
     bool mValid;
     bool mCached;
@@ -236,7 +237,7 @@ class QgsWFSProvider : public QgsVectorDataProvider
     /** Reads the name of the geometry attribute, the thematic attributes and their types from a dom document. Returns 0 in case of success*/
     int readAttributesFromSchema( QDomDocument& schemaDoc, QString& geometryAttribute, QgsFields& fields, QGis::WkbType& geomType );
     /** This method tries to guess the geometry attribute and the other attribute names from the .gml file if no schema is present. Returns 0 in case of success*/
-    int guessAttributesFromFile( const QString& uri, QString& geometryAttribute, std::list<QString>& thematicAttributes, QGis::WkbType& geomType ) const;
+    int guessAttributesFromFile( const QString& uri, QString& geometryAttribute, QStringList &thematicAttributes, QGis::WkbType& geomType ) const;
 
     //GML2 specific methods
     int getExtentFromGML2( QgsRectangle* extent, const QDomElement& wfsCollectionElement ) const;
@@ -246,7 +247,7 @@ class QgsWFSProvider : public QgsVectorDataProvider
        @param coords list where the found coordinates are appended
        @param elem the <gml:coordinates> element
        @return 0 in case of success*/
-    int readGML2Coordinates( std::list<QgsPoint>& coords, const QDomElement& elem ) const;
+    int readGML2Coordinates( QList<QgsPoint> &coords, const QDomElement& elem ) const;
     /** Tries to create a QgsCoordinateReferenceSystem object and assign it to mSourceCRS. Returns 0 in case of success*/
     int setCRSFromGML2( const QDomElement& wfsCollectionElement );
 

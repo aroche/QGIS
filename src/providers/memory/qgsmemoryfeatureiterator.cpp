@@ -24,8 +24,8 @@
 
 QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource* source, bool ownSource, const QgsFeatureRequest& request )
     : QgsAbstractFeatureIteratorFromSource<QgsMemoryFeatureSource>( source, ownSource, request )
-    , mSelectRectGeom( 0 )
-    , mSubsetExpression( 0 )
+    , mSelectRectGeom( nullptr )
+    , mSubsetExpression( nullptr )
 {
   if ( !mSource->mSubsetString.isEmpty() )
   {
@@ -49,8 +49,8 @@ QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource* sour
   else if ( mRequest.filterType() == QgsFeatureRequest::FilterFid )
   {
     mUsingFeatureIdList = true;
-    QgsFeatureMap::const_iterator it = mSource->mFeatures.find( mRequest.filterFid() );
-    if ( it != mSource->mFeatures.end() )
+    QgsFeatureMap::const_iterator it = mSource->mFeatures.constFind( mRequest.filterFid() );
+    if ( it != mSource->mFeatures.constEnd() )
       mFeatureIdList.append( mRequest.filterFid() );
   }
   else
@@ -204,7 +204,7 @@ bool QgsMemoryFeatureIterator::close()
   iteratorClosed();
 
   delete mSelectRectGeom;
-  mSelectRectGeom = NULL;
+  mSelectRectGeom = nullptr;
 
   mClosed = true;
   return true;
@@ -215,7 +215,7 @@ bool QgsMemoryFeatureIterator::close()
 QgsMemoryFeatureSource::QgsMemoryFeatureSource( const QgsMemoryProvider* p )
     : mFields( p->mFields )
     , mFeatures( p->mFeatures )
-    , mSpatialIndex( p->mSpatialIndex ? new QgsSpatialIndex( *p->mSpatialIndex ) : 0 )  // just shallow copy
+    , mSpatialIndex( p->mSpatialIndex ? new QgsSpatialIndex( *p->mSpatialIndex ) : nullptr )  // just shallow copy
     , mSubsetString( p->mSubsetString )
 {
   mExpressionContext << QgsExpressionContextUtils::globalScope()

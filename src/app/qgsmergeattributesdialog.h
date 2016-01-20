@@ -34,7 +34,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
 {
     Q_OBJECT
   public:
-    QgsMergeAttributesDialog( const QgsFeatureList& features, QgsVectorLayer* vl, QgsMapCanvas* canvas, QWidget * parent = 0, Qt::WindowFlags f = 0 );
+    QgsMergeAttributesDialog( const QgsFeatureList& features, QgsVectorLayer* vl, QgsMapCanvas* canvas, QWidget * parent = nullptr, Qt::WindowFlags f = nullptr );
     ~QgsMergeAttributesDialog();
 
     QgsAttributes mergedAttributes() const;
@@ -67,7 +67,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
     /** Calculates the merged value of a column (depending on the selected merge behaviour) and inserts the value in the corresponding cell*/
     void refreshMergedValue( int col );
     /** Inserts the attribute value of a specific feature into the row of merged attributes*/
-    QVariant featureAttribute( int featureId, int col );
+    QVariant featureAttribute( QgsFeatureId featureId, int col );
     /** Appends the values of the features for the final value*/
     QVariant concatenationAttribute( int col );
 
@@ -77,7 +77,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
     QVariant calcStatistic( int col, QgsStatisticalSummary::Statistic stat );
 
     /** Sets mSelectionRubberBand to a new feature*/
-    void createRubberBandForFeature( int featureId );
+    void createRubberBandForFeature( QgsFeatureId featureId );
 
     QgsFeatureList mFeatureList;
     QgsVectorLayer* mVectorLayer;

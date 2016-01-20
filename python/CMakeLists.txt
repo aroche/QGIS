@@ -64,7 +64,7 @@ IF(POLICY CMP0040)
   CMAKE_POLICY (POP) # see PUSH above
 ENDIF(POLICY CMP0040)
 
-INCLUDE_DIRECTORIES(
+INCLUDE_DIRECTORIES(SYSTEM
   ${PYTHON_INCLUDE_PATH}
   ${SIP_INCLUDE_DIR}
   ${QT_QTCORE_INCLUDE_DIR}
@@ -78,7 +78,8 @@ INCLUDE_DIRECTORIES(
   ${QEXTSERIALPORT_INCLUDE_DIR}
   ${QSCINTILLA_INCLUDE_DIR}
   ${QCA_INCLUDE_DIR}
-
+)
+INCLUDE_DIRECTORIES(
   ../src/core
   ../src/core/auth
   ../src/core/pal
@@ -203,10 +204,12 @@ INCLUDE_DIRECTORIES(
   ../src/analysis/raster
   ../src/analysis/network
   ../src/analysis/interpolation
+  ../src/analysis/openstreetmap
   ${CMAKE_BINARY_DIR}/src/analysis/vector
   ${CMAKE_BINARY_DIR}/src/analysis/network
   ${CMAKE_BINARY_DIR}/src/analysis/raster
   ${CMAKE_BINARY_DIR}/src/analysis/interpolation
+  ${CMAKE_BINARY_DIR}/src/analysis/openstreetmap 
 )
 
 # analysis module
@@ -215,6 +218,7 @@ FILE(GLOB sip_files_analysis
   analysis/raster/*.sip
   analysis/vector/*.sip
   analysis/interpolation/*.sip
+  analysis/openstreetmap/*.sip  
 )
 SET(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_analysis})
 SET(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -o -a ${CMAKE_BINARY_DIR}/python/qgis.analysis.api)

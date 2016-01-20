@@ -170,7 +170,7 @@ void QgsFieldCalculator::accept()
 
   if ( !exp.prepare( &expContext ) )
   {
-    QMessageBox::critical( 0, tr( "Evaluation error" ), exp.evalErrorString() );
+    QMessageBox::critical( nullptr, tr( "Evaluation error" ), exp.evalErrorString() );
     return;
   }
 
@@ -204,8 +204,8 @@ void QgsFieldCalculator::accept()
       }
       else
       {
-        QMap<QString, int>::const_iterator fieldIt = mFieldMap.find( mExistingFieldComboBox->currentText() );
-        if ( fieldIt != mFieldMap.end() )
+        QMap<QString, int>::const_iterator fieldIt = mFieldMap.constFind( mExistingFieldComboBox->currentText() );
+        if ( fieldIt != mFieldMap.constEnd() )
         {
           mAttributeId = fieldIt.value();
         }
@@ -219,7 +219,7 @@ void QgsFieldCalculator::accept()
       if ( !mVectorLayer->addAttribute( newField ) )
       {
         QApplication::restoreOverrideCursor();
-        QMessageBox::critical( 0, tr( "Provider error" ), tr( "Could not add the new field to the provider." ) );
+        QMessageBox::critical( nullptr, tr( "Provider error" ), tr( "Could not add the new field to the provider." ) );
         mVectorLayer->destroyEditCommand();
         return;
       }
@@ -241,7 +241,7 @@ void QgsFieldCalculator::accept()
       if ( ! exp.prepare( &expContext ) )
       {
         QApplication::restoreOverrideCursor();
-        QMessageBox::critical( 0, tr( "Evaluation error" ), exp.evalErrorString() );
+        QMessageBox::critical( nullptr, tr( "Evaluation error" ), exp.evalErrorString() );
         return;
       }
     }
@@ -307,7 +307,7 @@ void QgsFieldCalculator::accept()
 
     if ( !calculationSuccess )
     {
-      QMessageBox::critical( 0, tr( "Error" ), tr( "An error occured while evaluating the calculation string:\n%1" ).arg( error ) );
+      QMessageBox::critical( nullptr, tr( "Error" ), tr( "An error occured while evaluating the calculation string:\n%1" ).arg( error ) );
       mVectorLayer->destroyEditCommand();
       return;
     }

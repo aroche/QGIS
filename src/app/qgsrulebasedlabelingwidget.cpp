@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgsrulebasedlabelingwidget.cpp
+    ---------------------
+    begin                : September 2015
+    copyright            : (C) 2015 by Martin Dobias
+    email                : wonder dot sk at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #include "qgsrulebasedlabelingwidget.h"
 
 #include "qgsapplication.h"
@@ -14,8 +28,8 @@ QgsRuleBasedLabelingWidget::QgsRuleBasedLabelingWidget( QgsVectorLayer* layer, Q
     : QWidget( parent )
     , mLayer( layer )
     , mCanvas( canvas )
-    , mRootRule( 0 )
-    , mModel( 0 )
+    , mRootRule( nullptr )
+    , mModel( nullptr )
 {
   setupUi( this );
 
@@ -50,7 +64,7 @@ QgsRuleBasedLabelingWidget::QgsRuleBasedLabelingWidget( QgsVectorLayer* layer, Q
   }
   else
   {
-    mRootRule = new QgsRuleBasedLabeling::Rule( 0 );
+    mRootRule = new QgsRuleBasedLabeling::Rule( nullptr );
   }
 
   mModel = new QgsRuleBasedLabelingModel( mRootRule );
@@ -159,7 +173,7 @@ QgsRuleBasedLabeling::Rule* QgsRuleBasedLabelingWidget::currentRule()
   QItemSelectionModel* sel = viewRules->selectionModel();
   QModelIndex idx = sel->currentIndex();
   if ( !idx.isValid() )
-    return NULL;
+    return nullptr;
   return mModel->ruleForIndex( idx );
 }
 
@@ -211,7 +225,8 @@ QVariant QgsRuleBasedLabelingModel::data( const QModelIndex& index, int role ) c
   {
     switch ( index.column() )
     {
-      case 0: return rule->description();
+      case 0:
+        return rule->description();
       case 1:
         if ( rule->isElse() )
         {
@@ -221,10 +236,14 @@ QVariant QgsRuleBasedLabelingModel::data( const QModelIndex& index, int role ) c
         {
           return rule->filterExpression().isEmpty() ? tr( "(no filter)" ) : rule->filterExpression();
         }
-      case 2: return rule->dependsOnScale() ? _formatScale( rule->scaleMaxDenom() ) : QVariant();
-      case 3: return rule->dependsOnScale() ? _formatScale( rule->scaleMinDenom() ) : QVariant();
-      case 4: return rule->settings() ? rule->settings()->fieldName : QVariant();
-      default: return QVariant();
+      case 2:
+        return rule->dependsOnScale() ? _formatScale( rule->scaleMaxDenom() ) : QVariant();
+      case 3:
+        return rule->dependsOnScale() ? _formatScale( rule->scaleMinDenom() ) : QVariant();
+      case 4:
+        return rule->settings() ? rule->settings()->fieldName : QVariant();
+      default:
+        return QVariant();
     }
   }
   else if ( role == Qt::DecorationRole && index.column() == 0 && rule->settings() )
@@ -250,12 +269,18 @@ QVariant QgsRuleBasedLabelingModel::data( const QModelIndex& index, int role ) c
   {
     switch ( index.column() )
     {
-      case 0: return rule->description();
-      case 1: return rule->filterExpression();
-      case 2: return rule->scaleMaxDenom();
-      case 3: return rule->scaleMinDenom();
-      case 4: return rule->settings() ? rule->settings()->fieldName : QVariant();
-      default: return QVariant();
+      case 0:
+        return rule->description();
+      case 1:
+        return rule->filterExpression();
+      case 2:
+        return rule->scaleMaxDenom();
+      case 3:
+        return rule->scaleMinDenom();
+      case 4:
+        return rule->settings() ? rule->settings()->fieldName : QVariant();
+      default:
+        return QVariant();
     }
   }
   else if ( role == Qt::CheckStateRole )
@@ -272,7 +297,8 @@ QVariant QgsRuleBasedLabelingModel::headerData( int section, Qt::Orientation ori
 {
   if ( orientation == Qt::Horizontal && role == Qt::DisplayRole && section >= 0 && section < 5 )
   {
-    QStringList lst; lst << tr( "Label" ) << tr( "Rule" ) << tr( "Min. scale" ) << tr( "Max. scale" ) << tr( "Text" ); // << tr( "Count" ) << tr( "Duplicate count" );
+    QStringList lst;
+    lst << tr( "Label" ) << tr( "Rule" ) << tr( "Min. scale" ) << tr( "Max. scale" ) << tr( "Text" ); // << tr( "Count" ) << tr( "Duplicate count" );
     return lst[section];
   }
 
@@ -525,7 +551,7 @@ void QgsRuleBasedLabelingModel::updateRule( const QModelIndex& parent, int row )
 /////////
 
 QgsLabelingRulePropsDialog::QgsLabelingRulePropsDialog( QgsRuleBasedLabeling::Rule* rule, QgsVectorLayer* layer, QWidget* parent, QgsMapCanvas* mapCanvas )
-    : QDialog( parent ), mRule( rule ), mLayer( layer ), mLabelingGui( 0 ), mSettings( 0 ), mMapCanvas( mapCanvas )
+    : QDialog( parent ), mRule( rule ), mLayer( layer ), mLabelingGui( nullptr ), mSettings( nullptr ), mMapCanvas( mapCanvas )
 {
   setupUi( this );
 #ifdef Q_OS_MAC
@@ -597,7 +623,7 @@ void QgsLabelingRulePropsDialog::testFilter()
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 );
+  << QgsExpressionContextUtils::atlasScope( nullptr );
   if ( mMapCanvas )
   {
     context << QgsExpressionContextUtils::mapSettingsScope( mMapCanvas->mapSettings() )
@@ -642,7 +668,7 @@ void QgsLabelingRulePropsDialog::buildExpression()
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 );
+  << QgsExpressionContextUtils::atlasScope( nullptr );
   if ( mMapCanvas )
   {
     context << QgsExpressionContextUtils::mapSettingsScope( mMapCanvas->mapSettings() )
@@ -667,7 +693,7 @@ void QgsLabelingRulePropsDialog::accept()
   // caution: rule uses scale denom, scale widget uses true scales
   mRule->setScaleMinDenom( groupScale->isChecked() ? mScaleRangeWidget->minimumScaleDenom() : 0 );
   mRule->setScaleMaxDenom( groupScale->isChecked() ? mScaleRangeWidget->maximumScaleDenom() : 0 );
-  mRule->setSettings( groupSettings->isChecked() ? new QgsPalLayerSettings( mLabelingGui->layerSettings() ) : 0 );
+  mRule->setSettings( groupSettings->isChecked() ? new QgsPalLayerSettings( mLabelingGui->layerSettings() ) : nullptr );
 
   QDialog::accept();
 }

@@ -77,8 +77,11 @@ QgsSqlExpressionCompiler::Result QgsOgrExpressionCompiler::compileNode( const Qg
       //not support by OGR
       return Fail;
 
-    default:
-      return QgsSqlExpressionCompiler::compileNode( node, result );
+    case QgsExpression::ntUnaryOperator:
+    case QgsExpression::ntColumnRef:
+    case QgsExpression::ntInOperator:
+    case QgsExpression::ntLiteral:
+      break;
   }
 
   return QgsSqlExpressionCompiler::compileNode( node, result );
@@ -89,7 +92,8 @@ QString QgsOgrExpressionCompiler::quotedIdentifier( const QString& identifier )
   return mSource->mProvider->quotedIdentifier( identifier.toUtf8() );
 }
 
-QString QgsOgrExpressionCompiler::quotedValue( const QVariant& value )
+QString QgsOgrExpressionCompiler::quotedValue( const QVariant& value, bool& ok )
 {
+  ok = true;
   return QgsOgrUtils::quotedValue( value );
 }

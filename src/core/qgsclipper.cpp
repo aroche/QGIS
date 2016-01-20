@@ -45,8 +45,8 @@ const unsigned char* QgsClipper::clippedLineWKB( const unsigned char* wkb, const
 
   wkbPtr >> wkbType >> nPoints;
 
-  bool hasZValue = QgsWKBTypes::hasZ(( QgsWKBTypes::Type )wkbType );
-  bool hasMValue = QgsWKBTypes::hasM(( QgsWKBTypes::Type )wkbType );
+  bool hasZValue = QgsWKBTypes::hasZ( static_cast< QgsWKBTypes::Type >( wkbType ) );
+  bool hasMValue = QgsWKBTypes::hasM( static_cast< QgsWKBTypes::Type >( wkbType ) );
 
 
   double p0x, p0y, p1x = 0.0, p1y = 0.0; //original coordinates
@@ -79,11 +79,12 @@ const unsigned char* QgsClipper::clippedLineWKB( const unsigned char* wkb, const
       if ( hasMValue )
         wkbPtr += sizeof( double );
 
-      p1x_c = p1x; p1y_c = p1y;
+      p1x_c = p1x;
+      p1y_c = p1y;
       if ( clipLineSegment( clipExtent.xMinimum(), clipExtent.xMaximum(), clipExtent.yMinimum(), clipExtent.yMaximum(),
                             p0x, p0y, p1x_c,  p1y_c ) )
       {
-        bool newLine = line.size() > 0 && ( p0x != lastClipX || p0y != lastClipY );
+        bool newLine = !line.isEmpty() && ( !qgsDoubleNear( p0x, lastClipX ) || !qgsDoubleNear( p0y, lastClipY ) );
         if ( newLine )
         {
           //add edge points to connect old and new line
@@ -96,7 +97,8 @@ const unsigned char* QgsClipper::clippedLineWKB( const unsigned char* wkb, const
         }
 
         //add second point
-        lastClipX = p1x_c; lastClipY = p1y_c;
+        lastClipX = p1x_c;
+        lastClipY = p1y_c;
         line << QPointF( p1x_c,  p1y_c );
       }
     }

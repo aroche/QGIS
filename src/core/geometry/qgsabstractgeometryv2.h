@@ -294,20 +294,29 @@ class CORE_EXPORT QgsAbstractGeometryV2
      */
     virtual QgsAbstractGeometryV2* segmentize() const { return clone(); }
 
-    /** Returns approximate rotation angle for a vertex. Usually average angle between adjacent segments.
-        @param vertex the vertex id
-        @return rotation in radians, clockwise from north*/
+    /** Returns approximate angle at a vertex. This is usually the average angle between adjacent
+     * segments, and can be pictured as the orientation of a line following the curvature of the
+     * geometry at the specified vertex.
+     * @param vertex the vertex id
+     * @return rotation in radians, clockwise from north
+    */
     virtual double vertexAngle( const QgsVertexId& vertex ) const = 0;
 
     virtual int vertexCount( int part = 0, int ring = 0 ) const = 0;
     virtual int ringCount( int part = 0 ) const = 0;
+
+    /** Returns count of parts contained in the geometry.
+     * @see vertexCount
+     * @see ringCount
+     */
     virtual int partCount() const = 0;
 
     /** Adds a z-dimension to the geometry, initialized to a preset value.
      * @param zValue initial z-value for all nodes
      * @returns true on success
      * @note added in QGIS 2.12
-     * @see addMValue
+     * @see dropZValue()
+     * @see addMValue()
      */
     virtual bool addZValue( double zValue = 0 ) = 0;
 
@@ -315,9 +324,32 @@ class CORE_EXPORT QgsAbstractGeometryV2
      * @param mValue initial m-value for all nodes
      * @returns true on success
      * @note added in QGIS 2.12
-     * @see addZValue
+     * @see dropMValue()
+     * @see addZValue()
      */
     virtual bool addMValue( double mValue = 0 ) = 0;
+
+    /** Drops any z-dimensions which exist in the geometry.
+     * @returns true if Z values were present and have been removed
+     * @see addZValue()
+     * @see dropMValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropZValue() = 0;
+
+    /** Drops any measure values which exist in the geometry.
+     * @returns true if m-values were present and have been removed
+     * @see addMValue()
+     * @see dropZValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropMValue() = 0;
+
+    /** Converts the geometry to a specified type.
+     * @returns true if conversion was successful
+     * @note added in QGIS 2.14
+     */
+    virtual bool convertTo( QgsWKBTypes::Type type );
 
   protected:
     QgsWKBTypes::Type mWkbType;

@@ -30,49 +30,11 @@
 #include "qgslogger.h"
 #include <limits.h>
 
-//! widget that serves as rectangle showing current extent in overview
-class QgsPanningWidget : public QWidget
-{
-    QPolygon mPoly;
-
-  public:
-    explicit QgsPanningWidget( QWidget* parent )
-        : QWidget( parent )
-    {
-      setObjectName( "panningWidget" );
-      setMinimumSize( 5, 5 );
-      setAttribute( Qt::WA_NoSystemBackground );
-    }
-
-    void setPolygon( const QPolygon& p )
-    {
-      if ( p == mPoly ) return;
-      mPoly = p;
-      setGeometry( p.boundingRect() );
-      update();
-    }
-
-
-    void paintEvent( QPaintEvent* pe ) override
-    {
-      Q_UNUSED( pe );
-
-      QPainter p;
-      p.begin( this );
-      p.setPen( Qt::red );
-      QPolygonF t = mPoly.translated( -mPoly.boundingRect().left(), -mPoly.boundingRect().top() );
-      p.drawConvexPolygon( t );
-      p.end();
-    }
-
-};
-
-
 
 QgsMapOverviewCanvas::QgsMapOverviewCanvas( QWidget * parent, QgsMapCanvas* mapCanvas )
     : QWidget( parent )
     , mMapCanvas( mapCanvas )
-    , mJob( 0 )
+    , mJob( nullptr )
 {
   setAutoFillBackground( true );
   setObjectName( "theOverviewCanvas" );
@@ -232,7 +194,7 @@ void QgsMapOverviewCanvas::mapRenderingFinished()
   mPixmap = QPixmap::fromImage( mJob->renderedImage() );
 
   delete mJob;
-  mJob = 0;
+  mJob = nullptr;
 
   // schedule repaint
   update();
@@ -304,3 +266,38 @@ QStringList QgsMapOverviewCanvas::layerSet() const
 {
   return mSettings.layers();
 }
+
+
+/// @cond PRIVATE
+
+QgsPanningWidget::QgsPanningWidget( QWidget* parent )
+    : QWidget( parent )
+{
+  setObjectName( "panningWidget" );
+  setMinimumSize( 5, 5 );
+  setAttribute( Qt::WA_NoSystemBackground );
+}
+
+void QgsPanningWidget::setPolygon( const QPolygon& p )
+{
+  if ( p == mPoly ) return;
+  mPoly = p;
+  setGeometry( p.boundingRect() );
+  update();
+}
+
+void QgsPanningWidget::paintEvent( QPaintEvent* pe )
+{
+  Q_UNUSED( pe );
+
+  QPainter p;
+  p.begin( this );
+  p.setPen( Qt::red );
+  QPolygonF t = mPoly.translated( -mPoly.boundingRect().left(), -mPoly.boundingRect().top() );
+  p.drawConvexPolygon( t );
+  p.end();
+}
+
+
+
+///@endcond

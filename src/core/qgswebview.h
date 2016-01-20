@@ -29,7 +29,7 @@ class CORE_EXPORT QgsWebView : public QWebView
     Q_OBJECT
 
   public:
-    explicit QgsWebView( QWidget* parent = 0 )
+    explicit QgsWebView( QWidget* parent = nullptr )
         : QWebView( parent )
     {
       QDesktopWidget desktop;
@@ -54,7 +54,7 @@ class CORE_EXPORT QgsWebView : public QWebView
 class CORE_EXPORT QgsWebView : public QWidget
 {
 
-/// @cond
+/// @cond NOT_STABLE_API
     Q_OBJECT
   public:
     explicit QgsWebView( QWidget *parent = 0 )

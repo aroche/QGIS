@@ -42,6 +42,9 @@ class GUI_EXPORT QgsMapToolCapture : public QgsMapToolAdvancedDigitizing
     //! destructor
     virtual ~QgsMapToolCapture();
 
+    //! active the tool
+    virtual void activate() override;
+
     //! deactive the tool
     virtual void deactivate() override;
 
@@ -136,6 +139,16 @@ class GUI_EXPORT QgsMapToolCapture : public QgsMapToolAdvancedDigitizing
      * Close an open polygon
      */
     void closePolygon();
+
+  private:
+    //! whether tracing has been requested by the user
+    bool tracingEnabled();
+    //! first point that will be used as a start of the trace
+    QgsPoint tracingStartPoint();
+    //! handle of mouse movement when tracing enabled and capturing has started
+    bool tracingMouseMove( QgsMapMouseEvent* e );
+    //! handle of addition of clicked point (with the rest of the trace) when tracing enabled
+    bool tracingAddVertex( const QgsPoint& point );
 
   private:
     /** Flag to indicate a map canvas capture operation is taking place */

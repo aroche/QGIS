@@ -20,7 +20,7 @@ from utilities import (TestCase,
 
 from PyQt4.QtCore import qDebug
 
-#Import all the things!
+# Import all the things!
 from qgis.analysis import *
 from qgis.core import *
 from qgis.gui import *
@@ -37,8 +37,8 @@ except:
 # DON'T RAISE THIS THRESHOLD!!!
 # (changes which lower this threshold are welcomed though!)
 
-ACCEPTABLE_MISSING_CLASSES = 85
-ACCEPTABLE_MISSING_MEMBERS = 267
+ACCEPTABLE_MISSING_CLASSES = 0
+ACCEPTABLE_MISSING_MEMBERS = 0
 
 
 class TestQgsSipCoverage(TestCase):
@@ -49,7 +49,7 @@ class TestQgsSipCoverage(TestCase):
         docPath = os.path.join(prefixPath, '..', 'doc', 'api', 'xml')
         parser = DoxygenParser(docPath)
 
-        #first look for objects without any bindings
+        # first look for objects without any bindings
         objects = set([m[0] for m in parser.bindable_members])
         missing_objects = []
         bound_objects = {}
@@ -64,14 +64,17 @@ class TestQgsSipCoverage(TestCase):
 
         missing_objects.sort()
 
-        #next check for individual members
+        # next check for individual members
         parser.bindable_members.sort()
         missing_members = []
         for m in parser.bindable_members:
             if m[0] in bound_objects:
                 obj = bound_objects[m[0]]
+                if "::" in m[0] and m[0].split("::")[1] == m[1]:
+                    # skip constructors of nested classes
+                    continue
 
-                #try two different methods of checking for member existence
+                # try two different methods of checking for member existence
                 try:
                     if hasattr(obj, m[1]):
                         continue
@@ -93,7 +96,7 @@ class TestQgsSipCoverage(TestCase):
         print "---------------------------------"
         print 'Missing members:\n {}'.format('\n '.join(missing_members))
 
-        #print summaries
+        # print summaries
         missing_class_count = len(missing_objects)
         present_count = len(objects) - missing_class_count
         coverage = 100.0 * present_count / len(objects)
@@ -127,10 +130,4 @@ If these members are not suitable for the Python bindings, please add the Doxyge
 
 
 if __name__ == '__main__':
-    if "MISSING_SIP_CLASSES" in os.environ:
-        ACCEPTABLE_MISSING_CLASSES += int(os.environ['MISSING_SIP_CLASSES'])
-
-    if "MISSING_SIP_MEMBERS" in os.environ:
-        ACCEPTABLE_MISSING_MEMBERS += int(os.environ['MISSING_SIP_MEMBERS'])
-
     unittest.main()

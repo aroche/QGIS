@@ -38,219 +38,6 @@
 #include "qgsmapcanvas.h"
 
 #include <QDragEnterEvent>
-/**
-Utility class for correct drag&drop handling.
-
-We want to allow user to drag layers to qgis window. At the same time we do not
-accept drops of the items on our view - but if we ignore the drag enter action
-then qgis application consumes the drag events and it is possible to drop the
-items on the tree view although the drop is actually managed by qgis app.
- */
-class QgsDockBrowserTreeView : public QgsBrowserTreeView
-{
-  public:
-    explicit QgsDockBrowserTreeView( QWidget* parent ) : QgsBrowserTreeView( parent )
-    {
-      setDragDropMode( QTreeView::DragDrop ); // sets also acceptDrops + dragEnabled
-      setSelectionMode( QAbstractItemView::ExtendedSelection );
-      setContextMenuPolicy( Qt::CustomContextMenu );
-      setHeaderHidden( true );
-      setDropIndicatorShown( true );
-
-    }
-
-    void dragEnterEvent( QDragEnterEvent* e ) override
-    {
-      // accept drag enter so that our widget will not get ignored
-      // and drag events will not get passed to QgisApp
-      e->accept();
-    }
-    void dragMoveEvent( QDragMoveEvent* e ) override
-    {
-      // do not accept drops above/below items
-      /*if ( dropIndicatorPosition() != QAbstractItemView::OnItem )
-      {
-        QgsDebugMsg("drag not on item");
-        e->ignore();
-        return;
-      }*/
-
-      QTreeView::dragMoveEvent( e );
-
-      if ( !e->mimeData()->hasFormat( "application/x-vnd.qgis.qgis.uri" ) )
-      {
-        e->ignore();
-        return;
-      }
-    }
-};
-
-/**
-Utility class for filtering browser items
- */
-class QgsBrowserTreeFilterProxyModel : public QSortFilterProxyModel
-{
-  public:
-    explicit QgsBrowserTreeFilterProxyModel( QObject *parent )
-        : QSortFilterProxyModel( parent ), mModel( 0 )
-        , mFilter( "" ), mPatternSyntax( "normal" ), mCaseSensitivity( Qt::CaseInsensitive )
-    {
-      setDynamicSortFilter( true );
-    }
-
-    void setBrowserModel( QgsBrowserModel* model )
-    {
-      mModel = model;
-      setSourceModel( model );
-    }
-
-    void setFilterSyntax( const QString & syntax )
-    {
-      QgsDebugMsg( QString( "syntax = %1" ).arg( syntax ) );
-      if ( mPatternSyntax == syntax )
-        return;
-      mPatternSyntax = syntax;
-      updateFilter();
-    }
-
-    void setFilter( const QString & filter )
-    {
-      QgsDebugMsg( QString( "filter = %1" ).arg( mFilter ) );
-      if ( mFilter == filter )
-        return;
-      mFilter = filter;
-      updateFilter();
-    }
-
-    void setCaseSensitive( bool caseSensitive )
-    {
-      mCaseSensitivity = caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive;
-      updateFilter();
-    }
-
-    void updateFilter()
-    {
-      QgsDebugMsg( QString( "filter = %1 syntax = %2" ).arg( mFilter, mPatternSyntax ) );
-      mREList.clear();
-      if ( mPatternSyntax == "normal" )
-      {
-        Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
-        {
-          QRegExp rx( QString( "*%1*" ).arg( f.trimmed() ) );
-          rx.setPatternSyntax( QRegExp::Wildcard );
-          rx.setCaseSensitivity( mCaseSensitivity );
-          mREList.append( rx );
-        }
-      }
-      else if ( mPatternSyntax == "wildcard" )
-      {
-        Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
-        {
-          QRegExp rx( f.trimmed() );
-          rx.setPatternSyntax( QRegExp::Wildcard );
-          rx.setCaseSensitivity( mCaseSensitivity );
-          mREList.append( rx );
-        }
-      }
-      else
-      {
-        QRegExp rx( mFilter.trimmed() );
-        rx.setPatternSyntax( QRegExp::RegExp );
-        rx.setCaseSensitivity( mCaseSensitivity );
-        mREList.append( rx );
-      }
-      invalidateFilter();
-    }
-
-  protected:
-
-    QgsBrowserModel* mModel;
-    QString mFilter; //filter string provided
-    QVector<QRegExp> mREList; //list of filters, separated by "|"
-    QString mPatternSyntax;
-    Qt::CaseSensitivity mCaseSensitivity;
-
-    bool filterAcceptsString( const QString & value ) const
-    {
-      if ( mPatternSyntax == "normal" || mPatternSyntax == "wildcard" )
-      {
-        Q_FOREACH ( const QRegExp& rx, mREList )
-        {
-          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.exactMatch( value ) ) );
-          if ( rx.exactMatch( value ) )
-            return true;
-        }
-      }
-      else
-      {
-        Q_FOREACH ( const QRegExp& rx, mREList )
-        {
-          QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.indexIn( value ) ) );
-          if ( rx.indexIn( value ) != -1 )
-            return true;
-        }
-      }
-      return false;
-    }
-
-    // It would be better to apply the filer only to expanded (visible) items, but using mapFromSource() + view here was causing strange errors
-    bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const override
-    {
-      if ( mFilter == "" || !mModel ) return true;
-
-      QModelIndex sourceIndex = mModel->index( sourceRow, 0, sourceParent );
-      // also look into the comment column
-      QModelIndex commentIndex = mModel->index( sourceRow, 1, sourceParent );
-      return filterAcceptsItem( sourceIndex ) || filterAcceptsAncestor( sourceIndex ) || filterAcceptsDescendant( sourceIndex ) ||
-             filterAcceptsItem( commentIndex ) || filterAcceptsAncestor( commentIndex ) || filterAcceptsDescendant( commentIndex );
-    }
-
-    // returns true if at least one ancestor is accepted by filter
-    bool filterAcceptsAncestor( const QModelIndex &sourceIndex ) const
-    {
-      if ( !mModel )
-        return true;
-
-      QModelIndex sourceParentIndex = mModel->parent( sourceIndex );
-      if ( !sourceParentIndex.isValid() )
-        return false;
-      if ( filterAcceptsItem( sourceParentIndex ) )
-        return true;
-
-      return filterAcceptsAncestor( sourceParentIndex );
-    }
-
-    // returns true if at least one descendant s accepted by filter
-    bool filterAcceptsDescendant( const QModelIndex &sourceIndex ) const
-    {
-      if ( !mModel )
-        return true;
-
-      for ( int i = 0; i < mModel->rowCount( sourceIndex ); i++ )
-      {
-        QgsDebugMsg( QString( "i = %1" ).arg( i ) );
-        QModelIndex sourceChildIndex = mModel->index( i, 0, sourceIndex );
-        if ( filterAcceptsItem( sourceChildIndex ) )
-          return true;
-        if ( filterAcceptsDescendant( sourceChildIndex ) )
-          return true;
-        sourceChildIndex = mModel->index( i, 1, sourceIndex );
-        if ( filterAcceptsItem( sourceChildIndex ) )
-          return true;
-        if ( filterAcceptsDescendant( sourceChildIndex ) )
-          return true;
-      }
-      return false;
-    }
-
-    // filter accepts item name
-    bool filterAcceptsItem( const QModelIndex &sourceIndex ) const
-    {
-      if ( !mModel )
-        return true;
-      return filterAcceptsString( mModel->data( sourceIndex, Qt::DisplayRole ).toString() );
-    }
-};
 
 QgsBrowserPropertiesWrapLabel::QgsBrowserPropertiesWrapLabel( const QString& text, QWidget* parent )
     : QTextEdit( text, parent )
@@ -289,7 +76,7 @@ void QgsBrowserPropertiesWidget::setWidget( QWidget* paramWidget )
 
 QgsBrowserPropertiesWidget* QgsBrowserPropertiesWidget::createWidget( QgsDataItem* item, QWidget* parent )
 {
-  QgsBrowserPropertiesWidget* propertiesWidget = 0;
+  QgsBrowserPropertiesWidget* propertiesWidget = nullptr;
   // In general, we would like to show all items' paramWidget, but top level items like
   // WMS etc. have currently too large widgets which do not fit well to browser properties widget
   if ( item->type() == QgsDataItem::Directory )
@@ -354,7 +141,7 @@ void QgsBrowserLayerProperties::setItem( QgsDataItem* item )
     QgsDebugMsg( "creating raster layer" );
     // should copy code from addLayer() to split uri ?
     QgsRasterLayer* layer = new QgsRasterLayer( layerItem->uri(), layerItem->uri(), layerItem->providerKey() );
-    if ( layer != NULL )
+    if ( layer )
     {
       if ( layer->isValid() )
       {
@@ -368,7 +155,7 @@ void QgsBrowserLayerProperties::setItem( QgsDataItem* item )
   {
     QgsDebugMsg( "creating vector layer" );
     QgsVectorLayer* layer = new QgsVectorLayer( layerItem->uri(), layerItem->name(), layerItem->providerKey() );
-    if ( layer != NULL )
+    if ( layer )
     {
       if ( layer->isValid() )
       {
@@ -430,7 +217,7 @@ void QgsBrowserLayerProperties::setCondensedMode( bool condensedMode )
 
 QgsBrowserDirectoryProperties::QgsBrowserDirectoryProperties( QWidget* parent ) :
     QgsBrowserPropertiesWidget( parent )
-    , mDirectoryWidget( 0 )
+    , mDirectoryWidget( nullptr )
 {
   setupUi( this );
 
@@ -451,7 +238,7 @@ void QgsBrowserDirectoryProperties::setItem( QgsDataItem* item )
 
 QgsBrowserPropertiesDialog::QgsBrowserPropertiesDialog( const QString& settingsSection, QWidget* parent ) :
     QDialog( parent )
-    , mPropertiesWidget( 0 )
+    , mPropertiesWidget( nullptr )
     , mSettingsSection( settingsSection )
 {
   setupUi( this );
@@ -477,8 +264,8 @@ void QgsBrowserPropertiesDialog::setItem( QgsDataItem* item )
 
 QgsBrowserDockWidget::QgsBrowserDockWidget( const QString& name, QWidget * parent ) :
     QDockWidget( parent )
-    , mModel( 0 )
-    , mProxyModel( 0 )
+    , mModel( nullptr )
+    , mProxyModel( nullptr )
     , mPropertiesWidgetEnabled( false )
     , mPropertiesWidgetHeight( 0 )
 {
@@ -608,6 +395,7 @@ void QgsBrowserDockWidget::showContextMenu( const QPoint & pt )
       menu->addAction( tr( "Remove favourite" ), this, SLOT( removeFavourite() ) );
     }
     menu->addAction( tr( "Properties" ), this, SLOT( showProperties() ) );
+    menu->addAction( tr( "Hide from browser" ), this, SLOT( hideItem() ) );
     QAction *action = menu->addAction( tr( "Fast scan this dir." ), this, SLOT( toggleFastScan() ) );
     action->setCheckable( true );
     action->setChecked( settings.value( "/qgis/scanItemsFastScanUris",
@@ -634,7 +422,7 @@ void QgsBrowserDockWidget::showContextMenu( const QPoint & pt )
     menu->addActions( actions );
   }
 
-  if ( menu->actions().count() == 0 )
+  if ( menu->actions().isEmpty() )
   {
     delete menu;
     return;
@@ -723,7 +511,7 @@ void QgsBrowserDockWidget::refreshModel( const QModelIndex& index )
 
 void QgsBrowserDockWidget::addLayer( QgsLayerItem *layerItem )
 {
-  if ( layerItem == NULL )
+  if ( !layerItem )
     return;
 
   QString uri = QgisApp::instance()->crsAndFormatAdjustedLayerUri( layerItem->uri(), layerItem->supportedCRS(), layerItem->supportedFormats() );
@@ -753,10 +541,20 @@ void QgsBrowserDockWidget::addLayerAtIndex( const QModelIndex& index )
   QgsDebugMsg( QString( "rowCount() = %1" ).arg( mModel->rowCount( mProxyModel->mapToSource( index ) ) ) );
   QgsDataItem *item = mModel->dataItem( mProxyModel->mapToSource( index ) );
 
-  if ( item != NULL && item->type() == QgsDataItem::Layer )
+  if ( item && item->type() == QgsDataItem::Project )
+  {
+    QgsProjectItem *projectItem = qobject_cast<QgsProjectItem*>( item );
+    if ( projectItem )
+    {
+      QApplication::setOverrideCursor( Qt::WaitCursor );
+      QgisApp::instance()->openFile( projectItem->path() );
+      QApplication::restoreOverrideCursor();
+    }
+  }
+  if ( item && item->type() == QgsDataItem::Layer )
   {
     QgsLayerItem *layerItem = qobject_cast<QgsLayerItem*>( item );
-    if ( layerItem != NULL )
+    if ( layerItem )
     {
       QApplication::setOverrideCursor( Qt::WaitCursor );
       addLayer( layerItem );
@@ -778,6 +576,21 @@ void QgsBrowserDockWidget::addSelectedLayers()
   QModelIndexList list = mBrowserView->selectionModel()->selectedIndexes();
   qSort( list );
 
+  // If any of the layer items are QGIS we just open and exit the loop
+  for ( int i = 0; i <= list.size(); i++ )
+  {
+    QgsDataItem *item = mModel->dataItem( mProxyModel->mapToSource( list[i] ) );
+    if ( item && item->type() == QgsDataItem::Project )
+    {
+      QgsProjectItem *projectItem = qobject_cast<QgsProjectItem*>( item );
+      if ( projectItem )
+        QgisApp::instance()->openFile( projectItem->path() );
+
+      QApplication::restoreOverrideCursor();
+      return;
+    }
+  }
+
   // add items in reverse order so they are in correct order in the layers dock
   for ( int i = list.size() - 1; i >= 0; i-- )
   {
@@ -791,6 +604,19 @@ void QgsBrowserDockWidget::addSelectedLayers()
   }
 
   QApplication::restoreOverrideCursor();
+}
+
+void QgsBrowserDockWidget::hideItem()
+{
+  QModelIndex index = mProxyModel->mapToSource( mBrowserView->currentIndex() );
+  QgsDataItem* item = mModel->dataItem( index );
+  if ( ! item )
+    return;
+
+  if ( item->type() == QgsDataItem::Directory )
+  {
+    mModel->hidePath( item );
+  }
 }
 
 void QgsBrowserDockWidget::showProperties()
@@ -935,3 +761,196 @@ void QgsBrowserDockWidget::splitterMoved()
   mPropertiesWidgetHeight = total > 0 ? sizes.value( 1 ) / total : 0;
 }
 
+
+//
+// QgsDockBrowserTreeView
+//
+
+QgsDockBrowserTreeView::QgsDockBrowserTreeView( QWidget* parent ) : QgsBrowserTreeView( parent )
+{
+  setDragDropMode( QTreeView::DragDrop ); // sets also acceptDrops + dragEnabled
+  setSelectionMode( QAbstractItemView::ExtendedSelection );
+  setContextMenuPolicy( Qt::CustomContextMenu );
+  setHeaderHidden( true );
+  setDropIndicatorShown( true );
+
+}
+
+void QgsDockBrowserTreeView::dragEnterEvent( QDragEnterEvent* e )
+{
+  // accept drag enter so that our widget will not get ignored
+  // and drag events will not get passed to QgisApp
+  e->accept();
+}
+
+void QgsDockBrowserTreeView::dragMoveEvent( QDragMoveEvent* e )
+{
+  // do not accept drops above/below items
+  /*if ( dropIndicatorPosition() != QAbstractItemView::OnItem )
+      {
+        QgsDebugMsg("drag not on item");
+        e->ignore();
+        return;
+      }*/
+
+  QTreeView::dragMoveEvent( e );
+
+  if ( !e->mimeData()->hasFormat( "application/x-vnd.qgis.qgis.uri" ) )
+  {
+    e->ignore();
+    return;
+  }
+}
+
+
+//
+// QgsBrowserTreeFilterProxyModel
+//
+
+QgsBrowserTreeFilterProxyModel::QgsBrowserTreeFilterProxyModel( QObject* parent )
+    : QSortFilterProxyModel( parent ), mModel( nullptr )
+    , mFilter( "" ), mPatternSyntax( "normal" ), mCaseSensitivity( Qt::CaseInsensitive )
+{
+  setDynamicSortFilter( true );
+}
+
+void QgsBrowserTreeFilterProxyModel::setBrowserModel( QgsBrowserModel* model )
+{
+  mModel = model;
+  setSourceModel( model );
+}
+
+void QgsBrowserTreeFilterProxyModel::setFilterSyntax( const QString& syntax )
+{
+  QgsDebugMsg( QString( "syntax = %1" ).arg( syntax ) );
+  if ( mPatternSyntax == syntax )
+    return;
+  mPatternSyntax = syntax;
+  updateFilter();
+}
+
+void QgsBrowserTreeFilterProxyModel::setFilter( const QString& filter )
+{
+  QgsDebugMsg( QString( "filter = %1" ).arg( mFilter ) );
+  if ( mFilter == filter )
+    return;
+  mFilter = filter;
+  updateFilter();
+}
+
+void QgsBrowserTreeFilterProxyModel::setCaseSensitive( bool caseSensitive )
+{
+  mCaseSensitivity = caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive;
+  updateFilter();
+}
+
+void QgsBrowserTreeFilterProxyModel::updateFilter()
+{
+  QgsDebugMsg( QString( "filter = %1 syntax = %2" ).arg( mFilter, mPatternSyntax ) );
+  mREList.clear();
+  if ( mPatternSyntax == "normal" )
+  {
+    Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
+    {
+      QRegExp rx( QString( "*%1*" ).arg( f.trimmed() ) );
+      rx.setPatternSyntax( QRegExp::Wildcard );
+      rx.setCaseSensitivity( mCaseSensitivity );
+      mREList.append( rx );
+    }
+  }
+  else if ( mPatternSyntax == "wildcard" )
+  {
+    Q_FOREACH ( const QString& f, mFilter.split( '|' ) )
+    {
+      QRegExp rx( f.trimmed() );
+      rx.setPatternSyntax( QRegExp::Wildcard );
+      rx.setCaseSensitivity( mCaseSensitivity );
+      mREList.append( rx );
+    }
+  }
+  else
+  {
+    QRegExp rx( mFilter.trimmed() );
+    rx.setPatternSyntax( QRegExp::RegExp );
+    rx.setCaseSensitivity( mCaseSensitivity );
+    mREList.append( rx );
+  }
+  invalidateFilter();
+}
+
+bool QgsBrowserTreeFilterProxyModel::filterAcceptsString( const QString& value ) const
+{
+  if ( mPatternSyntax == "normal" || mPatternSyntax == "wildcard" )
+  {
+    Q_FOREACH ( const QRegExp& rx, mREList )
+    {
+      QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.exactMatch( value ) ) );
+      if ( rx.exactMatch( value ) )
+        return true;
+    }
+  }
+  else
+  {
+    Q_FOREACH ( const QRegExp& rx, mREList )
+    {
+      QgsDebugMsg( QString( "value: [%1] rx: [%2] match: %3" ).arg( value, rx.pattern() ).arg( rx.indexIn( value ) ) );
+      if ( rx.indexIn( value ) != -1 )
+        return true;
+    }
+  }
+  return false;
+}
+
+bool QgsBrowserTreeFilterProxyModel::filterAcceptsRow( int sourceRow, const QModelIndex& sourceParent ) const
+{
+  if ( mFilter == "" || !mModel ) return true;
+
+  QModelIndex sourceIndex = mModel->index( sourceRow, 0, sourceParent );
+  // also look into the comment column
+  QModelIndex commentIndex = mModel->index( sourceRow, 1, sourceParent );
+  return filterAcceptsItem( sourceIndex ) || filterAcceptsAncestor( sourceIndex ) || filterAcceptsDescendant( sourceIndex ) ||
+         filterAcceptsItem( commentIndex ) || filterAcceptsAncestor( commentIndex ) || filterAcceptsDescendant( commentIndex );
+}
+
+bool QgsBrowserTreeFilterProxyModel::filterAcceptsAncestor( const QModelIndex& sourceIndex ) const
+{
+  if ( !mModel )
+    return true;
+
+  QModelIndex sourceParentIndex = mModel->parent( sourceIndex );
+  if ( !sourceParentIndex.isValid() )
+    return false;
+  if ( filterAcceptsItem( sourceParentIndex ) )
+    return true;
+
+  return filterAcceptsAncestor( sourceParentIndex );
+}
+
+bool QgsBrowserTreeFilterProxyModel::filterAcceptsDescendant( const QModelIndex& sourceIndex ) const
+{
+  if ( !mModel )
+    return true;
+
+  for ( int i = 0; i < mModel->rowCount( sourceIndex ); i++ )
+  {
+    QgsDebugMsg( QString( "i = %1" ).arg( i ) );
+    QModelIndex sourceChildIndex = mModel->index( i, 0, sourceIndex );
+    if ( filterAcceptsItem( sourceChildIndex ) )
+      return true;
+    if ( filterAcceptsDescendant( sourceChildIndex ) )
+      return true;
+    sourceChildIndex = mModel->index( i, 1, sourceIndex );
+    if ( filterAcceptsItem( sourceChildIndex ) )
+      return true;
+    if ( filterAcceptsDescendant( sourceChildIndex ) )
+      return true;
+  }
+  return false;
+}
+
+bool QgsBrowserTreeFilterProxyModel::filterAcceptsItem( const QModelIndex& sourceIndex ) const
+{
+  if ( !mModel )
+    return true;
+  return filterAcceptsString( mModel->data( sourceIndex, Qt::DisplayRole ).toString() );
+}

@@ -24,6 +24,9 @@
 
 #include "qgsdataitem.h"
 
+/** \class QgsBrowserWatcher
+ * \note not available in Python bindings
+*/
 class CORE_EXPORT QgsBrowserWatcher : public QFutureWatcher<QVector <QgsDataItem*> >
 {
     Q_OBJECT
@@ -46,7 +49,7 @@ class CORE_EXPORT QgsBrowserModel : public QAbstractItemModel
     Q_OBJECT
 
   public:
-    explicit QgsBrowserModel( QObject *parent = 0 );
+    explicit QgsBrowserModel( QObject *parent = nullptr );
     ~QgsBrowserModel();
 
     enum ItemDataRole
@@ -80,7 +83,7 @@ class CORE_EXPORT QgsBrowserModel : public QAbstractItemModel
     /** Returns the index of the item in the model specified by the given row, column and parent index. */
     virtual QModelIndex index( int row, int column, const QModelIndex & parent = QModelIndex() ) const override;
 
-    QModelIndex findItem( QgsDataItem *item, QgsDataItem *parent = 0 ) const;
+    QModelIndex findItem( QgsDataItem *item, QgsDataItem *parent = nullptr ) const;
 
     /** Returns the parent of the model item with the given index.
      * If the item has no parent, an invalid QModelIndex is returned.
@@ -137,6 +140,9 @@ class CORE_EXPORT QgsBrowserModel : public QAbstractItemModel
     void addFavouriteDirectory( const QString& favDir );
     void removeFavourite( const QModelIndex &index );
     void updateProjectHome();
+
+    /** Hide the given path in the browser model */
+    void hidePath( QgsDataItem *item );
 
   protected:
     // populates the model

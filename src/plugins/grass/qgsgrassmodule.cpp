@@ -172,7 +172,7 @@ QProcessEnvironment QgsGrassModule::processEnvironment( bool direct )
 
 QgsGrassModule::QgsGrassModule( QgsGrassTools *tools, QString moduleName, QgisInterface *iface,
                                 bool direct, QWidget *parent, Qt::WindowFlags f )
-    : QDialog( parent, f )
+    : QWidget( parent, f )
     , QgsGrassModuleBase()
     , mOptions( 0 )
     , mSuccess( false )
@@ -356,7 +356,7 @@ QPixmap QgsGrassModule::pixmap( QString path, int height )
 
   // Create vector of available pictures
   int cnt = 1;
-  while ( 1 )
+  for ( ;; )
   {
     // SVG
     QString fpath = path + "." + QString::number( cnt ) + ".svg";
@@ -593,7 +593,7 @@ void QgsGrassModule::run()
         QMessageBox questionBox( QMessageBox::Question, tr( "Warning" ),
                                  tr( "Input %1 outside current region!" ).arg( outsideRegion.join( "," ) ),
                                  QMessageBox::Ok | QMessageBox::Cancel );
-        QPushButton *resetButton = NULL;
+        QPushButton *resetButton = nullptr;
         if ( QgsGrass::versionMajor() > 6 || ( QgsGrass::versionMajor() == 6 && QgsGrass::versionMinor() >= 1 ) )
         {
           resetButton = questionBox.addButton( tr( "Use Input Region" ), QMessageBox::DestructiveRole );

@@ -93,8 +93,8 @@ bool QgsComposerAttributeTableCompare::operator()( const QgsAttributeMap& m1, co
 
 QgsComposerAttributeTable::QgsComposerAttributeTable( QgsComposition* composition )
     : QgsComposerTable( composition )
-    , mVectorLayer( 0 )
-    , mComposerMap( 0 )
+    , mVectorLayer( nullptr )
+    , mComposerMap( nullptr )
     , mMaximumNumberOfFeatures( 5 )
     , mShowOnlyVisibleFeatures( false )
     , mFilterFeatures( false )
@@ -482,7 +482,7 @@ void QgsComposerAttributeTable::removeLayer( const QString& layerId )
   {
     if ( layerId == mVectorLayer->id() )
     {
-      mVectorLayer = 0;
+      mVectorLayer = nullptr;
       //remove existing columns
       qDeleteAll( mColumns );
       mColumns.clear();
@@ -504,10 +504,9 @@ void QgsComposerAttributeTable::setSceneRect( const QRectF& rectangle )
 void QgsComposerAttributeTable::setSortAttributes( const QList<QPair<int, bool> >& att )
 {
   //first, clear existing sort by ranks
-  QList<QgsComposerTableColumn*>::iterator columnIt = mColumns.begin();
-  for ( ; columnIt != mColumns.end(); ++columnIt )
+  Q_FOREACH ( QgsComposerTableColumn* column, mColumns )
   {
-    ( *columnIt )->setSortByRank( 0 );
+    column->setSortByRank( 0 );
   }
 
   //now, update sort rank of specified columns
@@ -519,8 +518,8 @@ void QgsComposerAttributeTable::setSortAttributes( const QList<QPair<int, bool> 
     {
       continue;
     }
-    mColumns[( *sortedColumnIt ).first ]->setSortByRank( rank );
-    mColumns[( *sortedColumnIt ).first ]->setSortOrder(( *sortedColumnIt ).second ? Qt::AscendingOrder : Qt::DescendingOrder );
+    mColumns.at(( *sortedColumnIt ).first )->setSortByRank( rank );
+    mColumns.at(( *sortedColumnIt ).first )->setSortOrder(( *sortedColumnIt ).second ? Qt::AscendingOrder : Qt::DescendingOrder );
     rank++;
   }
 
@@ -609,7 +608,7 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
   int composerMapId = itemElem.attribute( "composerMap", "-1" ).toInt();
   if ( composerMapId == -1 )
   {
-    mComposerMap = 0;
+    mComposerMap = nullptr;
   }
 
   if ( composition() )
@@ -618,7 +617,7 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
   }
   else
   {
-    mComposerMap = 0;
+    mComposerMap = nullptr;
   }
 
   if ( mComposerMap )
@@ -631,7 +630,7 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
   QString layerId = itemElem.attribute( "vectorLayer", "not_existing" );
   if ( layerId == "not_existing" )
   {
-    mVectorLayer = 0;
+    mVectorLayer = nullptr;
   }
   else
   {
@@ -650,7 +649,7 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
   //restore display attribute map. This is required to upgrade pre 2.4 projects.
   QSet<int> displayAttributes;
   QDomNodeList displayAttributeList = itemElem.elementsByTagName( "displayAttributes" );
-  if ( displayAttributeList.size() > 0 )
+  if ( !displayAttributeList.isEmpty() )
   {
     QDomElement displayAttributesElem =  displayAttributeList.at( 0 ).toElement();
     QDomNodeList attributeEntryList = displayAttributesElem.elementsByTagName( "attributeEntry" );
@@ -669,7 +668,7 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
   //restore alias map. This is required to upgrade pre 2.4 projects.
   QMap<int, QString> fieldAliasMap;
   QDomNodeList aliasMapNodeList = itemElem.elementsByTagName( "attributeAliasMap" );
-  if ( aliasMapNodeList.size() > 0 )
+  if ( !aliasMapNodeList.isEmpty() )
   {
     QDomElement attributeAliasMapElem = aliasMapNodeList.at( 0 ).toElement();
     QDomNodeList aliasMepEntryList = attributeAliasMapElem.elementsByTagName( "aliasEntry" );
@@ -696,13 +695,12 @@ bool QgsComposerAttributeTable::readXML( const QDomElement& itemElem, const QDom
       int attribute = columnElem.attribute( "index" ).toInt();
       Qt::SortOrder order = columnElem.attribute( "ascending" ) == "true" ? Qt::AscendingOrder : Qt::DescendingOrder;
       //find corresponding column
-      QList<QgsComposerTableColumn*>::iterator columnIt = mColumns.begin();
-      for ( ; columnIt != mColumns.end(); ++columnIt )
+      Q_FOREACH ( QgsComposerTableColumn* column, mColumns )
       {
-        if (( *columnIt )->attribute() == fields[attribute].name() )
+        if ( column->attribute() == fields[attribute].name() )
         {
-          ( *columnIt )->setSortByRank( i + 1 );
-          ( *columnIt )->setSortOrder( order );
+          column->setSortByRank( i + 1 );
+          column->setSortOrder( order );
           break;
         }
       }

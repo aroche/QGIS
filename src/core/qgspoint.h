@@ -37,6 +37,7 @@ class CORE_EXPORT QgsVector
     QgsVector();
     QgsVector( double x, double y );
 
+    //! @note not available in Python bindings
     QgsVector operator-( void ) const;
     QgsVector operator*( double scalar ) const;
     QgsVector operator/( double scalar ) const;
@@ -49,6 +50,7 @@ class CORE_EXPORT QgsVector
     // perpendicular vector (rotated 90 degrees counter-clockwise)
     QgsVector perpVector() const;
 
+    //! @note not available in Python bindings
     double angle( void ) const;
     double angle( QgsVector v ) const;
     QgsVector rotateBy( double rot ) const;
@@ -236,7 +238,7 @@ class CORE_EXPORT QgsPoint
 
 inline bool operator==( const QgsPoint &p1, const QgsPoint &p2 )
 {
-  if (( p1.x() == p2.x() ) && ( p1.y() == p2.y() ) )
+  if ( qgsDoubleNear( p1.x(), p2.x() ) && qgsDoubleNear( p1.y(), p2.y() ) )
     { return true; }
   else
     { return false; }
@@ -252,8 +254,8 @@ inline std::ostream& operator << ( std::ostream& os, const QgsPoint &p )
 inline uint qHash( const QgsPoint& p )
 {
   uint hash;
-  uint h1 = qHash(( quint64 )p.m_x );
-  uint h2 = qHash(( quint64 )p.m_y );
+  uint h1 = qHash( static_cast< quint64 >( p.m_x ) );
+  uint h2 = qHash( static_cast< quint64 >( p.m_y ) );
   hash = h1 ^( h2 << 1 );
   return hash;
 }

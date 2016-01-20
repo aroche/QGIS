@@ -87,36 +87,143 @@ class CORE_EXPORT QgsMapLayer : public QObject
      */
     QString name() const;
 
-    /** Get the original name of the layer */
+    /** Get the original name of the layer
+     * @return the original layer name
+     */
     QString originalName() const { return mLayerOrigName; }
 
+    /** Set the short name of the layer
+     *  used by QGIS Server to identify the layer
+     * @return the layer short name
+     */
+    void setShortName( const QString& shortName ) { mShortName = shortName; }
+    /** Get the short name of the layer
+     *  used by QGIS Server to identify the layer
+     * @return the layer short name
+     */
+    QString shortName() const { return mShortName; }
+
+    /** Set the title of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer title
+     */
     void setTitle( const QString& title ) { mTitle = title; }
+    /** Get the title of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer title
+     */
     QString title() const { return mTitle; }
 
+    /** Set the abstract of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer abstract
+     */
     void setAbstract( const QString& abstract ) { mAbstract = abstract; }
+    /** Get the abstract of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer abstract
+     */
     QString abstract() const { return mAbstract; }
 
+    /** Set the keyword list of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer keyword list
+     */
     void setKeywordList( const QString& keywords ) { mKeywordList = keywords; }
+    /** Get the keyword list of the layer
+     *  used by QGIS Server in GetCapabilities request
+     * @return the layer keyword list
+     */
     QString keywordList() const { return mKeywordList; }
 
     /* Layer dataUrl information */
+    /** Set the DataUrl of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  DataUrl is a a link to the underlying data represented by a particular layer
+     * @return the layer DataUrl
+     */
     void setDataUrl( const QString& dataUrl ) { mDataUrl = dataUrl; }
+    /** Get the DataUrl of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  DataUrl is a a link to the underlying data represented by a particular layer
+     * @return the layer DataUrl
+     */
     QString dataUrl() const { return mDataUrl; }
+    /** Set the DataUrl format of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  DataUrl is a a link to the underlying data represented by a particular layer
+     * @return the layer DataUrl format
+     */
     void setDataUrlFormat( const QString& dataUrlFormat ) { mDataUrlFormat = dataUrlFormat; }
+    /** Get the DataUrl format of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  DataUrl is a a link to the underlying data represented by a particular layer
+     * @return the layer DataUrl format
+     */
     QString dataUrlFormat() const { return mDataUrlFormat; }
 
     /* Layer attribution information */
+    /** Set the attribution of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  Attribution indicates the provider of a Layer or collection of Layers.
+     * @return the layer attribution
+     */
     void setAttribution( const QString& attrib ) { mAttribution = attrib; }
+    /** Get the attribution of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  Attribution indicates the provider of a Layer or collection of Layers.
+     * @return the layer attribution
+     */
     QString attribution() const { return mAttribution; }
+    /** Set the attribution URL of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  Attribution indicates the provider of a Layer or collection of Layers.
+     * @return the layer attribution URL
+     */
     void setAttributionUrl( const QString& attribUrl ) { mAttributionUrl = attribUrl; }
+    /** Get the attribution URL of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  Attribution indicates the provider of a Layer or collection of Layers.
+     * @return the layer attribution URL
+     */
     QString attributionUrl() const { return mAttributionUrl; }
 
     /* Layer metadataUrl information */
+    /** Set the metadata URL of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrl is a a link to the detailed, standardized metadata about the data.
+     * @return the layer metadata URL
+     */
     void setMetadataUrl( const QString& metaUrl ) { mMetadataUrl = metaUrl; }
+    /** Get the metadata URL of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrl is a a link to the detailed, standardized metadata about the data.
+     * @return the layer metadata URL
+     */
     QString metadataUrl() const { return mMetadataUrl; }
+    /** Set the metadata type of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrlType indicates the standard to which the metadata complies.
+     * @return the layer metadata type
+     */
     void setMetadataUrlType( const QString& metaUrlType ) { mMetadataUrlType = metaUrlType; }
+    /** Get the metadata type of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrlType indicates the standard to which the metadata complies.
+     * @return the layer metadata type
+     */
     QString metadataUrlType() const { return mMetadataUrlType; }
+    /** Set the metadata format of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrlType indicates how the metadata is structured.
+     * @return the layer metadata format
+     */
     void setMetadataUrlFormat( const QString& metaUrlFormat ) { mMetadataUrlFormat = metaUrlFormat; }
+    /** Get the metadata format of the layer
+     *  used by QGIS Server in GetCapabilities request
+     *  MetadataUrlType indicates how the metadata is structured.
+     * @return the layer metadata format
+     */
     QString metadataUrlFormat() const { return mMetadataUrlFormat; }
 
     /** Set the blending mode used for rendering a layer */
@@ -131,7 +238,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /** Return new instance of QgsMapLayerRenderer that will be used for rendering of given context
      * @note added in 2.4
      */
-    virtual QgsMapLayerRenderer* createMapRenderer( QgsRenderContext& rendererContext ) { Q_UNUSED( rendererContext ); return 0; }
+    virtual QgsMapLayerRenderer* createMapRenderer( QgsRenderContext& rendererContext ) { Q_UNUSED( rendererContext ); return nullptr; }
 
     /** This is the method that does the actual work of
      * drawing the layer onto a paint device.
@@ -226,7 +333,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
 
     /** Creates a new layer from a layer defininition document
     */
-    static QList<QgsMapLayer*> fromLayerDefinition( QDomDocument& document );
+    static QList<QgsMapLayer*> fromLayerDefinition( QDomDocument& document, bool addToRegistry = false, bool addToLegend = false );
     static QList<QgsMapLayer*> fromLayerDefinitionFile( const QString &qlrfile );
 
     /** Set a custom property for layer. Properties are stored in a map and saved in project file. */
@@ -379,8 +486,8 @@ class CORE_EXPORT QgsMapLayer : public QObject
     void setLegendUrlFormat( const QString& legendUrlFormat ) { mLegendUrlFormat = legendUrlFormat; }
     QString legendUrlFormat() const { return mLegendUrlFormat; }
 
-    /** @deprecated since 2.4 - returns NULL */
-    Q_DECL_DEPRECATED QImage *cacheImage() { return 0; }
+    /** @deprecated since 2.4 - returns nullptr */
+    Q_DECL_DEPRECATED QImage *cacheImage() { return nullptr; }
     /** @deprecated since 2.4 - caches listen to repaintRequested() signal to invalidate the cached image */
     Q_DECL_DEPRECATED void setCacheImage( QImage * );
     /** @deprecated since 2.4 - does nothing */
@@ -487,7 +594,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
   signals:
 
     //! @deprecated in 2.4 - not emitted anymore
-    void drawingProgress( int theProgress, int theTotalSteps );
+    Q_DECL_DEPRECATED void drawingProgress( int theProgress, int theTotalSteps );
 
     /** Emit a signal with status (e.g. to be caught by QgisApp and display a msg on status bar) */
     void statusChanged( const QString& theStatus );
@@ -581,6 +688,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      */
     QString mLayerOrigName;
 
+    QString mShortName;
     QString mTitle;
 
     /** Description of the layer*/

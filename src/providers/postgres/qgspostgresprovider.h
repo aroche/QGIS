@@ -61,13 +61,13 @@ class QgsPostgresProvider : public QgsVectorDataProvider
       const QgsCoordinateReferenceSystem *srs,
       bool overwrite,
       QMap<int, int> *oldToNewAttrIdxMap,
-      QString *errorMessage = 0,
-      const QMap<QString, QVariant> *options = 0
+      QString *errorMessage = nullptr,
+      const QMap<QString, QVariant> *options = nullptr
     );
 
     /**
      * Constructor for the provider. The uri must be in the following format:
-     * host=localhost user=gsherman dbname=test password=xxx table=test.alaska (the_geom)
+     * host=localhost dbname=test [user=gsherman [password=xxx] | authcfg=xxx] table=test.alaska (the_geom)
      * @param uri String containing the required parameters to connect to the database
      * and query the table.
      */
@@ -205,13 +205,13 @@ class QgsPostgresProvider : public QgsVectorDataProvider
     /** Deletes existing attributes
       @param names of the attributes to delete
       @return true in case of success and false in case of failure*/
-    bool deleteAttributes( const QgsAttributeIds & name ) override;
+    bool deleteAttributes( const QgsAttributeIds &name ) override;
 
     /** Changes attribute values of existing features
       @param attr_map a map containing the new attributes. The integer is the feature id,
       the first QString is the attribute name and the second one is the new attribute value
       @return true in case of success and false in case of failure*/
-    bool changeAttributeValues( const QgsChangedAttributesMap & attr_map ) override;
+    bool changeAttributeValues( const QgsChangedAttributesMap &attr_map ) override;
 
     /**
        Changes geometries of existing features
@@ -219,7 +219,17 @@ class QgsPostgresProvider : public QgsVectorDataProvider
                              the second map parameter being the new geometries themselves
        @return               true in case of success and false in case of failure
      */
-    bool changeGeometryValues( QgsGeometryMap & geometry_map ) override;
+    bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
+
+    /**
+     * Changes attribute values and geometries of existing features.
+     * @param attr_map a map containing changed attributes
+     * @param geometry_map   A QgsGeometryMap whose index contains the feature IDs
+     *                       that will have their geometries changed.
+     *                       The second map parameter being the new geometries themselves
+     * @return true in case of success and false in case of failure
+     */
+    bool changeFeatures( const QgsChangedAttributesMap &attr_map, const QgsGeometryMap &geometry_map ) override;
 
     //! Get the postgres connection
     PGconn * pgConnection();
@@ -320,7 +330,7 @@ class QgsPostgresProvider : public QgsVectorDataProvider
      * @param offset specifies offset to use for the pk value parameter
      * @param alias specifies an optional alias given to the subject table
      */
-    QString pkParamWhereClause( int offset, const char* alias = 0 ) const;
+    QString pkParamWhereClause( int offset, const char* alias = nullptr ) const;
     QString whereClause( QgsFeatureId featureId ) const;
     QString whereClause( QgsFeatureIds featureIds ) const;
     QString filterWhereClause() const;
@@ -334,7 +344,7 @@ class QgsPostgresProvider : public QgsVectorDataProvider
     bool loadFields();
 
     /** Convert a QgsField to work with PG */
-    static bool convertField( QgsField &field, const QMap<QString, QVariant> *options = 0 );
+    static bool convertField( QgsField &field, const QMap<QString, QVariant> *options = nullptr );
 
     /** Parses the enum_range of an attribute and inserts the possible values into a stringlist
     @param enumValues the stringlist where the values are appended

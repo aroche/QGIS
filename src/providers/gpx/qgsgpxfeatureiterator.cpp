@@ -201,7 +201,7 @@ bool QgsGPXFeatureIterator::readWaypoint( const QgsWaypoint& wpt, QgsFeature& fe
 
 bool QgsGPXFeatureIterator::readRoute( const QgsRoute& rte, QgsFeature& feature )
 {
-  if ( rte.points.size() == 0 )
+  if ( rte.points.isEmpty() )
     return false;
 
   QgsGeometry* theGeometry = readRouteGeometry( rte );
@@ -289,7 +289,7 @@ void QgsGPXFeatureIterator::readAttributes( QgsFeature& feature, const QgsWaypoi
   // add attributes if they are wanted
   for ( int i = 0; i < mSource->mFields.count(); ++i )
   {
-    switch ( mSource->indexToAttr[i] )
+    switch ( mSource->indexToAttr.at( i ) )
     {
       case QgsGPXProvider::NameAttr:
         feature.setAttribute( i, QVariant( wpt.name ) );
@@ -325,7 +325,7 @@ void QgsGPXFeatureIterator::readAttributes( QgsFeature& feature, const QgsRoute&
   // add attributes if they are wanted
   for ( int i = 0; i < mSource->mFields.count(); ++i )
   {
-    switch ( mSource->indexToAttr[i] )
+    switch ( mSource->indexToAttr.at( i ) )
     {
       case QgsGPXProvider::NameAttr:
         feature.setAttribute( i, QVariant( rte.name ) );
@@ -359,7 +359,7 @@ void QgsGPXFeatureIterator::readAttributes( QgsFeature& feature, const QgsTrack&
   // add attributes if they are wanted
   for ( int i = 0; i < mSource->mFields.count(); ++i )
   {
-    switch ( mSource->indexToAttr[i] )
+    switch ( mSource->indexToAttr.at( i ) )
     {
       case QgsGPXProvider::NameAttr:
         feature.setAttribute( i, QVariant( trk.name ) );
@@ -430,8 +430,8 @@ QgsGeometry* QgsGPXFeatureIterator::readTrackGeometry( const QgsTrack& trk )
 {
   // TODO: support multi line string for segments
 
-  if ( trk.segments.size() == 0 )
-    return 0;
+  if ( trk.segments.isEmpty() )
+    return nullptr;
 
   // A track consists of several segments. Add all those segments into one.
   int totalPoints = 0;
@@ -440,7 +440,7 @@ QgsGeometry* QgsGPXFeatureIterator::readTrackGeometry( const QgsTrack& trk )
     totalPoints += trk.segments[i].points.size();
   }
   if ( totalPoints == 0 )
-    return 0;
+    return nullptr;
   //QgsDebugMsg( "GPX feature track total points: " + QString::number( totalPoints ) );
 
   // some wkb voodoo
@@ -448,7 +448,7 @@ QgsGeometry* QgsGPXFeatureIterator::readTrackGeometry( const QgsTrack& trk )
   if ( !geo )
   {
     QgsDebugMsg( "Too large track!!!" );
-    return 0;
+    return nullptr;
   }
   std::memset( geo, 0, 9 + 16 * totalPoints );
   geo[0] = QgsApplication::endian();

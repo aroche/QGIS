@@ -115,6 +115,7 @@ class QgsFields;
 /**
 Utility class for providing GUI for data-defined rendering.
 @deprecated unused, will be removed in QGIS 3.0
+@note not available in Python bindings
 */
 class QgsRendererV2DataDefinedMenus : public QObject
 {
@@ -122,6 +123,7 @@ class QgsRendererV2DataDefinedMenus : public QObject
 
   public:
 
+    //! @deprecated will be removed in QGIS 3.0
     Q_DECL_DEPRECATED QgsRendererV2DataDefinedMenus( QMenu* menu, QgsVectorLayer* layer, const QString& rotationField, const QString& sizeScaleField, QgsSymbolV2::ScaleMethod scaleMethod );
     ~QgsRendererV2DataDefinedMenus();
 
@@ -214,8 +216,8 @@ class GUI_EXPORT QgsDataDefinedSizeDialog : public QgsDataDefinedValueDialog
         : QgsDataDefinedValueDialog( symbolList, layer, tr( "Size" ) )
     {
       init( tr( "Symbol size" ) );
-      if ( symbolList.length() && mLayer )
-        mDDBtn->setAssistant( tr( "Size Assistant..." ), new QgsSizeScaleWidget( mLayer, static_cast<const QgsMarkerSymbolV2*>( symbolList[0] ) ) );
+      if ( !symbolList.isEmpty() && symbolList.at( 0 ) && mLayer )
+        mDDBtn->setAssistant( tr( "Size Assistant..." ), new QgsSizeScaleWidget( mLayer, static_cast<const QgsMarkerSymbolV2*>( symbolList.at( 0 ) ) ) );
     }
 
   protected:

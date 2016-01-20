@@ -175,10 +175,18 @@ QString QgsAttributeAction::expandAction( QString action, const QgsAttributeMap 
       QString to_replace;
       switch ( i )
       {
-        case 0: to_replace = "[%" + fields[attrIdx].name() + ']'; break;
-        case 1: to_replace = "[%" + mLayer->attributeDisplayName( attrIdx ) + ']'; break;
-        case 2: to_replace = '%' + fields[attrIdx].name(); break;
-        case 3: to_replace = '%' + mLayer->attributeDisplayName( attrIdx ); break;
+        case 0:
+          to_replace = "[%" + fields[attrIdx].name() + ']';
+          break;
+        case 1:
+          to_replace = "[%" + mLayer->attributeDisplayName( attrIdx ) + ']';
+          break;
+        case 2:
+          to_replace = '%' + fields[attrIdx].name();
+          break;
+        case 3:
+          to_replace = '%' + mLayer->attributeDisplayName( attrIdx );
+          break;
       }
 
       expanded_action = expanded_action.replace( to_replace, it.value().toString() );
@@ -279,17 +287,17 @@ bool QgsAttributeAction::readXML( const QDomNode& layer_node )
     for ( int i = 0; i < actionsettings.size(); ++i )
     {
       QDomElement setting = actionsettings.item( i ).toElement();
-      addAction(( QgsAction::ActionType ) setting.attributeNode( "type" ).value().toInt(),
-                setting.attributeNode( "name" ).value(),
-                setting.attributeNode( "action" ).value(),
-                setting.attributeNode( "icon" ).value(),
-                setting.attributeNode( "capture" ).value().toInt() != 0 );
+      addAction( static_cast< QgsAction::ActionType >( setting.attributeNode( "type" ).value().toInt() ),
+                 setting.attributeNode( "name" ).value(),
+                 setting.attributeNode( "action" ).value(),
+                 setting.attributeNode( "icon" ).value(),
+                 setting.attributeNode( "capture" ).value().toInt() != 0 );
     }
   }
   return true;
 }
 
-void ( *QgsAttributeAction::smPythonExecute )( const QString & ) = 0;
+void ( *QgsAttributeAction::smPythonExecute )( const QString & ) = nullptr;
 
 void QgsAttributeAction::setPythonExecute( void ( *runPython )( const QString & ) )
 {

@@ -49,7 +49,7 @@ class ANALYSIS_EXPORT QgsAlignRaster
       ~RasterInfo();
 
       //! Check whether the given path is a valid raster
-      bool isValid() const { return mDataset != 0; }
+      bool isValid() const { return nullptr != mDataset; }
 
       //! Return CRS in WKT format
       QString crs() const { return mCrsWkt; }
@@ -138,9 +138,9 @@ class ANALYSIS_EXPORT QgsAlignRaster
       virtual ~ProgressHandler() {}
     };
 
-    //! Assign a progress handler instance. Does not take ownership. NULL can be passed.
+    //! Assign a progress handler instance. Does not take ownership. nullptr can be passed.
     void setProgressHandler( ProgressHandler* progressHandler ) { mProgressHandler = progressHandler; }
-    //! Get associated progress handler. May be NULL (default)
+    //! Get associated progress handler. May be nullptr (default)
     ProgressHandler* progressHandler() const { return mProgressHandler; }
 
     //! Set list of rasters that will be aligned
@@ -218,7 +218,7 @@ class ANALYSIS_EXPORT QgsAlignRaster
     bool createAndWarp( const Item& raster );
 
     //! Determine suggested output of raster warp to a different CRS. Returns true on success
-    static bool suggestedWarpOutput( const RasterInfo& info, const QString& destWkt, QSizeF* cellSize = 0, QPointF* gridOffset = 0, QgsRectangle* rect = 0 );
+    static bool suggestedWarpOutput( const RasterInfo& info, const QString& destWkt, QSizeF* cellSize = nullptr, QPointF* gridOffset = nullptr, QgsRectangle* rect = nullptr );
 
   protected:
 

@@ -15,18 +15,22 @@
 
 #include "qgsoraclefeatureiterator.h"
 #include "qgsoracleprovider.h"
+#include "qgsoracleconnpool.h"
+#include "qgsoracleexpressioncompiler.h"
 
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgsgeometry.h"
 
 #include <QObject>
+#include <QSettings>
 
 QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* source, bool ownSource, const QgsFeatureRequest &request )
     : QgsAbstractFeatureIteratorFromSource<QgsOracleFeatureSource>( source, ownSource, request )
     , mRewind( false )
+    , mExpressionCompiled( false )
 {
-  mConnection = QgsOracleConn::connectDb( mSource->mUri.connectionInfo() );
+  mConnection = QgsOracleConnPool::instance()->acquireConnection( mSource->mUri.connectionInfo() );
   if ( !mConnection )
   {
     close();
@@ -89,6 +93,15 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
       break;
 
     case QgsFeatureRequest::FilterExpression:
+      if ( QSettings().value( "/qgis/compileExpressions", true ).toBool() )
+      {
+        QgsOracleExpressionCompiler compiler( mSource );
+        if ( compiler.compile( request.filterExpression() ) == QgsSqlExpressionCompiler::Complete )
+        {
+          whereClause = QgsOracleUtils::andWhereClauses( whereClause, compiler.result() );
+          mExpressionCompiled = true;
+        }
+      }
       break;
 
     case QgsFeatureRequest::FilterRect:
@@ -104,6 +117,14 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
     whereClause += QgsOracleConn::databaseTypeFilter( "featureRequest", mSource->mGeometryColumn, mSource->mRequestedGeomType );
   }
 
+  if ( request.limit() >= 0 )
+  {
+    if ( !whereClause.isEmpty() )
+      whereClause += " AND ";
+
+    whereClause += QString( "rownum<=%1" ).arg( request.limit() );
+  }
+
   if ( !mSource->mSqlWhereClause.isEmpty() )
   {
     if ( !whereClause.isEmpty() )
@@ -117,6 +138,14 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
 QgsOracleFeatureIterator::~QgsOracleFeatureIterator()
 {
   close();
+}
+
+bool QgsOracleFeatureIterator::nextFeatureFilterExpression( QgsFeature& f )
+{
+  if ( !mExpressionCompiled )
+    return QgsAbstractFeatureIterator::nextFeatureFilterExpression( f );
+  else
+    return fetchFeature( f );
 }
 
 bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
@@ -151,7 +180,9 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
       unsigned char *copy = new unsigned char[ba->size()];
       memcpy( copy, ba->constData(), ba->size() );
 
-      feature.setGeometryAndOwnership( copy, ba->size() );
+      QgsGeometry *g = new QgsGeometry();
+      g->fromWkb( copy, ba->size() );
+      feature.setGeometry( g );
 
       if (( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) != 0 && ( !mConnection->hasSpatial() || !mSource->mHasSpatialIndex ) &&
           mRequest.filterType() == QgsFeatureRequest::FilterRect &&
@@ -165,7 +196,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
 
       if (( mRequest.flags() & QgsFeatureRequest::NoGeometry ) != 0 )
       {
-        feature.setGeometryAndOwnership( 0, 0 );
+        feature.setGeometry( 0 );
       }
     }
 
@@ -269,7 +300,7 @@ bool QgsOracleFeatureIterator::close()
     mQry.finish();
 
   if ( mConnection )
-    mConnection->disconnect();
+    QgsOracleConnPool::instance()->releaseConnection( mConnection );
   mConnection = 0;
 
   iteratorClosed();

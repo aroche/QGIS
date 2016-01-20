@@ -97,6 +97,8 @@ class CORE_EXPORT QgsCategorizedSymbolRendererV2 : public QgsFeatureRendererV2
     //! returns bitwise OR-ed capabilities of the renderer
     virtual int capabilities() override { return SymbolLevels | RotationField | Filter; }
 
+    virtual QString filter( const QgsFields& fields = QgsFields() ) override;
+
     //! @note available in python as symbols2
     virtual QgsSymbolV2List symbols( QgsRenderContext& context ) override;
     void updateSymbols( QgsSymbolV2 * sym );
@@ -184,6 +186,8 @@ class CORE_EXPORT QgsCategorizedSymbolRendererV2 : public QgsFeatureRendererV2
     // @note added in 2.5
     virtual bool legendSymbolItemChecked( const QString& key ) override;
 
+    virtual void setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol ) override;
+
     //! item in symbology was checked
     // @note added in 2.5
     virtual void checkLegendSymbolItem( const QString& key, bool state = true ) override;
@@ -220,9 +224,9 @@ class CORE_EXPORT QgsCategorizedSymbolRendererV2 : public QgsFeatureRendererV2
 
     void rebuildHash();
 
-    QgsSymbolV2* symbolForValue( const QVariant& value );
+    QgsSymbolV2* skipRender();
 
-    static QgsMarkerSymbolV2 sSkipRender;
+    QgsSymbolV2* symbolForValue( const QVariant& value );
 };
 Q_NOWARN_DEPRECATED_POP
 

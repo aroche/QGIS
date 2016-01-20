@@ -14,7 +14,6 @@
 #                                                                         #
 ###########################################################################
 
-
 for ASTYLE in $(dirname $0)/qgisstyle $(dirname $0)/RelWithDebInfo/qgisstyle
 do
 	if type -p $ASTYLE >/dev/null; then
@@ -48,29 +47,15 @@ if ! type -p autopep8 >/dev/null; then
 	}
 fi
 
+ASTYLEOPTS=$(dirname $0)/astyle.options
+if type -p cygpath >/dev/null; then
+	ASTYLEOPTS="$(cygpath -w $ASTYLEOPTS)"
+fi
+
 set -e
 
-astyleit()
-{
-	$ASTYLE \
-		--preserve-date \
-		--indent-preprocessor \
-		--brackets=break \
-		--convert-tabs \
-		--indent=spaces=2 \
-		--indent-classes \
-		--indent-labels \
-		--indent-namespaces \
-		--indent-switches \
-		--one-line=keep-blocks \
-		--one-line=keep-statements \
-		--max-instatement-indent=40 \
-		--min-conditional-indent=-1 \
-		--suffix=none \
-		--pad=oper \
-		--pad=paren-in \
-		--unpad=paren "$1"
-
+astyleit() {
+	$ASTYLE --options="$ASTYLEOPTS" "$1"
 	scripts/unify_includes.pl "$1"
 }
 
@@ -94,7 +79,7 @@ for f in "$@"; do
 
 		*.py)
 			#cmd="autopep8 --in-place --ignore=E111,E128,E201,E202,E203,E211,E221,E222,E225,E226,E227,E231,E241,E261,E265,E272,E302,E303,E501,E701"
-			cmd="autopep8 --in-place --ignore=E261,E402,E501"
+			cmd="autopep8 --in-place --ignore=E261,E265,E402,E501"
 			;;
 
 		*.sip)

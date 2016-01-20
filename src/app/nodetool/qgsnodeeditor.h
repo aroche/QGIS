@@ -22,6 +22,7 @@
 #include <QDockWidget>
 #include <QAbstractTableModel>
 #include <QItemSelection>
+#include <QStyledItemDelegate>
 
 class QgsMapCanvas;
 class QgsRubberBand;
@@ -36,7 +37,7 @@ class QgsNodeEditorModel : public QAbstractTableModel
 
     QgsNodeEditorModel( QgsVectorLayer* layer,
                         QgsSelectedFeature* selectedFeature,
-                        QgsMapCanvas* canvas, QObject* parent = 0 );
+                        QgsMapCanvas* canvas, QObject* parent = nullptr );
 
     virtual int rowCount( const QModelIndex &parent = QModelIndex() ) const override;
     int columnCount( const QModelIndex &parent = QModelIndex() ) const override;
@@ -92,6 +93,19 @@ class QgsNodeEditor : public QDockWidget
 
     bool mUpdatingTableSelection;
     bool mUpdatingNodeSelection;
+};
+
+
+class CoordinateItemDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
+
+  public:
+    QString displayText( const QVariant & value, const QLocale & locale ) const override;
+
+  protected:
+    QWidget* createEditor( QWidget * parent, const QStyleOptionViewItem & /*option*/, const QModelIndex & index ) const override;
+    void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const override;
 };
 
 #endif // QGSNODEEDITOR_H

@@ -56,7 +56,6 @@ class CORE_EXPORT QgsCurvePolygonV2: public QgsSurfaceV2
     //surface interface
     virtual double area() const override;
     virtual double perimeter() const override;
-    QgsPointV2 pointOnSurface() const override;
     QgsPolygonV2* surfaceToPolygon() const override;
 
     //curve polygon interface
@@ -65,12 +64,19 @@ class CORE_EXPORT QgsCurvePolygonV2: public QgsSurfaceV2
     QgsCurveV2* interiorRing( int i ) const;
     virtual QgsPolygonV2* toPolygon() const;
 
-    /** Sets exterior ring (takes ownership)*/
-    void setExteriorRing( QgsCurveV2* ring );
+    /** Sets the exterior ring of the polygon. The CurvePolygon type will be updated to match the dimensionality
+     * of the exterior ring. For instance, setting a 2D exterior ring on a 3D CurvePolygon will drop the z dimension
+     * from the CurvePolygon and all interior rings.
+     * @param ring new exterior ring. Ownership is transferred to the CurvePolygon.
+     * @see setInteriorRings()
+     * @see exteriorRing()
+    */
+    virtual void setExteriorRing( QgsCurveV2* ring );
+
     /** Sets all interior rings (takes ownership)*/
     void setInteriorRings( const QList<QgsCurveV2*>& rings );
     /** Adds an interior ring to the geometry (takes ownership)*/
-    void addInteriorRing( QgsCurveV2* ring );
+    virtual void addInteriorRing( QgsCurveV2* ring );
     /** Removes ring. Exterior ring is 0, first interior ring 1, ...*/
     bool removeInteriorRing( int nr );
 
@@ -99,17 +105,20 @@ class CORE_EXPORT QgsCurvePolygonV2: public QgsSurfaceV2
     double vertexAngle( const QgsVertexId& vertex ) const override;
 
     virtual int vertexCount( int /*part*/ = 0, int ring = 0 ) const override;
-    virtual int ringCount( int /*part*/ = 0 ) const override { return ( mExteriorRing != 0 ) + mInteriorRings.size(); }
+    virtual int ringCount( int /*part*/ = 0 ) const override { return ( nullptr != mExteriorRing ) + mInteriorRings.size(); }
     virtual int partCount() const override { return ringCount() > 0 ? 1 : 0; }
     virtual QgsPointV2 vertexAt( const QgsVertexId& id ) const override;
 
     virtual bool addZValue( double zValue = 0 ) override;
     virtual bool addMValue( double mValue = 0 ) override;
+    virtual bool dropZValue() override;
+    virtual bool dropMValue() override;
 
   protected:
 
     QgsCurveV2* mExteriorRing;
     QList<QgsCurveV2*> mInteriorRings;
+
 };
 
 #endif // QGSCURVEPOLYGONV2_H

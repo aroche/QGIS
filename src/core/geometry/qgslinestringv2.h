@@ -22,6 +22,12 @@
 #include "qgswkbptr.h"
 #include <QPolygonF>
 
+/***************************************************************************
+ * This class is considered CRITICAL and any change MUST be accompanied with
+ * full unit tests in testqgsgeometry.cpp.
+ * See details in QEP #17
+ ****************************************************************************/
+
 /** \ingroup core
  * \class QgsLineStringV2
  * \brief Line string geometry type, with support for z-dimension and m-values.
@@ -33,12 +39,8 @@ class CORE_EXPORT QgsLineStringV2: public QgsCurveV2
     QgsLineStringV2();
     ~QgsLineStringV2();
 
-    /** Resets the line string to match the line string in a WKB geometry.
-     * @param type WKB type
-     * @param wkb WKB representation of line geometry
-     * @note not available in Python bindings
-     */
-    void fromWkbPoints( QgsWKBTypes::Type type, const QgsConstWkbPtr& wkb );
+    bool operator==( const QgsCurveV2& other ) const override;
+    bool operator!=( const QgsCurveV2& other ) const override;
 
     /** Returns the specified point from inside the line string.
      * @param i index of point, starting at 0 for the first point
@@ -181,6 +183,11 @@ class CORE_EXPORT QgsLineStringV2: public QgsCurveV2
     virtual bool addZValue( double zValue = 0 ) override;
     virtual bool addMValue( double mValue = 0 ) override;
 
+    virtual bool dropZValue() override;
+    virtual bool dropMValue() override;
+
+    bool convertTo( QgsWKBTypes::Type type ) override;
+
   private:
     QVector<double> mX;
     QVector<double> mY;
@@ -188,6 +195,15 @@ class CORE_EXPORT QgsLineStringV2: public QgsCurveV2
     QVector<double> mM;
 
     void importVerticesFromWkb( const QgsConstWkbPtr& wkb );
+
+    /** Resets the line string to match the line string in a WKB geometry.
+     * @param type WKB type
+     * @param wkb WKB representation of line geometry
+     */
+    void fromWkbPoints( QgsWKBTypes::Type type, const QgsConstWkbPtr& wkb );
+
+    friend class QgsPolygonV2;
+
 };
 
 #endif // QGSLINESTRINGV2_H

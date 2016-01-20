@@ -61,8 +61,8 @@ class QgsSpatiaLiteProvider: public QgsVectorDataProvider
       const QgsCoordinateReferenceSystem *srs,
       bool overwrite,
       QMap<int, int> *oldToNewAttrIdxMap,
-      QString *errorMessage = 0,
-      const QMap<QString, QVariant> *options = 0
+      QString *errorMessage = nullptr,
+      const QMap<QString, QVariant> *options = nullptr
     );
 
     /**
@@ -176,15 +176,15 @@ class QgsSpatiaLiteProvider: public QgsVectorDataProvider
       @param attr_map a map containing the new attributes. The integer is the feature id,
       the first QString is the attribute name and the second one is the new attribute value
       @return true in case of success and false in case of failure*/
-    bool changeAttributeValues( const QgsChangedAttributesMap & attr_map ) override;
+    bool changeAttributeValues( const QgsChangedAttributesMap &attr_map ) override;
 
     /**
        Changes geometries of existing features
-       @param geometry_map   A std::map containing the feature IDs to change the geometries of.
+       @param geometry_map   A map containing the feature IDs to change the geometries of.
                              the second map parameter being the new geometries themselves
        @return               true in case of success and false in case of failure
      */
-    bool changeGeometryValues( QgsGeometryMap & geometry_map ) override;
+    bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
 
     /** Returns a bitmask containing the supported capabilities*/
     int capabilities() const override;
@@ -421,30 +421,32 @@ class QgsSpatiaLiteProvider: public QgsVectorDataProvider
   public:
     // static functions
 
-    static void convertToGeosWKB( const unsigned char *blob, size_t blob_size,
-                                  unsigned char **wkb, size_t *geom_size );
+    static void convertToGeosWKB( const unsigned char *blob, int blob_size,
+                                  unsigned char **wkb, int *geom_size );
     static int computeMultiWKB3Dsize( const unsigned char *p_in, int little_endian,
                                       int endian_arch );
   private:
+    void updatePrimaryKeyCapabilities();
+
     int computeSizeFromMultiWKB2D( const unsigned char *p_in, int nDims,
                                    int little_endian,
                                    int endian_arch );
     int computeSizeFromMultiWKB3D( const unsigned char *p_in, int nDims,
                                    int little_endian,
                                    int endian_arch );
-    void convertFromGeosWKB2D( const unsigned char *blob, size_t blob_size,
-                               unsigned char *wkb, size_t geom_size,
+    void convertFromGeosWKB2D( const unsigned char *blob, int blob_size,
+                               unsigned char *wkb, int geom_size,
                                int nDims, int little_endian, int endian_arch );
-    void convertFromGeosWKB3D( const unsigned char *blob, size_t blob_size,
-                               unsigned char *wkb, size_t geom_size,
+    void convertFromGeosWKB3D( const unsigned char *blob, int blob_size,
+                               unsigned char *wkb, int geom_size,
                                int nDims, int little_endian, int endian_arch );
-    void convertFromGeosWKB( const unsigned char *blob, size_t blob_size,
-                             unsigned char **wkb, size_t *geom_size,
+    void convertFromGeosWKB( const unsigned char *blob, int blob_size,
+                             unsigned char **wkb, int *geom_size,
                              int dims );
-    int computeSizeFromGeosWKB3D( const unsigned char *blob, size_t size,
+    int computeSizeFromGeosWKB3D( const unsigned char *blob, int size,
                                   int type, int nDims, int little_endian,
                                   int endian_arch );
-    int computeSizeFromGeosWKB2D( const unsigned char *blob, size_t size,
+    int computeSizeFromGeosWKB2D( const unsigned char *blob, int size,
                                   int type, int nDims, int little_endian,
                                   int endian_arch );
 
@@ -496,6 +498,7 @@ class QgsSpatiaLiteProvider: public QgsVectorDataProvider
     QgsSqliteHandle *handle;
 
     friend class QgsSpatiaLiteFeatureSource;
+
 };
 
 #endif

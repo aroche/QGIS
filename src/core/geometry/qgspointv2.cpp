@@ -298,7 +298,8 @@ bool QgsPointV2::moveVertex( const QgsVertexId& position, const QgsPointV2& newP
 
 double QgsPointV2::closestSegment( const QgsPointV2& pt, QgsPointV2& segmentPt,  QgsVertexId& vertexAfter, bool* leftOf, double epsilon ) const
 {
-  Q_UNUSED( leftOf ); Q_UNUSED( epsilon );
+  Q_UNUSED( leftOf );
+  Q_UNUSED( epsilon );
   segmentPt = *this;
   vertexAfter = QgsVertexId( 0, 0, 0 );
   return QgsGeometryUtils::sqrDistance2D( *this, pt );
@@ -357,5 +358,64 @@ void QgsPointV2::transform( const QTransform& t )
   mBoundingBox = QgsRectangle();
   qreal x, y;
   t.map( mX, mY, &x, &y );
-  mX = x; mY = y;
+  mX = x;
+  mY = y;
+}
+
+
+bool QgsPointV2::dropZValue()
+{
+  if ( !is3D() )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropZ( mWkbType );
+  mZ = 0.0;
+  return true;
+}
+
+bool QgsPointV2::dropMValue()
+{
+  if ( !isMeasure() )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropM( mWkbType );
+  mM = 0.0;
+  return true;
+}
+
+bool QgsPointV2::convertTo( QgsWKBTypes::Type type )
+{
+  if ( type == mWkbType )
+    return true;
+
+  switch ( type )
+  {
+    case QgsWKBTypes::Point:
+      mZ = 0.0;
+      mM = 0.0;
+      mWkbType = type;
+      return true;
+    case QgsWKBTypes::PointZ:
+    case QgsWKBTypes::Point25D:
+      mM = 0.0;
+      mWkbType = type;
+      return true;
+    case QgsWKBTypes::PointM:
+      mZ = 0.0;
+      mWkbType = type;
+      return true;
+    case QgsWKBTypes::PointZM:
+      mWkbType = type;
+      return true;
+    default:
+      break;
+  }
+
+  return false;
+}
+
+
+QPointF QgsPointV2::toQPointF() const
+{
+  return QPointF( mX, mY );
 }

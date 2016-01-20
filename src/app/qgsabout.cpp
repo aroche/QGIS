@@ -27,10 +27,6 @@
 #include <QSqlDatabase>
 #include <QTcpSocket>
 
-/* Uncomment this block to use preloaded images
-#include <map>
-std::map<QString, QPixmap> mugs;
-*/
 #ifdef Q_OS_MACX
 QgsAbout::QgsAbout( QWidget *parent )
     : QgsOptionsDialogBase( "about", parent, Qt::WindowSystemMenuHint )  // Modeless dialog with close button only
@@ -72,8 +68,7 @@ void QgsAbout::init()
   connect( developersMapView, SIGNAL( linkClicked( const QUrl & ) ), this, SLOT( openUrl( const QUrl & ) ) );
 
   // set the 60x60 icon pixmap
-  QPixmap icon( QgsApplication::iconsPath() + "qgis-icon-60x60.png" );
-  qgisIcon->setPixmap( icon );
+  qgisIcon->setPixmap( QPixmap( QgsApplication::appIconPath() ) );
 
   //read the authors file to populate the svn committers list
   QStringList lines;

@@ -17,9 +17,6 @@
 
 #include "qgsproject.h"
 
-#include <deque>
-#include <memory>
-
 #include "qgsdatasourceuri.h"
 #include "qgsexception.h"
 #include "qgslayertree.h"
@@ -38,17 +35,25 @@
 #include "qgsrelationmanager.h"
 #include "qgsvectorlayer.h"
 #include "qgsvisibilitypresetcollection.h"
+#include "qgslayerdefinition.h"
 
 #include <QApplication>
 #include <QFileInfo>
 #include <QDomNode>
 #include <QObject>
 #include <QTextStream>
+#include <QTemporaryFile>
 #include <QDir>
 #include <QUrl>
 
+#ifdef Q_OS_UNIX
+#include <utime.h>
+#elif _MSC_VER
+#include <sys/utime.h>
+#endif
+
 // canonical project instance
-QgsProject *QgsProject::theProject_ = 0;
+QgsProject *QgsProject::theProject_ = nullptr;
 
 /**
     Take the given scope and key and convert them to a string list of key
@@ -68,17 +73,19 @@ QStringList makeKeyTokens_( QString const &scope, QString const &key )
   keyTokens.push_front( "properties" );
 
   //check validy of keys since an unvalid xml name will will be dropped upon saving the xml file. If not valid, we print a message to the console.
-  for (int i = 0; i < keyTokens.size(); ++i){
-    QString keyToken = keyTokens.at(i);
+  for ( int i = 0; i < keyTokens.size(); ++i )
+  {
+    QString keyToken = keyTokens.at( i );
 
     //invalid chars in XML are found at http://www.w3.org/TR/REC-xml/#NT-NameChar
     //note : it seems \x10000-\xEFFFF is valid, but it when added to the regexp, a lot of unwanted characters remain
     QString nameCharRegexp = QString( "[^:A-Z_a-z\\xC0-\\xD6\\xD8-\\xF6\\xF8-\\x2FF\\x370-\\x37D\\x37F-\\x1FFF\\x200C-\\x200D\\x2070-\\x218F\\x2C00-\\x2FEF\\x3001-\\xD7FF\\xF900-\\xFDCF\\xFDF0-\\xFFFD\\-\\.0-9\\xB7\\x0300-\\x036F\\x203F-\\x2040]" );
     QString nameStartCharRegexp = QString( "^[^:A-Z_a-z\\xC0-\\xD6\\xD8-\\xF6\\xF8-\\x2FF\\x370-\\x37D\\x37F-\\x1FFF\\x200C-\\x200D\\x2070-\\x218F\\x2C00-\\x2FEF\\x3001-\\xD7FF\\xF900-\\xFDCF\\xFDF0-\\xFFFD]" );
 
-    if( keyToken.contains( QRegExp(nameCharRegexp) ) || keyToken.contains( QRegExp(nameStartCharRegexp) ) ){
+    if ( keyToken.contains( QRegExp( nameCharRegexp ) ) || keyToken.contains( QRegExp( nameStartCharRegexp ) ) )
+    {
 
-      QString errorString = QObject::tr("Entry token invalid : '%1'. The token will not be saved to file.").arg(keyToken);
+      QString errorString = QObject::tr( "Entry token invalid : '%1'. The token will not be saved to file." ).arg( keyToken );
       QgsMessageLog::logMessage( errorString, QString::null, QgsMessageLog::CRITICAL );
 
     }
@@ -148,23 +155,23 @@ QgsProperty *findKey_( QString const &scope,
         else
         {
           // QgsPropertyValue not Key, so return null
-          return 0;
+          return nullptr;
         }
       }
       else
       {
         // if the next key down isn't found
         // then the overall key sequence doesn't exist
-        return 0;
+        return nullptr;
       }
     }
     else
     {
-      return 0;
+      return nullptr;
     }
   }
 
-  return 0;
+  return nullptr;
 } // findKey_
 
 
@@ -223,7 +230,7 @@ QgsProperty *addKey_( QString const &scope,
         }
         else            // QgsPropertyValue not Key, so return null
         {
-          return 0;
+          return nullptr;
         }
       }
       else                // the next subkey doesn't exist, so add it
@@ -237,11 +244,11 @@ QgsProperty *addKey_( QString const &scope,
     }
     else
     {
-      return 0;
+      return nullptr;
     }
   }
 
-  return 0;
+  return nullptr;
 
 } // addKey_
 
@@ -254,8 +261,8 @@ void removeKey_( QString const &scope,
 {
   QgsPropertyKey *currentProperty = &rootProperty;
 
-  QgsProperty *nextProperty = 0;   // link to next property down hiearchy
-  QgsPropertyKey *previousQgsPropertyKey = 0; // link to previous property up hiearchy
+  QgsProperty *nextProperty = nullptr;   // link to next property down hiearchy
+  QgsPropertyKey *previousQgsPropertyKey = nullptr; // link to previous property up hiearchy
 
   QStringList keySequence = makeKeyTokens_( scope, key );
 
@@ -666,13 +673,19 @@ QPair< bool, QList<QDomNode> > QgsProject::_getMapLayers( QDomDocument const &do
 
   emit layerLoaded( 0, nl.count() );
 
+  // order layers based on their dependencies
+  QgsLayerDefinition::DependencySorter depSorter( doc );
+  if ( depSorter.hasCycle() || depSorter.hasMissingDependency() )
+    return qMakePair( false, QList<QDomNode>() );
+
+  QVector<QDomNode> sortedLayerNodes = depSorter.sortedLayerNodes();
+
   // Collect vector layers with joins.
   // They need to refresh join caches and symbology infos after all layers are loaded
   QList< QPair< QgsVectorLayer*, QDomElement > > vLayerList;
-
-  for ( int i = 0; i < nl.count(); i++ )
+  int i = 0;
+  foreach ( QDomNode node, sortedLayerNodes )
   {
-    QDomNode node = nl.item( i );
     QDomElement element = node.toElement();
 
     QString name = node.namedItem( "layername" ).toElement().text();
@@ -692,6 +705,7 @@ QPair< bool, QList<QDomNode> > QgsProject::_getMapLayers( QDomDocument const &do
       }
     }
     emit layerLoaded( i + 1, nl.count() );
+    i++;
   }
 
   // Update field map of layers with joins and create join caches if necessary
@@ -722,7 +736,7 @@ bool QgsProject::addLayer( const QDomElement &layerElem, QList<QDomNode> &broken
 {
   QString type = layerElem.attribute( "type" );
   QgsDebugMsg( "Layer type is " + type );
-  QgsMapLayer *mapLayer = 0;
+  QgsMapLayer *mapLayer = nullptr;
 
   if ( type == "vector" )
   {
@@ -752,7 +766,7 @@ bool QgsProject::addLayer( const QDomElement &layerElem, QList<QDomNode> &broken
   {
     // postpone readMapLayer signal for vector layers with joins
     QgsVectorLayer *vLayer = qobject_cast<QgsVectorLayer*>( mapLayer );
-    if ( !vLayer || vLayer->vectorJoins().size() == 0 )
+    if ( !vLayer || vLayer->vectorJoins().isEmpty() )
       emit readMapLayer( mapLayer, layerElem );
     else
       vectorLayerList.push_back( qMakePair( vLayer, layerElem ) );
@@ -996,38 +1010,16 @@ bool QgsProject::write()
 {
   clearError();
 
-  // Create backup file
-  if ( QFile::exists( fileName() ) )
-  {
-    QString backup = fileName() + '~';
-    if ( QFile::exists( backup ) )
-      QFile::remove( backup );
-    QFile::rename( fileName(), backup );
-  }
-
   // if we have problems creating or otherwise writing to the project file,
   // let's find out up front before we go through all the hand-waving
   // necessary to create all the Dom objects
-  if ( !imp_->file.open( QIODevice::WriteOnly | QIODevice::Truncate ) )
-  {
-    imp_->file.close();         // even though we got an error, let's make
-    // sure it's closed anyway
-
-    setError( tr( "Unable to save to file %1" ).arg( imp_->file.fileName() ) );
-    return false;
-  }
   QFileInfo myFileInfo( imp_->file );
-  if ( !myFileInfo.isWritable() )
+  if ( myFileInfo.exists() && !myFileInfo.isWritable() )
   {
-    // even though we got an error, let's make
-    // sure it's closed anyway
-    imp_->file.close();
     setError( tr( "%1 is not writable. Please adjust permissions (if possible) and try again." )
               .arg( imp_->file.fileName() ) );
     return false;
   }
-
-
 
   QDomImplementation DomImplementation;
   DomImplementation.setInvalidDataPolicy( QDomImplementation::DropInvalidChars );
@@ -1066,7 +1058,6 @@ bool QgsProject::write()
   // Iterate over layers in zOrder
   // Call writeXML() on each
   QDomElement projectLayersNode = doc->createElement( "projectlayers" );
-  projectLayersNode.setAttribute( "layercount", qulonglong( layers.size() ) );
 
   QMap<QString, QgsMapLayer*>::ConstIterator li = layers.constBegin();
   while ( li != layers.end() )
@@ -1076,7 +1067,7 @@ bool QgsProject::write()
     if ( ml )
     {
       QString externalProjectFile = layerIsEmbedded( ml->id() );
-      QHash< QString, QPair< QString, bool> >::const_iterator emIt = mEmbeddedLayers.find( ml->id() );
+      QHash< QString, QPair< QString, bool> >::const_iterator emIt = mEmbeddedLayers.constFind( ml->id() );
       if ( emIt == mEmbeddedLayers.constEnd() )
       {
         // general layer metadata
@@ -1124,15 +1115,69 @@ bool QgsProject::write()
   // now wrap it up and ship it to the project file
   doc->normalize();             // XXX I'm not entirely sure what this does
 
-  QTextStream projectFileStream( &imp_->file );
+  // Create backup file
+  if ( QFile::exists( fileName() ) )
+  {
+    QFile backupFile( fileName() + '~' );
+    bool ok = true;
+    ok &= backupFile.open( QIODevice::WriteOnly | QIODevice::Truncate );
+    ok &= imp_->file.open( QIODevice::ReadOnly );
 
-  doc->save( projectFileStream, 2 );  // save as utf-8
-  imp_->file.close();
+    QByteArray ba;
+    while ( ok && !imp_->file.atEnd() )
+    {
+      ba = imp_->file.read( 10240 );
+      ok &= backupFile.write( ba ) == ba.size();
+    }
 
-  // check if the text stream had no error - if it does
-  // the user will get a message so they can try to resolve the
-  // situation e.g. by saving project to a volume with more space
-  if ( projectFileStream.pos() == -1  || imp_->file.error() != QFile::NoError )
+    imp_->file.close();
+    backupFile.close();
+
+    if ( !ok )
+    {
+      setError( tr( "Unable to create backup file %1" ).arg( backupFile.fileName() ) );
+      return false;
+    }
+
+    QFileInfo fi( fileName() );
+    struct utimbuf tb = { fi.lastRead().toTime_t(), fi.lastModified().toTime_t() };
+    utime( backupFile.fileName().toUtf8().constData(), &tb );
+  }
+
+  if ( !imp_->file.open( QIODevice::WriteOnly | QIODevice::Truncate ) )
+  {
+    imp_->file.close();         // even though we got an error, let's make
+    // sure it's closed anyway
+
+    setError( tr( "Unable to save to file %1" ).arg( imp_->file.fileName() ) );
+    return false;
+  }
+
+  QTemporaryFile tempFile;
+  bool ok = tempFile.open();
+  if ( ok )
+  {
+    QTextStream projectFileStream( &tempFile );
+    doc->save( projectFileStream, 2 );  // save as utf-8
+    ok &= projectFileStream.pos() > -1;
+
+    ok &= tempFile.seek( 0 );
+
+    QByteArray ba;
+    while ( ok && !tempFile.atEnd() )
+    {
+      ba = tempFile.read( 10240 );
+      ok &= imp_->file.write( ba ) == ba.size();
+    }
+
+    ok &= imp_->file.error() == QFile::NoError;
+
+    imp_->file.close();
+  }
+
+  tempFile.close();
+
+  if ( !ok )
   {
     setError( tr( "Unable to save to file %1. Your project "
                   "may be corrupted on disk. Try clearing some space on the volume and "
@@ -1559,8 +1604,8 @@ QString QgsProject::writePath( const QString& src, const QString& relativeBasePa
 
   // remove common part
   int n = 0;
-  while ( srcElems.size() > 0 &&
-          projElems.size() > 0 &&
+  while ( !srcElems.isEmpty() &&
+          !projElems.isEmpty() &&
           srcElems[0].compare( projElems[0], cs ) == 0 )
   {
     srcElems.removeFirst();
@@ -1574,7 +1619,7 @@ QString QgsProject::writePath( const QString& src, const QString& relativeBasePa
     return src;
   }
 
-  if ( projElems.size() > 0 )
+  if ( !projElems.isEmpty() )
   {
     // go up to the common directory
     for ( int i = 0; i < projElems.size(); i++ )
@@ -1629,9 +1674,12 @@ bool QgsProject::createEmbeddedLayer( const QString &layerId, const QString &pro
   QgsDebugCall;
 
   static QString prevProjectFilePath;
+  static QDateTime prevProjectFileTimestamp;
   static QDomDocument projectDocument;
 
-  if ( projectFilePath != prevProjectFilePath )
+  QDateTime projectFileTimestamp = QFileInfo( projectFilePath ).lastModified();
+
+  if ( projectFilePath != prevProjectFilePath || projectFileTimestamp != prevProjectFileTimestamp )
   {
     prevProjectFilePath.clear();
 
@@ -1647,6 +1695,7 @@ bool QgsProject::createEmbeddedLayer( const QString &layerId, const QString &pro
     }
 
     prevProjectFilePath = projectFilePath;
+    prevProjectFileTimestamp = projectFileTimestamp;
   }
 
   // does project store pathes absolute or relative?
@@ -1775,13 +1824,13 @@ QgsLayerTreeGroup *QgsProject::createEmbeddedGroup( const QString &groupName, co
   QFile projectFile( projectFilePath );
   if ( !projectFile.open( QIODevice::ReadOnly ) )
   {
-    return 0;
+    return nullptr;
   }
 
   QDomDocument projectDocument;
   if ( !projectDocument.setContent( &projectFile ) )
   {
-    return 0;
+    return nullptr;
   }
 
   // store identify disabled layers of the embedded project
@@ -1813,13 +1862,13 @@ QgsLayerTreeGroup *QgsProject::createEmbeddedGroup( const QString &groupName, co
   {
     // embedded groups cannot be embedded again
     delete root;
-    return 0;
+    return nullptr;
   }
 
   // clone the group sub-tree (it is used already in a tree, we cannot just tear it off)
   QgsLayerTreeGroup *newGroup = QgsLayerTree::toGroup( group->clone() );
   delete root;
-  root = 0;
+  root = nullptr;
 
   newGroup->setCustomProperty( "embedded", 1 );
   newGroup->setCustomProperty( "embedded_project", projectFilePath );

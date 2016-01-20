@@ -23,7 +23,7 @@ import sys
 from PyQt4.QtCore import Qt, QPointF, QThreadPool
 from PyQt4.QtGui import QFont
 
-from qgis.core import QgsPalLayerSettings
+from qgis.core import QgsPalLayerSettings, QgsSingleSymbolRendererV2, QgsMarkerSymbolV2
 from unittest import skip
 from utilities import (
     svgSymbolsPath,
@@ -48,7 +48,7 @@ class TestPlacementBase(TestQgsPalLabeling):
     @classmethod
     def tearDownClass(cls):
         TestQgsPalLabeling.tearDownClass()
-        #avoid crash on finish, probably related to https://bugreports.qt.io/browse/QTBUG-35760
+        # avoid crash on finish, probably related to https://bugreports.qt.io/browse/QTBUG-35760
         QThreadPool.globalInstance().waitForDone()
 
     def setUp(self):
@@ -183,6 +183,98 @@ class TestPointPlacement(TestPlacementBase):
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.removeMapLayer(polyLayer)
+        self.layer = None
+
+    def test_point_ordered_placement1(self):
+        # Test ordered placements for point
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.checkTest()
+        self.removeMapLayer(self.layer)
+        self.layer = None
+
+    def test_point_ordered_placement2(self):
+        # Test ordered placements for point (1 obstacle)
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle1')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.checkTest()
+        self.removeMapLayer(obstacleLayer)
+        self.removeMapLayer(self.layer)
+        self.layer = None
+
+    def test_point_ordered_placement3(self):
+        # Test ordered placements for point (2 obstacle)
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle2')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.checkTest()
+        self.removeMapLayer(obstacleLayer)
+        self.removeMapLayer(self.layer)
+        self.layer = None
+
+    def test_point_ordered_placement4(self):
+        # Test ordered placements for point (3 obstacle)
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle3')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.checkTest()
+        self.removeMapLayer(obstacleLayer)
+        self.removeMapLayer(self.layer)
+        self.layer = None
+
+    def test_point_dd_ordered_placement(self):
+        # Test ordered placements for point with data defined order
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.lyr.setDataDefinedProperty(QgsPalLayerSettings.PredefinedPositionOrder, True, True, "'T,B'", None)
+        self.checkTest()
+        self.removeMapLayer(self.layer)
+        self.lyr.removeDataDefinedProperty(QgsPalLayerSettings.PredefinedPositionOrder)
+        self.layer = None
+
+    def test_point_dd_ordered_placement1(self):
+        # Test ordered placements for point with data defined order and obstacle
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle_top')
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.lyr.setDataDefinedProperty(QgsPalLayerSettings.PredefinedPositionOrder, True, True, "'T,B'", None)
+        self.checkTest()
+        self.removeMapLayer(obstacleLayer)
+        self.removeMapLayer(self.layer)
+        self.lyr.removeDataDefinedProperty(QgsPalLayerSettings.PredefinedPositionOrder)
+        self.layer = None
+
+    def test_point_ordered_symbol_bound_offset(self):
+        # Test ordered placements for point using symbol bounds offset
+        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
+        # Make a big symbol
+        symbol = QgsMarkerSymbolV2.createSimple({u'color': u'31,120,180,255',
+                                                 u'outline_color': u'0,0,0,0',
+                                                 u'outline_style': u'solid',
+                                                 u'size': u'10',
+                                                 u'name': u'rectangle',
+                                                 u'size_unit': u'MM'})
+        renderer = QgsSingleSymbolRendererV2(symbol)
+        self.layer.setRendererV2(renderer)
+        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        self.lyr.dist = 2
+        self.lyr.offsetType = QgsPalLayerSettings.FromSymbolBounds
+        self.checkTest()
+        self.removeMapLayer(self.layer)
         self.layer = None
 
 if __name__ == '__main__':

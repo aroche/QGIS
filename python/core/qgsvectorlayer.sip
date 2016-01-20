@@ -324,8 +324,10 @@ class QgsVectorLayer : QgsMapLayer
 
     struct RangeData
     {
-      RangeData();
-      RangeData( const QVariant& theMin, const QVariant& theMax, const QVariant& theStep );
+      //! @deprecated Use the editorWidgetV2() system instead
+      RangeData() /Deprecated/;
+      //! @deprecated Use the editorWidgetV2() system instead
+      RangeData( const QVariant& theMin, const QVariant& theMax, const QVariant& theStep ) /Deprecated/;
 
       QVariant mMin;
       QVariant mMax;
@@ -438,6 +440,11 @@ class QgsVectorLayer : QgsMapLayer
     void removeJoin( const QString& joinLayerId );
 
     const QList<QgsVectorJoinInfo> vectorJoins() const;
+
+    /**
+     * Get the list of layer ids on which this layer depends. This in particular determines the order of layer loading.
+     */
+    virtual QSet<QString> layerDependencies() const;
 
     /**
      * Add a new field which is calculated by the expression specified
@@ -678,7 +685,7 @@ class QgsVectorLayer : QgsMapLayer
      *
      * @deprecated Will be removed for QGIS 3 in favor of importNamedStyle
      */
-    virtual bool applyNamedStyle( const QString& namedStyle, QString &errorMsg /Out/ );
+    virtual bool applyNamedStyle( const QString& namedStyle, QString &errorMsg /Out/ ) /Deprecated/;
 
     /** Convert a saved attribute editor element into a AttributeEditor structure as it's used internally.
      * @param elem the DOM element
@@ -946,7 +953,7 @@ class QgsVectorLayer : QgsMapLayer
     bool draw( QgsRenderContext& rendererContext );
 
     /** Draws the layer labels using the old labeling engine
-     * @note deprecated
+     * @deprecated will be removed in QGIS 3.0
     */
     void drawLabels( QgsRenderContext& rendererContext ) /Deprecated/;
 
@@ -1007,14 +1014,6 @@ class QgsVectorLayer : QgsMapLayer
      *  @return false if the layer is in editing yet
      */
     bool setReadOnly( bool readonly = true );
-
-    /**
-     * Make layer editable.
-     * This starts an edit session on this layer. Changes made in this edit session will not
-     * be made persistent until {@link commitChanges()} is called and can be reverted by calling
-     * {@link rollBack()}.
-     */
-    bool startEditing();
 
     /** Change feature's geometry */
     bool changeGeometry( QgsFeatureId fid, QgsGeometry* geom );
@@ -1143,6 +1142,15 @@ class QgsVectorLayer : QgsMapLayer
 
     /** Delete a feature from the layer (but does not commit it) */
     bool deleteFeature( QgsFeatureId fid );
+
+    /**
+     * Deletes a set of features from the layer (but does not commit it)
+     * @param fids The feature ids to delete
+     *
+     * @return false if the layer is not in edit mode or does not support deleting
+     *         in case of an active transaction depends on the provider implementation
+     */
+    bool deleteFeatures( QgsFeatureIds fids );
 
     /**
       Attempts to commit any changes to disk.  Returns the result of the attempt.
@@ -1433,7 +1441,7 @@ class QgsVectorLayer : QgsMapLayer
      *
      * @see select(QgsFeatureIds)
      */
-    void select( const QgsFeatureId &featureId );
+    void select( QgsFeatureId featureId );
 
     /**
      * Select features by their ID
@@ -1477,6 +1485,15 @@ class QgsVectorLayer : QgsMapLayer
     /** Check if there is a join with a layer that will be removed */
     void checkJoinLayerRemove( const QString& theLayerId );
 
+    /**
+     * Make layer editable.
+     * This starts an edit session on this layer. Changes made in this edit session will not
+     * be made persistent until {@link commitChanges()} is called and can be reverted by calling
+     * {@link rollBack()}.
+     */
+    bool startEditing();
+
+
   protected slots:
     void invalidateSymbolCountedFlag();
 
@@ -1499,6 +1516,9 @@ class QgsVectorLayer : QgsMapLayer
 
     /** Is emitted, when layer is checked for modifications. Use for last-minute additions */
     void beforeModifiedCheck() const;
+
+    /** Is emitted, before editing on this layer is started */
+    void beforeEditingStarted();
 
     /** Is emitted, when editing on this layer has started*/
     void editingStarted();
@@ -1647,10 +1667,6 @@ class QgsVectorLayer : QgsMapLayer
      */
     void writeCustomSymbology( QDomElement& element, QDomDocument& doc, QString& errorMessage ) const;
 
-  private slots:
-    void onRelationsLoaded();
-    void onJoinedFieldsChanged();
-    void onFeatureDeleted( const QgsFeatureId& fid );
 
   protected:
     /** Set the extent */

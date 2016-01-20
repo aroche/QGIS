@@ -127,6 +127,16 @@ class QgsGraduatedSymbolRendererV2 : QgsFeatureRendererV2
     void addClass( const QgsRendererRangeV2& range ) /PyName=addClassRange/;
     //! @note available in python bindings as addClassLowerUpper
     void addClass( double lower, double upper ) /PyName=addClassLowerUpper/;
+
+    /** Add a breakpoint by splitting existing classes so that the specified
+     * value becomes a break between two classes.
+     * @param breakValue position to insert break
+     * @param updateSymbols set to true to reapply ramp colors to the new
+     * symbol ranges
+     * @note added in QGIS 2.9
+     */
+    void addBreak( double breakValue, bool updateSymbols = true );
+
     void deleteClass( int idx );
     void deleteAllClasses();
 
@@ -281,6 +291,8 @@ class QgsGraduatedSymbolRendererV2 : QgsFeatureRendererV2
     //! item in symbology was checked
     //! @note added in 2.6
     virtual void checkLegendSymbolItem( const QString& key, bool state = true );
+
+    virtual void setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol /Transfer/ );
 
     //! If supported by the renderer, return classification attribute for the use in legend
     //! @note added in 2.6

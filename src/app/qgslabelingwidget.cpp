@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgslabelingwidget.cpp
+    ---------------------
+    begin                : September 2015
+    copyright            : (C) 2015 by Martin Dobias
+    email                : wonder dot sk at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #include "qgslabelingwidget.h"
 
 #include "qgslabelengineconfigdialog.h"
@@ -10,7 +24,7 @@ QgsLabelingWidget::QgsLabelingWidget( QgsVectorLayer* layer, QgsMapCanvas* canva
     : QWidget( parent )
     , mLayer( layer )
     , mCanvas( canvas )
-    , mWidget( 0 )
+    , mWidget( nullptr )
 {
   setupUi( this );
 
@@ -20,10 +34,17 @@ QgsLabelingWidget::QgsLabelingWidget( QgsVectorLayer* layer, QgsMapCanvas* canva
 
   connect( mLabelModeComboBox, SIGNAL( currentIndexChanged( int ) ), this, SLOT( labelModeChanged( int ) ) );
 
+  adaptToLayer();
+}
+
+void QgsLabelingWidget::adaptToLayer()
+{
+  mLabelModeComboBox->setCurrentIndex( -1 );
+
   // pick the right mode of the layer
   if ( mLayer->labeling() && mLayer->labeling()->type() == "rule-based" )
   {
-    mLabelModeComboBox->setCurrentIndex( 3 );
+    mLabelModeComboBox->setCurrentIndex( 2 );
   }
   else
   {
@@ -38,14 +59,14 @@ QgsLabelingWidget::QgsLabelingWidget( QgsVectorLayer* layer, QgsMapCanvas* canva
     }
     else
     {
-      mLabelModeComboBox->setCurrentIndex( lyr.drawLabels ? 1 : 2 );
+      mLabelModeComboBox->setCurrentIndex( lyr.drawLabels ? 1 : 3 );
     }
   }
 }
 
 void QgsLabelingWidget::writeSettingsToLayer()
 {
-  if ( mLabelModeComboBox->currentIndex() == 3 )
+  if ( mLabelModeComboBox->currentIndex() == 2 )
   {
     qobject_cast<QgsRuleBasedLabelingWidget*>( mWidget )->writeSettingsToLayer();
   }
@@ -68,12 +89,15 @@ void QgsLabelingWidget::apply()
 
 void QgsLabelingWidget::labelModeChanged( int index )
 {
-  if ( index < 3 )
+  if ( index < 0 )
+    return;
+
+  if ( index != 2 )
   {
     if ( QgsLabelingGui* widgetSimple = qobject_cast<QgsLabelingGui*>( mWidget ) )
     {
       // lighter variant - just change the mode of existing widget
-      widgetSimple->setLabelMode(( QgsLabelingGui::LabelMode ) index );
+      widgetSimple->setLabelMode( static_cast< QgsLabelingGui::LabelMode >( index ) );
       return;
     }
   }
@@ -84,16 +108,16 @@ void QgsLabelingWidget::labelModeChanged( int index )
     mStackedWidget->removeWidget( mWidget );
 
   delete mWidget;
-  mWidget = 0;
+  mWidget = nullptr;
 
-  if ( index == 3 )
+  if ( index == 2 )
   {
     mWidget = new QgsRuleBasedLabelingWidget( mLayer, mCanvas, this );
   }
   else
   {
-    QgsLabelingGui* w = new QgsLabelingGui( mLayer, mCanvas, 0, this );
-    w->setLabelMode(( QgsLabelingGui::LabelMode ) index );
+    QgsLabelingGui* w = new QgsLabelingGui( mLayer, mCanvas, nullptr, this );
+    w->setLabelMode( static_cast< QgsLabelingGui::LabelMode >( index ) );
     w->init();
     mWidget = w;
   }

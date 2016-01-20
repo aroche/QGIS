@@ -55,19 +55,19 @@
 
 
 // Static initialisers, default values for fcgi server
-QgsApplication* QgsServer::mQgsApplication = NULL;
+QgsApplication* QgsServer::mQgsApplication = nullptr;
 bool QgsServer::mInitialised = false;
 QString QgsServer::mServerName( "qgis_server" );
 bool QgsServer::mCaptureOutput = false;
 char* QgsServer::mArgv[1];
 int QgsServer::mArgc = 1;
 QString QgsServer::mConfigFilePath;
-QgsMapRenderer* QgsServer::mMapRenderer = NULL;
+QgsMapRenderer* QgsServer::mMapRenderer = nullptr;
 QgsCapabilitiesCache* QgsServer::mCapabilitiesCache;
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 bool QgsServer::mInitPython = true;
-QgsServerInterfaceImpl* QgsServer::mServerInterface = NULL;
+QgsServerInterfaceImpl* QgsServer::mServerInterface = nullptr;
 #endif
 
 
@@ -94,7 +94,7 @@ void QgsServer::setupNetworkAccessManager()
 {
   QSettings settings;
   QgsNetworkAccessManager *nam = QgsNetworkAccessManager::instance();
-  QNetworkDiskCache *cache = new QNetworkDiskCache( 0 );
+  QNetworkDiskCache *cache = new QNetworkDiskCache( nullptr );
   QString cacheDirectory = settings.value( "cache/directory", QgsApplication::qgisSettingsDirPath() + "cache" ).toString();
   qint64 cacheSize = settings.value( "cache/size", 50 * 1024 * 1024 ).toULongLong();
   QgsMessageLog::logMessage( QString( "setCacheDirectory: %1" ).arg( cacheDirectory ), "Server", QgsMessageLog::INFO );
@@ -111,11 +111,11 @@ void QgsServer::setupNetworkAccessManager()
  * @param captureOutput
  * @return request instance
  */
-QgsRequestHandler* QgsServer::createRequestHandler( const bool captureOutput /*= false*/ )
+QgsRequestHandler* QgsServer::createRequestHandler( const bool captureOutput )
 {
-  QgsRequestHandler* requestHandler = 0;
+  QgsRequestHandler* requestHandler = nullptr;
   char* requestMethod = getenv( "REQUEST_METHOD" );
-  if ( requestMethod != NULL )
+  if ( requestMethod )
   {
     if ( strcmp( requestMethod, "POST" ) == 0 )
     {
@@ -181,43 +181,43 @@ void QgsServer::printRequestParameters( const QMap< QString, QString>& parameter
 void QgsServer::printRequestInfos()
 {
   QgsMessageLog::logMessage( "********************new request***************", "Server", QgsMessageLog::INFO );
-  if ( getenv( "REMOTE_ADDR" ) != NULL )
+  if ( getenv( "REMOTE_ADDR" ) )
   {
     QgsMessageLog::logMessage( "remote ip: " + QString( getenv( "REMOTE_ADDR" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "REMOTE_HOST" ) != NULL )
+  if ( getenv( "REMOTE_HOST" ) )
   {
     QgsMessageLog::logMessage( "remote ip: " + QString( getenv( "REMOTE_HOST" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "REMOTE_USER" ) != NULL )
+  if ( getenv( "REMOTE_USER" ) )
   {
     QgsMessageLog::logMessage( "remote user: " + QString( getenv( "REMOTE_USER" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "REMOTE_IDENT" ) != NULL )
+  if ( getenv( "REMOTE_IDENT" ) )
   {
     QgsMessageLog::logMessage( "REMOTE_IDENT: " + QString( getenv( "REMOTE_IDENT" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "CONTENT_TYPE" ) != NULL )
+  if ( getenv( "CONTENT_TYPE" ) )
   {
     QgsMessageLog::logMessage( "CONTENT_TYPE: " + QString( getenv( "CONTENT_TYPE" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "AUTH_TYPE" ) != NULL )
+  if ( getenv( "AUTH_TYPE" ) )
   {
     QgsMessageLog::logMessage( "AUTH_TYPE: " + QString( getenv( "AUTH_TYPE" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "HTTP_USER_AGENT" ) != NULL )
+  if ( getenv( "HTTP_USER_AGENT" ) )
   {
     QgsMessageLog::logMessage( "HTTP_USER_AGENT: " + QString( getenv( "HTTP_USER_AGENT" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "HTTP_PROXY" ) != NULL )
+  if ( getenv( "HTTP_PROXY" ) )
   {
     QgsMessageLog::logMessage( "HTTP_PROXY: " + QString( getenv( "HTTP_PROXY" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "HTTPS_PROXY" ) != NULL )
+  if ( getenv( "HTTPS_PROXY" ) )
   {
     QgsMessageLog::logMessage( "HTTPS_PROXY: " + QString( getenv( "HTTPS_PROXY" ) ), "Server", QgsMessageLog::INFO );
   }
-  if ( getenv( "NO_PROXY" ) != NULL )
+  if ( getenv( "NO_PROXY" ) )
   {
     QgsMessageLog::logMessage( "NO_PROXY: " + QString( getenv( "NO_PROXY" ) ), "Server", QgsMessageLog::INFO );
   }
@@ -330,7 +330,7 @@ bool QgsServer::init( int & argc, char ** argv )
     QSettings::setPath( QSettings::IniFormat, QSettings::UserScope, optionsPath );
   }
 
-  mQgsApplication = new QgsApplication( argc, argv, getenv( "DISPLAY" ) );
+  mQgsApplication = new QgsApplication( argc, argv, getenv( "DISPLAY" ), QString(), "server" );
 
   QCoreApplication::setOrganizationName( QgsApplication::QGIS_ORGANIZATION_NAME );
   QCoreApplication::setOrganizationDomain( QgsApplication::QGIS_ORGANIZATION_DOMAIN );
@@ -420,20 +420,27 @@ bool QgsServer::init( int & argc, char ** argv )
   return true;
 }
 
-
+void QgsServer::putenv( const QString &var, const QString &val )
+{
+#ifdef _MSC_VER
+  _putenv_s( var.toUtf8().data(), val.toUtf8().data() );
+#else
+  setenv( var.toUtf8().data(), val.toUtf8().data(), 1 );
+#endif
+}
 
 /**
  * @brief Handles the request
  * @param queryString
  * @return response headers and body
  */
-QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryString /*= QString( )*/ )
+QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryString )
 {
   // Run init if handleRequest was called without previously initialising
   // the server
   if ( ! mInitialised )
   {
-    init( );
+    init();
   }
 
   /*
@@ -441,13 +448,7 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
    * to handleRequest without using os.environment
    */
   if ( ! queryString.isEmpty() )
-  {
-#ifdef _MSC_VER
-    _putenv_s( "QUERY_STRING", queryString.toUtf8().data() );
-#else
-    setenv( "QUERY_STRING", queryString.toUtf8().data(), 1 );
-#endif
-  }
+    putenv( "QUERY_STRING", queryString );
 
   int logLevel = QgsServerLogger::instance()->logLevel();
   QTime time; //used for measuring request time if loglevel < 1
@@ -478,7 +479,8 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
   mServerInterface->setRequestHandler( theRequestHandler.data() );
   // Iterate filters and call their requestReady() method
   QgsServerFiltersMap::const_iterator filtersIterator;
-  for ( filtersIterator = mServerInterface->filters().constBegin(); filtersIterator != mServerInterface->filters().constEnd(); ++filtersIterator )
+  QgsServerFiltersMap filters = mServerInterface->filters();
+  for ( filtersIterator = filters.constBegin(); filtersIterator != filters.constEnd(); ++filtersIterator )
   {
     filtersIterator.value()->requestReady();
   }
@@ -492,7 +494,7 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
   // Copy the parameters map
   QMap<QString, QString> parameterMap( theRequestHandler->parameterMap() );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-  const QgsAccessControl* accessControl = NULL;
+  const QgsAccessControl* accessControl = nullptr;
   accessControl = mServerInterface->accessControls();
 #endif
 
@@ -537,7 +539,7 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
                                );
       if ( !p )
       {
-        theRequestHandler->setServiceException( QgsMapServiceException( "Project file error", "Error reading the project file" ) );
+        theRequestHandler->setServiceException( QgsMapServiceException( "Project file error", QString( "Error reading the project file: %1" ).arg( configFilePath ) ) );
       }
       else
       {
@@ -563,7 +565,7 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
                                );
       if ( !p )
       {
-        theRequestHandler->setServiceException( QgsMapServiceException( "Project file error", "Error reading the project file" ) );
+        theRequestHandler->setServiceException( QgsMapServiceException( "Project file error", QString( "Error reading the project file: %1" ).arg( configFilePath ) ) );
       }
       else
       {
@@ -615,7 +617,8 @@ QPair<QByteArray, QByteArray> QgsServer::handleRequest( const QString& queryStri
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
   // Iterate filters and call their responseComplete() method
-  for ( filtersIterator = mServerInterface->filters().constBegin(); filtersIterator != mServerInterface->filters().constEnd(); ++filtersIterator )
+  filters = mServerInterface->filters();
+  for ( filtersIterator = filters.constBegin(); filtersIterator != filters.constEnd(); ++filtersIterator )
   {
     filtersIterator.value()->responseComplete();
   }

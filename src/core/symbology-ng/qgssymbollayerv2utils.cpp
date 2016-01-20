@@ -83,10 +83,14 @@ QString QgsSymbolLayerV2Utils::encodeSldFontStyle( QFont::Style style )
 {
   switch ( style )
   {
-    case QFont::StyleNormal:  return "normal";
-    case QFont::StyleItalic:  return "italic";
-    case QFont::StyleOblique: return "oblique";
-    default: return "";
+    case QFont::StyleNormal:
+      return "normal";
+    case QFont::StyleItalic:
+      return "italic";
+    case QFont::StyleOblique:
+      return "oblique";
+    default:
+      return "";
   }
 }
 
@@ -114,7 +118,8 @@ int QgsSymbolLayerV2Utils::decodeSldFontWeight( const QString& str )
 {
   bool ok;
   int weight = str.toInt( &ok );
-  if ( !ok ) return ( int ) QFont::Normal;
+  if ( !ok )
+    return static_cast< int >( QFont::Normal );
 
   // CSS font-weight is between 100 and 900
   // QFont::Weight is between 0 and 99
@@ -127,13 +132,20 @@ QString QgsSymbolLayerV2Utils::encodePenStyle( Qt::PenStyle style )
 {
   switch ( style )
   {
-    case Qt::NoPen:          return "no";
-    case Qt::SolidLine:      return "solid";
-    case Qt::DashLine:       return "dash";
-    case Qt::DotLine:        return "dot";
-    case Qt::DashDotLine:    return "dash dot";
-    case Qt::DashDotDotLine: return "dash dot dot";
-    default: return "???";
+    case Qt::NoPen:
+      return "no";
+    case Qt::SolidLine:
+      return "solid";
+    case Qt::DashLine:
+      return "dash";
+    case Qt::DotLine:
+      return "dot";
+    case Qt::DashDotLine:
+      return "dash dot";
+    case Qt::DashDotDotLine:
+      return "dash dot dot";
+    default:
+      return "???";
   }
 }
 
@@ -152,10 +164,14 @@ QString QgsSymbolLayerV2Utils::encodePenJoinStyle( Qt::PenJoinStyle style )
 {
   switch ( style )
   {
-    case Qt::BevelJoin: return "bevel";
-    case Qt::MiterJoin: return "miter";
-    case Qt::RoundJoin: return "round";
-    default: return "???";
+    case Qt::BevelJoin:
+      return "bevel";
+    case Qt::MiterJoin:
+      return "miter";
+    case Qt::RoundJoin:
+      return "round";
+    default:
+      return "???";
   }
 }
 
@@ -171,10 +187,14 @@ QString QgsSymbolLayerV2Utils::encodeSldLineJoinStyle( Qt::PenJoinStyle style )
 {
   switch ( style )
   {
-    case Qt::BevelJoin: return "bevel";
-    case Qt::MiterJoin: return "mitre";
-    case Qt::RoundJoin: return "round";
-    default: return "";
+    case Qt::BevelJoin:
+      return "bevel";
+    case Qt::MiterJoin:
+      return "mitre";
+    case Qt::RoundJoin:
+      return "round";
+    default:
+      return "";
   }
 }
 
@@ -190,10 +210,14 @@ QString QgsSymbolLayerV2Utils::encodePenCapStyle( Qt::PenCapStyle style )
 {
   switch ( style )
   {
-    case Qt::SquareCap: return "square";
-    case Qt::FlatCap:   return "flat";
-    case Qt::RoundCap:  return "round";
-    default: return "???";
+    case Qt::SquareCap:
+      return "square";
+    case Qt::FlatCap:
+      return "flat";
+    case Qt::RoundCap:
+      return "round";
+    default:
+      return "???";
   }
 }
 
@@ -209,10 +233,14 @@ QString QgsSymbolLayerV2Utils::encodeSldLineCapStyle( Qt::PenCapStyle style )
 {
   switch ( style )
   {
-    case Qt::SquareCap: return "square";
-    case Qt::FlatCap:   return "butt";
-    case Qt::RoundCap:  return "round";
-    default: return "";
+    case Qt::SquareCap:
+      return "square";
+    case Qt::FlatCap:
+      return "butt";
+    case Qt::RoundCap:
+      return "round";
+    default:
+      return "";
   }
 }
 
@@ -228,22 +256,38 @@ QString QgsSymbolLayerV2Utils::encodeBrushStyle( Qt::BrushStyle style )
 {
   switch ( style )
   {
-    case Qt::SolidPattern : return "solid";
-    case Qt::HorPattern : return "horizontal";
-    case Qt::VerPattern : return "vertical";
-    case Qt::CrossPattern : return "cross";
-    case Qt::BDiagPattern : return "b_diagonal";
-    case Qt::FDiagPattern : return  "f_diagonal";
-    case Qt::DiagCrossPattern : return "diagonal_x";
-    case Qt::Dense1Pattern  : return "dense1";
-    case Qt::Dense2Pattern  : return "dense2";
-    case Qt::Dense3Pattern  : return "dense3";
-    case Qt::Dense4Pattern  : return "dense4";
-    case Qt::Dense5Pattern  : return "dense5";
-    case Qt::Dense6Pattern  : return "dense6";
-    case Qt::Dense7Pattern  : return "dense7";
-    case Qt::NoBrush : return "no";
-    default: return "???";
+    case Qt::SolidPattern :
+      return "solid";
+    case Qt::HorPattern :
+      return "horizontal";
+    case Qt::VerPattern :
+      return "vertical";
+    case Qt::CrossPattern :
+      return "cross";
+    case Qt::BDiagPattern :
+      return "b_diagonal";
+    case Qt::FDiagPattern :
+      return  "f_diagonal";
+    case Qt::DiagCrossPattern :
+      return "diagonal_x";
+    case Qt::Dense1Pattern  :
+      return "dense1";
+    case Qt::Dense2Pattern  :
+      return "dense2";
+    case Qt::Dense3Pattern  :
+      return "dense3";
+    case Qt::Dense4Pattern  :
+      return "dense4";
+    case Qt::Dense5Pattern  :
+      return "dense5";
+    case Qt::Dense6Pattern  :
+      return "dense6";
+    case Qt::Dense7Pattern  :
+      return "dense7";
+    case Qt::NoBrush :
+      return "no";
+    default:
+      return "???";
   }
 }
 
@@ -271,17 +315,23 @@ QString QgsSymbolLayerV2Utils::encodeSldBrushStyle( Qt::BrushStyle style )
 {
   switch ( style )
   {
-    case Qt::CrossPattern: return "cross";
-    case Qt::DiagCrossPattern: return "x";
+    case Qt::CrossPattern:
+      return "cross";
+    case Qt::DiagCrossPattern:
+      return "x";
 
       /* The following names are taken from the presentation "GeoServer
        * Cartographic Rendering" by Andrea Aime at the FOSS4G 2010.
        * (see http://2010.foss4g.org/presentations/3588.pdf)
        */
-    case Qt::HorPattern: return "horline";
-    case Qt::VerPattern: return "line";
-    case Qt::BDiagPattern: return "slash";
-    case Qt::FDiagPattern: return "backslash";
+    case Qt::HorPattern:
+      return "horline";
+    case Qt::VerPattern:
+      return "line";
+    case Qt::BDiagPattern:
+      return "slash";
+    case Qt::FDiagPattern:
+      return "backslash";
 
       /* define the other names following the same pattern used above */
     case Qt::Dense1Pattern:
@@ -365,6 +415,8 @@ QString QgsSymbolLayerV2Utils::encodeOutputUnit( QgsSymbolV2::OutputUnit unit )
       return "MapUnit";
     case QgsSymbolV2::Pixel:
       return "Pixel";
+    case QgsSymbolV2::Percentage:
+      return "Percentage";
     default:
       return "MM";
   }
@@ -383,6 +435,10 @@ QgsSymbolV2::OutputUnit QgsSymbolLayerV2Utils::decodeOutputUnit( const QString& 
   else if ( str == "Pixel" )
   {
     return QgsSymbolV2::Pixel;
+  }
+  else if ( str == "Percentage" )
+  {
+    return QgsSymbolV2::Percentage;
   }
 
   // millimeters are default
@@ -581,7 +637,7 @@ QPicture QgsSymbolLayerV2Utils::symbolLayerPreviewPicture( QgsSymbolLayerV2* lay
   painter.setRenderHint( QPainter::Antialiasing );
   QgsRenderContext renderContext = createRenderContext( &painter );
   renderContext.setForceVectorOutput( true );
-  QgsSymbolV2RenderContext symbolContext( renderContext, units, 1.0, false, 0, 0, 0, scale );
+  QgsSymbolV2RenderContext symbolContext( renderContext, units, 1.0, false, 0, nullptr, nullptr, scale );
   layer->drawPreviewIcon( symbolContext, size );
   painter.end();
   return picture;
@@ -595,7 +651,7 @@ QIcon QgsSymbolLayerV2Utils::symbolLayerPreviewIcon( QgsSymbolLayerV2* layer, Qg
   painter.begin( &pixmap );
   painter.setRenderHint( QPainter::Antialiasing );
   QgsRenderContext renderContext = createRenderContext( &painter );
-  QgsSymbolV2RenderContext symbolContext( renderContext, u, 1.0, false, 0, 0, 0, scale );
+  QgsSymbolV2RenderContext symbolContext( renderContext, u, 1.0, false, 0, nullptr, nullptr, scale );
   layer->drawPreviewIcon( symbolContext, size );
   painter.end();
   return QIcon( pixmap );
@@ -621,7 +677,7 @@ QPixmap QgsSymbolLayerV2Utils::colorRampPreviewPixmap( QgsVectorColorRampV2* ram
   // painter.setRenderHint( QPainter::Antialiasing );
   for ( int i = 0; i < size.width(); i++ )
   {
-    QPen pen( ramp->color(( double ) i / size.width() ) );
+    QPen pen( ramp->color( static_cast< double >( i ) / size.width() ) );
     painter.setPen( pen );
     painter.drawLine( i, 0, i, size.height() - 1 );
   }
@@ -700,8 +756,12 @@ static QPointF linesIntersection( QPointF p1, double t1, QPointF p2, double t2 )
     // swap them so that line 2 is with undefined tangent
     if ( t1 == DBL_MAX )
     {
-      QPointF pSwp = p1; p1 = p2; p2 = pSwp;
-      double  tSwp = t1; t1 = t2; t2 = tSwp;
+      QPointF pSwp = p1;
+      p1 = p2;
+      p2 = pSwp;
+      double  tSwp = t1;
+      t1 = t2;
+      t2 = tSwp;
     }
 
     x = p2.x();
@@ -768,7 +828,7 @@ QList<QPolygonF> offsetLine( QPolygonF polyline, double dist, QGis::GeometryType
   {
     int quadSegments = 0; // we want mitre joins, not round joins
     double mitreLimit = 2.0; // the default value in GEOS (5.0) allows for fairly sharp endings
-    QgsGeometry* offsetGeom = 0;
+    QgsGeometry* offsetGeom = nullptr;
     if ( geometryType == QGis::Polygon )
       offsetGeom = tempGeometry->buffer( -dist, quadSegments, GEOSBUF_CAP_FLAT, GEOSBUF_JOIN_MITRE, mitreLimit );
     else
@@ -873,7 +933,7 @@ QList<QPolygonF> offsetLine( const QPolygonF& polyline, double dist )
   QGis::GeometryType geometryType = QGis::Point;
   int pointCount = polyline.count();
 
-  if ( pointCount > 3 && polyline[ 0 ].x() == polyline[ pointCount - 1 ].x() && polyline[ 0 ].y() == polyline[ pointCount - 1 ].y() )
+  if ( pointCount > 3 && qgsDoubleNear( polyline[ 0 ].x(), polyline[ pointCount - 1 ].x() ) && qgsDoubleNear( polyline[ 0 ].y(), polyline[ pointCount - 1 ].y() ) )
   {
     geometryType = QGis::Polygon;
   }
@@ -905,7 +965,7 @@ QgsSymbolV2* QgsSymbolLayerV2Utils::loadSymbol( const QDomElement &element )
       {
         QgsSymbolLayerV2* layer = loadSymbolLayer( e );
 
-        if ( layer != NULL )
+        if ( layer )
         {
           // Dealing with sub-symbols nested into a layer
           QDomElement s = e.firstChildElement( "symbol" );
@@ -925,15 +985,15 @@ QgsSymbolV2* QgsSymbolLayerV2Utils::loadSymbol( const QDomElement &element )
     layerNode = layerNode.nextSibling();
   }
 
-  if ( layers.count() == 0 )
+  if ( layers.isEmpty() )
   {
     QgsDebugMsg( "no layers for symbol" );
-    return NULL;
+    return nullptr;
   }
 
   QString symbolType = element.attribute( "type" );
 
-  QgsSymbolV2* symbol = 0;
+  QgsSymbolV2* symbol = nullptr;
   if ( symbolType == "line" )
     symbol = new QgsLineSymbolV2( layers );
   else if ( symbolType == "fill" )
@@ -943,7 +1003,7 @@ QgsSymbolV2* QgsSymbolLayerV2Utils::loadSymbol( const QDomElement &element )
   else
   {
     QgsDebugMsg( "unknown symbol type " + symbolType );
-    return NULL;
+    return nullptr;
   }
 
   if ( element.hasAttribute( "outputUnit" ) )
@@ -990,7 +1050,7 @@ QgsSymbolLayerV2* QgsSymbolLayerV2Utils::loadSymbolLayer( QDomElement& element )
   else
   {
     QgsDebugMsg( "unknown class " + layerClass );
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -998,10 +1058,14 @@ static QString _nameForSymbolType( QgsSymbolV2::SymbolType type )
 {
   switch ( type )
   {
-    case QgsSymbolV2::Line: return "line";
-    case QgsSymbolV2::Marker: return "marker";
-    case QgsSymbolV2::Fill: return "fill";
-    default: return "";
+    case QgsSymbolV2::Line:
+      return "line";
+    case QgsSymbolV2::Marker:
+      return "marker";
+    case QgsSymbolV2::Fill:
+      return "fill";
+    default:
+      return "";
   }
 }
 
@@ -1027,7 +1091,7 @@ QDomElement QgsSymbolLayerV2Utils::saveSymbol( const QString& name, QgsSymbolV2*
     if ( !QgsPaintEffectRegistry::isDefaultStack( layer->paintEffect() ) )
       layer->paintEffect()->saveProperties( doc, layerEl );
 
-    if ( layer->subSymbol() != NULL )
+    if ( layer->subSymbol() )
     {
       QString subname = QString( "@%1@%2" ).arg( name ).arg( i );
       QDomElement subEl = saveSymbol( subname, layer->subSymbol(), doc );
@@ -1058,7 +1122,7 @@ bool QgsSymbolLayerV2Utils::createSymbolLayerV2ListFromSld( QDomElement& element
   if ( element.isNull() )
     return false;
 
-  QgsSymbolLayerV2 *l = 0;
+  QgsSymbolLayerV2 *l = nullptr;
 
   QString symbolizerName = element.localName();
 
@@ -1151,7 +1215,7 @@ bool QgsSymbolLayerV2Utils::createSymbolLayerV2ListFromSld( QDomElement& element
     }
     else
     {
-      QgsSymbolLayerV2 *l = 0;
+      QgsSymbolLayerV2 *l = nullptr;
 
       switch ( geomType )
       {
@@ -1205,10 +1269,10 @@ QgsSymbolLayerV2* QgsSymbolLayerV2Utils::createFillLayerFromSld( QDomElement &el
   if ( fillElem.isNull() )
   {
     QgsDebugMsg( "Fill element not found" );
-    return NULL;
+    return nullptr;
   }
 
-  QgsSymbolLayerV2 *l = 0;
+  QgsSymbolLayerV2 *l = nullptr;
 
   if ( needLinePatternFill( element ) )
     l = QgsSymbolLayerV2Registry::instance()->createSymbolLayerFromSld( "LinePatternFill", element );
@@ -1228,10 +1292,10 @@ QgsSymbolLayerV2* QgsSymbolLayerV2Utils::createLineLayerFromSld( QDomElement &el
   if ( strokeElem.isNull() )
   {
     QgsDebugMsg( "Stroke element not found" );
-    return NULL;
+    return nullptr;
   }
 
-  QgsSymbolLayerV2 *l = 0;
+  QgsSymbolLayerV2 *l = nullptr;
 
   if ( needMarkerLine( element ) )
     l = QgsSymbolLayerV2Registry::instance()->createSymbolLayerFromSld( "MarkerLine", element );
@@ -1247,10 +1311,10 @@ QgsSymbolLayerV2* QgsSymbolLayerV2Utils::createMarkerLayerFromSld( QDomElement &
   if ( graphicElem.isNull() )
   {
     QgsDebugMsg( "Graphic element not found" );
-    return NULL;
+    return nullptr;
   }
 
-  QgsSymbolLayerV2 *l = 0;
+  QgsSymbolLayerV2 *l = nullptr;
 
   if ( needFontMarker( element ) )
     l = QgsSymbolLayerV2Registry::instance()->createSymbolLayerFromSld( "FontMarker", element );
@@ -1431,7 +1495,7 @@ bool QgsSymbolLayerV2Utils::needLinePatternFill( QDomElement &element )
 
   bool ok;
   double angle = angleFunc.toDouble( &ok );
-  if ( !ok || angle == 0 )
+  if ( !ok || qgsDoubleNear( angle, 0.0 ) )
     return false;
 
   return true;
@@ -1493,7 +1557,7 @@ bool QgsSymbolLayerV2Utils::convertPolygonSymbolizerToPointMarker( QDomElement &
     QVector<qreal> customDashPattern;
 
     if ( lineFromSld( strokeElem, borderStyle, borderColor, borderWidth,
-                      0, 0, &customDashPattern, &dashOffset ) )
+                      nullptr, nullptr, &customDashPattern, &dashOffset ) )
       validBorder = true;
 
     if ( validFill || validBorder )
@@ -1637,7 +1701,7 @@ bool QgsSymbolLayerV2Utils::convertPolygonSymbolizerToPointMarker( QDomElement &
 
           QDomElement markStrokeElem = graphicChildElem.firstChildElement( "Stroke" );
           if ( lineFromSld( markStrokeElem, borderStyle, borderColor, borderWidth,
-                            0, 0, &customDashPattern, &dashOffset ) )
+                            nullptr, nullptr, &customDashPattern, &dashOffset ) )
             validBorder = true;
         }
 
@@ -1886,7 +1950,7 @@ void QgsSymbolLayerV2Utils::lineToSld( QDomDocument &doc, QDomElement &element,
   if ( penCapStyle )
     element.appendChild( createSvgParameterElement( doc, "stroke-linecap", encodeSldLineCapStyle( *penCapStyle ) ) );
 
-  if ( pattern->size() > 0 )
+  if ( !pattern->isEmpty() )
   {
     element.appendChild( createSvgParameterElement( doc, "stroke-dasharray", encodeSldRealVector( *pattern ) ) );
     if ( !qgsDoubleNear( dashOffset, 0.0 ) )
@@ -1952,7 +2016,7 @@ bool QgsSymbolLayerV2Utils::lineFromSld( QDomElement &element,
     else if ( it.key() == "stroke-dasharray" )
     {
       QVector<qreal> dashPattern = decodeSldRealVector( it.value() );
-      if ( dashPattern.size() > 0 )
+      if ( !dashPattern.isEmpty() )
       {
         // convert the dasharray to one of the QT pen style,
         // if no match is found then set pen style to CustomDashLine
@@ -2374,7 +2438,7 @@ QString QgsSymbolLayerV2Utils::ogrFeatureStylePen( double width, double mmScaleF
   penStyle.append( "mm" );
 
   //dash dot vector
-  if ( dashPattern && dashPattern->size() > 0 )
+  if ( dashPattern && !dashPattern->isEmpty() )
   {
     penStyle.append( ",p:\"" );
     QVector<qreal>::const_iterator pIt = dashPattern->constBegin();
@@ -2506,7 +2570,7 @@ bool QgsSymbolLayerV2Utils::functionFromSldElement( QDomElement &element, QStrin
   if ( element.tagName() != "Filter" )
   {
     QDomNodeList filterNodes = element.elementsByTagName( "Filter" );
-    if ( filterNodes.size() > 0 )
+    if ( !filterNodes.isEmpty() )
     {
       elem = filterNodes.at( 0 ).toElement();
     }
@@ -2673,7 +2737,7 @@ QgsSymbolV2Map QgsSymbolLayerV2Utils::loadSymbols( QDomElement& element )
     if ( e.tagName() == "symbol" )
     {
       QgsSymbolV2* symbol = QgsSymbolLayerV2Utils::loadSymbol( e );
-      if ( symbol != NULL )
+      if ( symbol )
         symbols.insert( e.attribute( "name" ), symbol );
     }
     else
@@ -2781,7 +2845,7 @@ QgsVectorColorRampV2* QgsSymbolLayerV2Utils::loadColorRamp( QDomElement& element
   else
   {
     QgsDebugMsg( "unknown colorramp type " + rampType );
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -3319,6 +3383,7 @@ double QgsSymbolLayerV2Utils::lineWidthScaleFactor( const QgsRenderContext& c, Q
     case QgsSymbolV2::Pixel:
       return 1.0 / c.rasterScaleFactor();
     case QgsSymbolV2::Mixed:
+    case QgsSymbolV2::Percentage:
       //no sensible value
       return 1.0;
   }
@@ -3363,6 +3428,7 @@ double QgsSymbolLayerV2Utils::pixelSizeScaleFactor( const QgsRenderContext& c, Q
     case QgsSymbolV2::Pixel:
       return 1.0;
     case QgsSymbolV2::Mixed:
+    case QgsSymbolV2::Percentage:
       //no sensible value
       return 1.0;
   }
@@ -3382,6 +3448,7 @@ double QgsSymbolLayerV2Utils::mapUnitScaleFactor( const QgsRenderContext &c, Qgs
     case QgsSymbolV2::Pixel:
       return scale.computeMapUnitsPerPixel( c );
     case QgsSymbolV2::Mixed:
+    case QgsSymbolV2::Percentage:
       //no sensible value
       return 1.0;
   }
@@ -3422,7 +3489,7 @@ void QgsSymbolLayerV2Utils::multiplyImageOpacity( QImage* image, qreal alpha )
   //change the alpha component of every pixel
   for ( int heightIndex = 0; heightIndex < image->height(); ++heightIndex )
   {
-    QRgb* scanLine = ( QRgb* )image->scanLine( heightIndex );
+    QRgb* scanLine = reinterpret_cast< QRgb* >( image->scanLine( heightIndex ) );
     for ( int widthIndex = 0; widthIndex < image->width(); ++widthIndex )
     {
       myRgb = scanLine[widthIndex];
@@ -3759,7 +3826,7 @@ QPointF QgsSymbolLayerV2Utils::polygonCentroid( const QPolygonF& points )
     cy += ( p1.y() + p2.y() ) * area;
   }
   sum *= 3.0;
-  if ( sum == 0 )
+  if ( qgsDoubleNear( sum, 0.0 ) )
   {
     // the linear ring is invalid -  let's fall back to a solution that will still
     // allow us render at least something (instead of just returning point nan,nan)
@@ -3819,7 +3886,7 @@ bool QgsSymbolLayerV2Utils::pointInPolygon( const QPolygonF &points, const QPoin
     const QPointF& p1 = points[i];
     const QPointF& p2 = points[j];
 
-    if ( p1.x() == x && p1.y() == y )
+    if ( qgsDoubleNear( p1.x(), x ) && qgsDoubleNear( p1.y(), y ) )
       return true;
 
     if (( p1.y() < y && p2.y() >= y ) || ( p2.y() < y && p1.y() >= y ) )
@@ -3836,7 +3903,7 @@ bool QgsSymbolLayerV2Utils::pointInPolygon( const QPolygonF &points, const QPoin
 QgsExpression* QgsSymbolLayerV2Utils::fieldOrExpressionToExpression( const QString& fieldOrExpression )
 {
   if ( fieldOrExpression.isEmpty() )
-    return 0;
+    return nullptr;
 
   QgsExpression* expr = new QgsExpression( fieldOrExpression );
   if ( !expr->hasParserError() )
@@ -3877,7 +3944,7 @@ QList<double> QgsSymbolLayerV2Utils::prettyBreaks( double minimum, double maximu
     return breaks;
   }
 
-  int minimumCount = ( int ) classes / 3;
+  int minimumCount = static_cast< int >( classes ) / 3;
   double shrink = 0.75;
   double highBias = 1.5;
   double adjustBias = 0.5 + 1.5 * highBias;
@@ -3888,7 +3955,7 @@ QList<double> QgsSymbolLayerV2Utils::prettyBreaks( double minimum, double maximu
   bool small = false;
   double dx = maximum - minimum;
 
-  if ( dx == 0 && maximum == 0 )
+  if ( qgsDoubleNear( dx, 0.0 ) && qgsDoubleNear( maximum, 0.0 ) )
   {
     cell = 1.0;
     small = true;

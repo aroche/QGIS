@@ -20,6 +20,8 @@
 #include <QList>
 #include <QMap>
 #include "qgsmapunitscale.h"
+#include "qgsgeometry.h"
+#include "qgspointv2.h"
 
 class QColor;
 class QImage;
@@ -42,6 +44,7 @@ class QgsMarkerSymbolLayerV2;
 class QgsLineSymbolLayerV2;
 class QgsFillSymbolLayerV2;
 class QgsDataDefined;
+class QgsSymbolV2RenderContext;
 
 typedef QList<QgsSymbolLayerV2*> QgsSymbolLayerV2List;
 
@@ -54,10 +57,11 @@ class CORE_EXPORT QgsSymbolV2
      */
     enum OutputUnit
     {
-      MM = 0,  //!< The output shall be in millimeters
-      MapUnit, //!< The output shall be in map unitx
-      Mixed,   //!< Mixed units in symbol layers
-      Pixel    //!< The output shall be in pixels
+      MM = 0,     //!< The output shall be in millimeters
+      MapUnit,    //!< The output shall be in map unitx
+      Mixed,      //!< Mixed units in symbol layers
+      Pixel,      //!< The output shall be in pixels
+      Percentage,  //!< The ouput shall be a percentage of another measurement (eg canvas size, feature size)
     };
 
     typedef QList<OutputUnit> OutputUnitList;
@@ -69,7 +73,8 @@ class CORE_EXPORT QgsSymbolV2
     {
       Marker, //!< Marker symbol
       Line,   //!< Line symbol
-      Fill    //!< Fill symbol
+      Fill,   //!< Fill symbol
+      Hybrid  //!< Hybrid symbol
     };
 
     /**
@@ -152,7 +157,7 @@ class CORE_EXPORT QgsSymbolV2
     //! delete layer at specified index and set a new one
     bool changeSymbolLayer( int index, QgsSymbolLayerV2 *layer );
 
-    void startRender( QgsRenderContext& context, const QgsFields* fields = 0 );
+    void startRender( QgsRenderContext& context, const QgsFields* fields = nullptr );
     void stopRender( QgsRenderContext& context );
 
     void setColor( const QColor& color );
@@ -161,19 +166,19 @@ class CORE_EXPORT QgsSymbolV2
     //! Draw icon of the symbol that occupyies area given by size using the painter.
     //! Optionally custom context may be given in order to get rendering of symbols that use map units right.
     //! @note customContext parameter added in 2.6
-    void drawPreviewIcon( QPainter* painter, QSize size, QgsRenderContext* customContext = 0 );
+    void drawPreviewIcon( QPainter* painter, QSize size, QgsRenderContext* customContext = nullptr );
 
     //! export symbol as image format. PNG and SVG supported
     void exportImage( const QString& path, const QString& format, const QSize& size );
 
     //! Generate symbol as image
-    QImage asImage( QSize size, QgsRenderContext* customContext = 0 );
+    QImage asImage( QSize size, QgsRenderContext* customContext = nullptr );
 
     /** Returns a large (roughly 100x100 pixel) preview image for the symbol.
      * @param expressionContext optional expression context, for evaluation of
      * data defined symbol properties
      */
-    QImage bigSymbolPreviewImage( QgsExpressionContext* expressionContext = 0 );
+    QImage bigSymbolPreviewImage( QgsExpressionContext* expressionContext = nullptr );
 
     QString dump() const;
 
@@ -215,6 +220,11 @@ class CORE_EXPORT QgsSymbolV2
      */
     bool clipFeaturesToExtent() const { return mClipFeaturesToExtent; }
 
+    /**
+     * Return a list of attributes required to render this feature.
+     * This should include any attributes required by the symbology including
+     * the ones required by expressions.
+     */
     QSet<QString> usedAttributes() const;
 
     /** Returns whether the symbol utilises any data defined properties.
@@ -226,14 +236,74 @@ class CORE_EXPORT QgsSymbolV2
     void setLayer( const QgsVectorLayer* layer ) { mLayer = layer; }
     const QgsVectorLayer* layer() const { return mLayer; }
 
+    /**
+     * Render a feature.
+     */
+    void renderFeature( const QgsFeature& feature, QgsRenderContext& context, int layer = -1, bool selected = false, bool drawVertexMarker = false, int currentVertexMarkerType = 0, int currentVertexMarkerSize = 0 );
+
+    /**
+     * Returns the symbol render context. Only valid between startRender and stopRender calls.
+     *
+     * @return The symbol render context
+     */
+    QgsSymbolV2RenderContext* symbolRenderContext();
+
   protected:
     QgsSymbolV2( SymbolType type, const QgsSymbolLayerV2List& layers ); // can't be instantiated
 
+    /**
+     * Creates a point in screen coordinates from a QgsPointV2 in map coordinates
+     */
+    static inline void _getPoint( QPointF& pt, QgsRenderContext& context, const QgsPointV2* point )
+    {
+      if ( context.coordinateTransform() )
+      {
+        double x = point->x();
+        double y = point->y();
+        double z = 0.0;
+        context.coordinateTransform()->transformInPlace( x, y, z );
+        pt = QPointF( x, y );
+
+      }
+      else
+        pt = point->toQPointF();
+
+      context.mapToPixel().transformInPlace( pt.rx(), pt.ry() );
+    }
+
+    /**
+     * Creates a line string in screen coordinates from a wkb string in map
+     * coordinates
+     */
+    static const unsigned char* _getLineString( QPolygonF& pts, QgsRenderContext& context, const unsigned char* wkb, bool clipToExtent = true );
+
+    /**
+     * Creates a polygon in screen coordinates from a wkb string in map
+     * coordinates
+     */
+    static const unsigned char* _getPolygon( QPolygonF& pts, QList<QPolygonF>& holes, QgsRenderContext& context, const unsigned char* wkb, bool clipToExtent = true );
+
+    /**
+     * Retrieve a cloned list of all layers that make up this symbol.
+     * Ownership is transferred to the caller.
+     */
     QgsSymbolLayerV2List cloneLayers() const;
+
+    /**
+     * Renders a context using a particular symbol layer without passing in a
+     * geometry. This is used as fallback, if the symbol being rendered is not
+     * compatible with the specified layer. In such a case, this method can be
+     * called and will call the layer's rendering method anyway but the
+     * geometry passed to the layer will be empty.
+     * This is required for layers that generate their own geometry from other
+     * information in the rendering context.
+     */
+    void renderUsingLayer( QgsSymbolLayerV2* layer, QgsSymbolV2RenderContext& context );
 
     //! check whether a symbol layer type can be used within the symbol
     //! (marker-marker, line-line, fill-fill/line)
-    bool isSymbolLayerCompatible( SymbolType t );
+    //! @deprecated since 2.14, use QgsSymbolLayerV2::isCompatibleWithSymbol instead
+    Q_DECL_DEPRECATED bool isSymbolLayerCompatible( SymbolType layerType );
 
     SymbolType mType;
     QgsSymbolLayerV2List mLayers;
@@ -246,6 +316,12 @@ class CORE_EXPORT QgsSymbolV2
 
     const QgsVectorLayer* mLayer; //current vectorlayer
 
+  private:
+    //! Initialized in startRender, destroyed in stopRender
+    QgsSymbolV2RenderContext* mSymbolRenderContext;
+
+    Q_DISABLE_COPY( QgsSymbolV2 )
+
 };
 
 ///////////////////////
@@ -253,7 +329,7 @@ class CORE_EXPORT QgsSymbolV2
 class CORE_EXPORT QgsSymbolV2RenderContext
 {
   public:
-    QgsSymbolV2RenderContext( QgsRenderContext& c, QgsSymbolV2::OutputUnit u, qreal alpha = 1.0, bool selected = false, int renderHints = 0, const QgsFeature* f = 0, const QgsFields* fields = 0, const QgsMapUnitScale& mapUnitScale = QgsMapUnitScale() );
+    QgsSymbolV2RenderContext( QgsRenderContext& c, QgsSymbolV2::OutputUnit u, qreal alpha = 1.0, bool selected = false, int renderHints = 0, const QgsFeature* f = nullptr, const QgsFields* fields = nullptr, const QgsMapUnitScale& mapUnitScale = QgsMapUnitScale() );
     ~QgsSymbolV2RenderContext();
 
     QgsRenderContext& renderContext() { return mRenderContext; }
@@ -299,8 +375,24 @@ class CORE_EXPORT QgsSymbolV2RenderContext
     // workaround for sip 4.7. Don't use assignment - will fail with assertion error
     QgsSymbolV2RenderContext& operator=( const QgsSymbolV2RenderContext& );
 
+    /**
+     * This scope is always available when a symbol of this type is being rendered.
+     *
+     * @return An expression scope for details about this symbol
+     */
+    QgsExpressionContextScope* expressionContextScope();
+    /**
+     * Set an expression scope for this symbol.
+     *
+     * Will take ownership.
+     *
+     * @param contextScope An expression scope for details about this symbol
+     */
+    void setExpressionContextScope( QgsExpressionContextScope* contextScope );
+
   private:
     QgsRenderContext& mRenderContext;
+    QgsExpressionContextScope* mExpressionContextScope;
     QgsSymbolV2::OutputUnit mOutputUnit;
     QgsMapUnitScale mMapUnitScale;
     qreal mAlpha;

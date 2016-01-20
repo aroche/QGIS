@@ -15,6 +15,8 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_SOURCE_DIR}/src/core/layertree
   ${CMAKE_SOURCE_DIR}/src/core/raster
   ${CMAKE_SOURCE_DIR}/src/core/symbology-ng
+)
+INCLUDE_DIRECTORIES(SYSTEM
   ${QT_INCLUDE_DIR}
   ${GDAL_INCLUDE_DIR}
   ${PROJ_INCLUDE_DIR}
@@ -31,6 +33,13 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}
 ADD_DEFINITIONS(-DTEST_DATA_DIR="\\"${TEST_DATA_DIR}\\"")
 
 ADD_DEFINITIONS(-DINSTALL_PREFIX="\\"${CMAKE_INSTALL_PREFIX}\\"")
+
+# enable postgresql tests
+SET (ENABLE_PGTEST FALSE CACHE BOOL "Enable PostgreSQL provider tests")
+IF ( ENABLE_PGTEST )
+  ADD_DEFINITIONS( "-DENABLE_PGTEST" )
+ENDIF ()
+
 #############################################################
 # libraries
 
@@ -168,6 +177,7 @@ ADD_QGIS_TEST(stringutilstest testqgsstringutils.cpp)
 ADD_QGIS_TEST(stylev2test testqgsstylev2.cpp)
 ADD_QGIS_TEST(svgmarkertest testqgssvgmarker.cpp)
 ADD_QGIS_TEST(symbolv2test testqgssymbolv2.cpp)
+ADD_QGIS_TEST(tracertest testqgstracer.cpp)
 #for some obscure reason calling this test "fontutils" kills the build on Ubuntu 15.10
 ADD_QGIS_TEST(typographicstylingutils testqgsfontutils.cpp)
 ADD_QGIS_TEST(vectordataprovidertest testqgsvectordataprovider.cpp)
@@ -175,5 +185,6 @@ ADD_QGIS_TEST(vectorlayercachetest testqgsvectorlayercache.cpp )
 ADD_QGIS_TEST(vectorlayerjoinbuffer testqgsvectorlayerjoinbuffer.cpp )
 ADD_QGIS_TEST(vectorlayertest testqgsvectorlayer.cpp)
 ADD_QGIS_TEST(ziplayertest testziplayer.cpp)
+ADD_QGIS_TEST(adjacenttiles testqgsadjacenttiles.cpp)
 
 ADD_DEPENDENCIES(qgis_coordinatereferencesystemtest synccrsdb)

@@ -25,6 +25,7 @@
 #include "qgscomposition.h"
 #include "qgscomposeritem.h"
 #include "qgsatlascomposition.h"
+#include "qgsapplication.h"
 #include <QSettings>
 #include <QDir>
 
@@ -118,8 +119,7 @@ bool QgsExpressionContextScope::variableNameSort( const QString& a, const QStrin
   return QString::localeAwareCompare( a, b ) < 0;
 }
 
-// not public API
-/// @cond
+/// @cond PRIVATE
 class QgsExpressionContextVariableCompare
 {
   public:
@@ -170,7 +170,7 @@ bool QgsExpressionContextScope::hasFunction( const QString& name ) const
 
 QgsExpression::Function* QgsExpressionContextScope::function( const QString& name ) const
 {
-  return mFunctions.contains( name ) ? mFunctions.value( name ) : 0;
+  return mFunctions.contains( name ) ? mFunctions.value( name ) : nullptr;
 }
 
 QStringList QgsExpressionContextScope::functionNames() const
@@ -261,34 +261,34 @@ const QgsExpressionContextScope* QgsExpressionContext::activeScopeForVariable( c
     if (( *it )->hasVariable( name ) )
       return ( *it );
   }
-  return 0;
+  return nullptr;
 }
 
 QgsExpressionContextScope* QgsExpressionContext::activeScopeForVariable( const QString& name )
 {
   //iterate through stack backwards, so that higher priority variables take precedence
-  QList< QgsExpressionContextScope* >::iterator it = mStack.end();
-  while ( it != mStack.begin() )
+  QList< QgsExpressionContextScope* >::const_iterator it = mStack.constEnd();
+  while ( it != mStack.constBegin() )
   {
     --it;
     if (( *it )->hasVariable( name ) )
       return ( *it );
   }
-  return 0;
+  return nullptr;
 }
 
 QgsExpressionContextScope* QgsExpressionContext::scope( int index )
 {
   if ( index < 0 || index >= mStack.count() )
-    return 0;
+    return nullptr;
 
-  return mStack[index];
+  return mStack.at( index );
 }
 
 QgsExpressionContextScope *QgsExpressionContext::lastScope()
 {
   if ( mStack.count() < 1 )
-    return 0;
+    return nullptr;
 
   return mStack.last();
 }
@@ -369,7 +369,7 @@ QgsExpression::Function *QgsExpressionContext::function( const QString &name ) c
     if (( *it )->hasFunction( name ) )
       return ( *it )->function( name );
   }
-  return 0;
+  return nullptr;
 }
 
 int QgsExpressionContext::scopeCount() const
@@ -380,6 +380,12 @@ int QgsExpressionContext::scopeCount() const
 void QgsExpressionContext::appendScope( QgsExpressionContextScope* scope )
 {
   mStack.append( scope );
+}
+
+void QgsExpressionContext::popScope()
+{
+  if ( !mStack.isEmpty() )
+    mStack.pop_back();
 }
 
 QgsExpressionContext& QgsExpressionContext::operator<<( QgsExpressionContextScope* scope )
@@ -460,6 +466,10 @@ QgsExpressionContextScope* QgsExpressionContextUtils::globalScope()
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "qgis_version", QGis::QGIS_VERSION, true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "qgis_version_no", QGis::QGIS_VERSION_INT, true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "qgis_release_name", QGis::QGIS_RELEASE_NAME, true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "qgis_platform", QgsApplication::platform(), true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "qgis_os_name", QgsApplication::osName(), true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "user_account_name", QgsApplication::userLoginName(), true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "user_full_name", QgsApplication::userFullName(), true ) );
 
   return scope;
 }
@@ -496,8 +506,7 @@ void QgsExpressionContextUtils::setGlobalVariables( const QgsStringMap &variable
   settings.setValue( QString( "/variables/values" ), customVariableVariants );
 }
 
-///@cond
-//not part of public API
+/// @cond PRIVATE
 
 class GetNamedProjectColor : public QgsScopedExpressionFunction
 {
@@ -698,6 +707,11 @@ QgsExpressionContextScope* QgsExpressionContextUtils::mapSettingsScope( const Qg
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_id", "canvas", true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_rotation", mapSettings.rotation(), true ) );
   scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_scale", mapSettings.scale(), true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_extent_width", mapSettings.extent().width() ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_extent_height", mapSettings.extent().height() ) );
+  QgsGeometry* centerPoint = QgsGeometry::fromPoint( mapSettings.visibleExtent().center() );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_extent_center", QVariant::fromValue( *centerPoint ), true ) );
+  delete centerPoint;
 
   return scope;
 }

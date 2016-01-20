@@ -81,7 +81,8 @@ void QgsConfigureShortcutsDialog::populateActions()
     QString actionText = actions[i]->text();
     actionText.remove( '&' ); // remove the accelerator
 
-    QStringList lst; lst << actionText << actions[i]->shortcut().toString();
+    QStringList lst;
+    lst << actionText << actions[i]->shortcut().toString();
     QTreeWidgetItem* item = new QTreeWidgetItem( lst );
     item->setIcon( 0, actions[i]->icon() );
     item->setData( 0, Qt::UserRole, qVariantFromValue(( QObject* )actions[i] ) );
@@ -94,12 +95,13 @@ void QgsConfigureShortcutsDialog::populateActions()
   treeActions->resizeColumnToContents( 0 );
   treeActions->sortItems( 0, Qt::AscendingOrder );
 
-  actionChanged( treeActions->currentItem(), NULL );
+  actionChanged( treeActions->currentItem(), nullptr );
 }
 
 void QgsConfigureShortcutsDialog::saveShortcuts()
 {
-  QString fileName = QFileDialog::getSaveFileName( this, tr( "Save shortcuts" ), ".", tr( "XML file" ) + " (*.xml);;" + tr( "All files" ) + " (*)" );
+  QString fileName = QFileDialog::getSaveFileName( this, tr( "Save shortcuts" ), QDir::homePath(),
+                     tr( "XML file" ) + " (*.xml);;" + tr( "All files" ) + " (*)" );
 
   if ( fileName.isEmpty() )
     return;
@@ -151,7 +153,8 @@ void QgsConfigureShortcutsDialog::saveShortcuts()
 
 void QgsConfigureShortcutsDialog::loadShortcuts()
 {
-  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load shortcuts" ), ".", tr( "XML file" ) + " (*.xml);;" + tr( "All files" ) + " (*)" );
+  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load shortcuts" ), QDir::homePath(),
+                     tr( "XML file" ) + " (*.xml);;" + tr( "All files" ) + " (*)" );
 
   if ( fileName.isEmpty() )
   {
@@ -253,8 +256,8 @@ void QgsConfigureShortcutsDialog::setNoShortcut()
 
 QAction* QgsConfigureShortcutsDialog::currentAction()
 {
-  if ( treeActions->currentItem() == NULL )
-    return NULL;
+  if ( !treeActions->currentItem() )
+    return nullptr;
 
   QObject* action = treeActions->currentItem()->data( 0, Qt::UserRole ).value<QObject*>();
   return qobject_cast<QAction*>( action );
@@ -395,7 +398,7 @@ void QgsConfigureShortcutsDialog::setCurrentActionShortcut( const QKeySequence& 
 
   // first check whether this action is not taken already
   QAction* otherAction = QgsShortcutsManager::instance()->actionForShortcut( s );
-  if ( otherAction != NULL )
+  if ( otherAction )
   {
     QString otherActionText = otherAction->text();
     otherActionText.remove( '&' ); // remove the accelerator
@@ -410,7 +413,7 @@ void QgsConfigureShortcutsDialog::setCurrentActionShortcut( const QKeySequence& 
     // reset action of the conflicting other action!
     QgsShortcutsManager::instance()->setActionShortcut( otherAction, QString() );
     QList<QTreeWidgetItem*> items = treeActions->findItems( otherActionText, Qt::MatchExactly );
-    if ( items.count() > 0 ) // there should be exactly one
+    if ( !items.isEmpty() ) // there should be exactly one
       items[0]->setText( 1, QString() );
   }
 
@@ -420,5 +423,5 @@ void QgsConfigureShortcutsDialog::setCurrentActionShortcut( const QKeySequence& 
   // update gui
   treeActions->currentItem()->setText( 1, s.toString() );
 
-  actionChanged( treeActions->currentItem(), NULL );
+  actionChanged( treeActions->currentItem(), nullptr );
 }

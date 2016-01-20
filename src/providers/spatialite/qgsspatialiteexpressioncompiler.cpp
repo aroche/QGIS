@@ -41,7 +41,7 @@ QgsSqlExpressionCompiler::Result QgsSpatiaLiteExpressionCompiler::compileNode( c
     }
 
     default:
-      return QgsSqlExpressionCompiler::compileNode( node, result );
+      break;
   }
 
   return QgsSqlExpressionCompiler::compileNode( node, result );
@@ -52,8 +52,10 @@ QString QgsSpatiaLiteExpressionCompiler::quotedIdentifier( const QString& identi
   return QgsSpatiaLiteProvider::quotedIdentifier( identifier );
 }
 
-QString QgsSpatiaLiteExpressionCompiler::quotedValue( const QVariant& value )
+QString QgsSpatiaLiteExpressionCompiler::quotedValue( const QVariant& value, bool& ok )
 {
+  ok = true;
+
   if ( value.isNull() )
     return "NULL";
 

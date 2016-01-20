@@ -38,7 +38,7 @@
 
 #include "qgsauthmanager.h"
 
-
+/// @cond PRIVATE
 class QgsNetworkProxyFactory : public QNetworkProxyFactory
 {
   public:
@@ -53,11 +53,11 @@ class QgsNetworkProxyFactory : public QNetworkProxyFactory
       Q_FOREACH ( QNetworkProxyFactory *f, nam->proxyFactories() )
       {
         QList<QNetworkProxy> systemproxies = f->systemProxyForQuery( query );
-        if ( systemproxies.size() > 0 )
+        if ( !systemproxies.isEmpty() )
           return systemproxies;
 
         QList<QNetworkProxy> proxies = f->queryProxy( query );
-        if ( proxies.size() > 0 )
+        if ( !proxies.isEmpty() )
           return proxies;
       }
 
@@ -92,6 +92,7 @@ class QgsNetworkProxyFactory : public QNetworkProxyFactory
       return QList<QNetworkProxy>() << nam->fallbackProxy();
     }
 };
+///@endcond
 
 //
 // Static calls to enforce singleton behaviour
@@ -161,7 +162,7 @@ QNetworkReply *QgsNetworkAccessManager::createRequest( QNetworkAccessManager::Op
 {
   QSettings s;
 
-  QNetworkRequest *pReq(( QNetworkRequest * ) &req ); // hack user agent
+  QNetworkRequest *pReq( const_cast< QNetworkRequest * >( &req ) ); // hack user agent
 
   QString userAgent = s.value( "/qgis/networkAndProxy/userAgent", "Mozilla/5.0" ).toString();
   if ( !userAgent.isEmpty() )
@@ -234,16 +235,12 @@ QString QgsNetworkAccessManager::cacheLoadControlName( QNetworkRequest::CacheLoa
   {
     case QNetworkRequest::AlwaysNetwork:
       return "AlwaysNetwork";
-      break;
     case QNetworkRequest::PreferNetwork:
       return "PreferNetwork";
-      break;
     case QNetworkRequest::PreferCache:
       return "PreferCache";
-      break;
     case QNetworkRequest::AlwaysCache:
       return "AlwaysCache";
-      break;
     default:
       break;
   }

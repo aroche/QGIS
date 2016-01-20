@@ -103,6 +103,7 @@ class Dialog(QDialog, Ui_Dialog):
                 if not QgsVectorFileWriter.deleteShapeFile(outFileName):
                     QMessageBox.warning(self, self.tr("Delete error"),
                                         self.tr("Can't delete file %s") % (outFileName))
+                    self.btnOk.setEnabled(False)
                     return
 
             self.workThread = GeomThread(self.myFunction, vLayer, self.chkUseSelection.isChecked(),
@@ -111,10 +112,11 @@ class Dialog(QDialog, Ui_Dialog):
             res = QMessageBox.warning(self, self.tr("Warning"),
                                       self.tr(
                 "Currently QGIS doesn't allow simultaneous access from "
-                                           "different threads to the same datasource. Make sure your layer's "
-                                           "attribute tables are closed. Continue?"),
-                                      QMessageBox.Yes | QMessageBox.No)
+                "different threads to the same datasource. Make sure your layer's "
+                "attribute tables are closed. Continue?"),
+                QMessageBox.Yes | QMessageBox.No)
             if res == QMessageBox.No:
+                self.btnOk.setEnabled(False)
                 return
 
             self.workThread = GeomThread(self.myFunction, vLayer, self.chkUseSelection.isChecked(),

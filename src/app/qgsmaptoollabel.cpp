@@ -27,10 +27,10 @@
 
 QgsMapToolLabel::QgsMapToolLabel( QgsMapCanvas* canvas )
     : QgsMapTool( canvas )
-    , mLabelRubberBand( 0 )
-    , mFeatureRubberBand( 0 )
-    , mFixPointRubberBand( 0 )
-    , mCurrentLayer( 0 )
+    , mLabelRubberBand( nullptr )
+    , mFeatureRubberBand( nullptr )
+    , mFixPointRubberBand( nullptr )
+    , mCurrentLayer( nullptr )
 {
 }
 
@@ -118,9 +118,12 @@ void QgsMapToolLabel::createRubberBands()
 
 void QgsMapToolLabel::deleteRubberBands()
 {
-  delete mLabelRubberBand; mLabelRubberBand = 0;
-  delete mFeatureRubberBand; mFeatureRubberBand = 0;
-  delete mFixPointRubberBand; mFixPointRubberBand = 0;
+  delete mLabelRubberBand;
+  mLabelRubberBand = nullptr;
+  delete mFeatureRubberBand;
+  mFeatureRubberBand = nullptr;
+  delete mFixPointRubberBand;
+  mFixPointRubberBand = nullptr;
 }
 
 QgsVectorLayer* QgsMapToolLabel::currentLayer()
@@ -435,7 +438,7 @@ int QgsMapToolLabel::dataDefinedColumnIndex( QgsPalLayerSettings::DataDefinedPro
 
   QgsDebugMsg( QString( "dataDefinedProperties count:%1" ).arg( labelSettings.dataDefinedProperties.size() ) );
 
-  QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* >::const_iterator dIt = labelSettings.dataDefinedProperties.find( p );
+  QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* >::const_iterator dIt = labelSettings.dataDefinedProperties.constFind( p );
   if ( dIt != labelSettings.dataDefinedProperties.constEnd() )
   {
     //QgsDebugMsg( "found data defined" );
@@ -455,7 +458,7 @@ int QgsMapToolLabel::dataDefinedColumnIndex( QgsPalLayerSettings::DataDefinedPro
   return -1;
 }
 
-bool QgsMapToolLabel::dataDefinedPosition( QgsVectorLayer* vlayer, const QgsFeatureId &featureId, double& x, bool& xSuccess, double& y, bool& ySuccess, int& xCol, int& yCol ) const
+bool QgsMapToolLabel::dataDefinedPosition( QgsVectorLayer* vlayer, QgsFeatureId featureId, double& x, bool& xSuccess, double& y, bool& ySuccess, int& xCol, int& yCol ) const
 {
   xSuccess = false;
   ySuccess = false;
@@ -510,7 +513,7 @@ bool QgsMapToolLabel::layerIsRotatable( QgsMapLayer* layer, int& rotationCol ) c
   return false;
 }
 
-bool QgsMapToolLabel::dataDefinedRotation( QgsVectorLayer* vlayer, const QgsFeatureId &featureId, double& rotation, bool& rotationSuccess, bool ignoreXY ) const
+bool QgsMapToolLabel::dataDefinedRotation( QgsVectorLayer* vlayer, QgsFeatureId featureId, double& rotation, bool& rotationSuccess, bool ignoreXY ) const
 {
   rotationSuccess = false;
   if ( !vlayer )
@@ -546,7 +549,7 @@ bool QgsMapToolLabel::dataDefinedRotation( QgsVectorLayer* vlayer, const QgsFeat
   return true;
 }
 
-bool QgsMapToolLabel::dataDefinedShowHide( QgsVectorLayer* vlayer, const QgsFeatureId &featureId, int& show, bool& showSuccess, int& showCol ) const
+bool QgsMapToolLabel::dataDefinedShowHide( QgsVectorLayer* vlayer, QgsFeatureId featureId, int& show, bool& showSuccess, int& showCol ) const
 {
   showSuccess = false;
   if ( !vlayer )

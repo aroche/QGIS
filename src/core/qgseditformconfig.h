@@ -52,7 +52,7 @@ class CORE_EXPORT QgsAttributeEditorElement : public QObject
      * @param name
      * @param parent
      */
-    QgsAttributeEditorElement( AttributeEditorType type, const QString& name, QObject *parent = NULL )
+    QgsAttributeEditorElement( AttributeEditorType type, const QString& name, QObject *parent = nullptr )
         : QObject( parent ), mType( type ), mName( name ) {}
 
     //! Destructor
@@ -93,6 +93,8 @@ class CORE_EXPORT QgsAttributeEditorElement : public QObject
  */
 class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
 {
+    Q_OBJECT
+
   public:
     /**
      * Creates a new attribute editor container
@@ -171,6 +173,8 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
  */
 class CORE_EXPORT QgsAttributeEditorField : public QgsAttributeEditorElement
 {
+    Q_OBJECT
+
   public:
     /**
      * Creates a new attribute editor element which represents a field
@@ -209,6 +213,8 @@ class CORE_EXPORT QgsAttributeEditorField : public QgsAttributeEditorElement
  */
 class CORE_EXPORT QgsAttributeEditorRelation : public QgsAttributeEditorElement
 {
+    Q_OBJECT
+
   public:
     /**
      * Creates a new element which embeds a relation.
@@ -271,6 +277,7 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     Q_OBJECT
 
   public:
+
     /** The different types to layout the attribute editor. */
     enum EditorLayout
     {
@@ -309,6 +316,17 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     };
 
     /**
+     * The python init code source options.
+     */
+    enum PythonInitCodeSource
+    {
+      CodeSourceNone = 0,             //!< Do not use python code at all
+      CodeSourceFile = 1,             //!< Load the python code from an external file
+      CodeSourceDialog = 2,           //!< Use the python code provided in the dialog
+      CodeSourceEnvironment = 3       //!< Use the python code available in the python environment
+    };
+
+    /**
      * This is only useful in combination with EditorLayout::TabLayout.
      *
      * Adds a new tab to the layout. Should be a QgsAttributeEditorContainer.
@@ -318,7 +336,7 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     /**
      * Returns a list of tabs for EditorLayout::TabLayout.
      */
-    QList< QgsAttributeEditorElement* > tabs() { return mAttributeEditorElements; }
+    QList< QgsAttributeEditorElement* > tabs() const { return mAttributeEditorElements; }
 
     /**
      * Clears all the tabs for the attribute editor form with EditorLayout::TabLayout.
@@ -326,13 +344,13 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     void clearTabs() { mAttributeEditorElements.clear(); }
 
     /** Get the active layout style for the attribute editor for this layer */
-    EditorLayout layout() { return mEditorLayout; }
+    EditorLayout layout() const { return mEditorLayout; }
 
     /** Set the active layout style for the attribute editor for this layer */
     void setLayout( EditorLayout editorLayout ) { mEditorLayout = editorLayout; }
 
     /** Get path to the .ui form. Only meaningful with EditorLayout::UiFileLayout. */
-    QString uiForm() const;
+    QString uiForm() const { return mUiFormPath; }
 
     /**
      * Set path to the .ui form.
@@ -390,8 +408,6 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
      * @param fieldName  The name of the field
      *
      * @return The id for the editor widget or a NULL string if not applicable
-     *
-     * @note python method name editorWidgetV2ByName
      */
     QString widgetType( const QString& fieldName ) const;
 
@@ -402,15 +418,32 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
      *
      * Example:
      * \code{.py}
-     *   layer.setEditorWidgetV2Config( 1, { 'Layer': 'otherlayerid_1234', 'Key': 'Keyfield', 'Value': 'ValueField' } )
+     *   layer.setWidgetConfig( 1, { 'Layer': 'otherlayerid_1234', 'Key': 'Keyfield', 'Value': 'ValueField' } )
      * \endcode
      *
      * @param attrIdx     Index of the field
      * @param config      The config to set for this field
      *
-     * @see setEditorWidgetV2() for a list of widgets and choose the widget to see the available options.
+     * @see setWidgetType() for a list of widgets and choose the widget to see the available options.
      */
     void setWidgetConfig( int attrIdx, const QgsEditorWidgetConfig& config );
+
+    /**
+     * Set the editor widget config for a widget.
+     *
+     * Python: Will accept a map
+     *
+     * Example:
+     * \code{.py}
+     *   layer.setWidgetConfig( 'relation_id', { 'nm-rel': 'other_relation' } )
+     * \endcode
+     *
+     * @param widgetName  The name of the widget or field to configure
+     * @param config      The config to set for this field
+     *
+     * @see setWidgetType() for a list of widgets and choose the widget to see the available options.
+     */
+    void setWidgetConfig( const QString& widgetName , const QgsEditorWidgetConfig& config );
 
     /**
      * Get the configuration for the editor widget used to represent the field at the given index
@@ -424,19 +457,17 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     /**
      * Get the configuration for the editor widget used to represent the field with the given name
      *
-     * @param fieldName The name of the field
+     * @param widgetName The name of the widget. This can be a field name or the name of an additional widget.
      *
      * @return The configuration for the editor widget or an empty config if the field does not exist
-     *
-     * @note python method name is editorWidgetV2ConfigByName
      */
-    QgsEditorWidgetConfig widgetConfig( const QString& fieldName ) const;
+    QgsEditorWidgetConfig widgetConfig( const QString& widgetName ) const;
 
     /**
      * This returns true if the field is manually set to read only or if the field
-     * does not support editing like joins or vitual fields.
+     * does not support editing like joins or virtual fields.
      */
-    bool readOnly( int idx );
+    bool readOnly( int idx ) const;
 
     /**
      * If set to false, the widget at the given index will be read-only.
@@ -448,7 +479,7 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
      * while if it returns false, the widget will receive its label on the left hand side.
      * Labeling on top leaves more horizontal space for the widget itself.
      **/
-    bool labelOnTop( int idx );
+    bool labelOnTop( int idx ) const;
 
     /**
      * If this is set to true, the widget at the given index will receive its label on
@@ -459,17 +490,7 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     void setLabelOnTop( int idx, bool onTop );
 
 
-
-
-
-
-
-
-
-
-
-    // Python stuff
-
+    // Python form init function stuff
 
     /**
      * Get python function for edit form initialization.
@@ -490,25 +511,63 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     /**
      * Get python code for edit form initialization.
      */
-    QString initCode() const { return mEditFormInitCode; }
+    QString initCode() const { return mInitCode; }
 
     /**
-     * Get python code for edit form initialization.
+     * Set python code for edit form initialization.
      * Make sure that you also set the appropriate function name in
      * @link setInitFunction @endlink
      */
-    void setInitCode( const QString& code ) { mEditFormInitCode = code; }
+    void setInitCode( const QString& code ) { mInitCode = code; }
 
-    /** Return if python code shall be loaded for edit form initialization */
-    bool useInitCode() const { return mUseInitCode; }
+    /**
+     * Get python external file path for edit form initialization.
+     */
+    QString initFilePath() const { return mInitFilePath; }
 
-    /** Set if python code shall be used for edit form initialization */
-    void setUseInitCode( const bool useCode ) { mUseInitCode = useCode; }
+    /**
+     * Set python external file path for edit form initialization.
+     * Make sure that you also set the appropriate function name in
+     * @link setInitFunction @endlink
+     */
+    void setInitFilePath( const QString& filePath ) { mInitFilePath = filePath; }
+
+    /** Return python code source for edit form initialization
+     *  (if it shall be loaded from a file, read from the
+     *  provided dialog editor or inherited from the environment)
+     */
+    PythonInitCodeSource initCodeSource() const { return mInitCodeSource; }
+
+    /** Set if python code shall be used for edit form initialization and its origin */
+    void setInitCodeSource( const PythonInitCodeSource initCodeSource ) { mInitCodeSource = initCodeSource; }
 
     /** Type of feature form pop-up suppression after feature creation (overrides app setting) */
-    FeatureFormSuppress suppress() const { return mFeatureFormSuppress; }
+    FeatureFormSuppress suppress() const { return mSuppressForm; }
     /** Set type of feature form pop-up suppression after feature creation (overrides app setting) */
-    void setSuppress( FeatureFormSuppress s ) { mFeatureFormSuppress = s; }
+    void setSuppress( FeatureFormSuppress s ) { mSuppressForm = s; }
+
+
+
+
+
+    // Serialization
+
+    /**
+     * Read XML information
+     * Deserialize on project load
+     */
+    void readXml( const QDomNode& node );
+
+    /**
+     * Write XML information
+     * Serialize on project save
+     */
+    void writeXml( QDomNode& node ) const;
+
+    /**
+     * Deserialize drag and drop designer elements.
+     */
+    QgsAttributeEditorElement* attributeEditorElementFromDomElement( QDomElement &elem, QObject* parent );
 
   private slots:
     void onRelationsLoaded();
@@ -519,7 +578,7 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     /**
      * Create a new edit form config. Normally invoked by QgsVectorLayer
      */
-    explicit QgsEditFormConfig( QObject* parent = 0 );
+    explicit QgsEditFormConfig( QObject* parent = nullptr );
 
   private:
 
@@ -542,21 +601,26 @@ class CORE_EXPORT QgsEditFormConfig : public QObject
     QMap< QString, bool> mLabelOnTop;
 
     QMap<QString, QString> mEditorWidgetV2Types;
-    QMap<QString, QgsEditorWidgetConfig > mEditorWidgetV2Configs;
+    QMap<QString, QgsEditorWidgetConfig > mWidgetConfigs;
 
     /** Defines the default layout to use for the attribute editor (Drag and drop, UI File, Generated) */
     EditorLayout mEditorLayout;
 
-    QString mEditForm;
+    /** Init form instance */
+    QString mUiFormPath;
+    /** Name of the python form init function */
     QString mInitFunction;
-    QString mEditFormInitCode;
+    /** Path of the python external file to be loaded */
+    QString mInitFilePath;
+    /** Choose the source of the init founction */
+    PythonInitCodeSource mInitCodeSource;
+    /** Python init code provided in the dialog */
+    QString mInitCode;
 
     /** Type of feature form suppression after feature creation */
-    FeatureFormSuppress mFeatureFormSuppress;
+    FeatureFormSuppress mSuppressForm;
 
     QgsFields mFields;
-
-    bool mUseInitCode;
 
     friend class QgsVectorLayer;
 };

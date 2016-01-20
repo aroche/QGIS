@@ -46,6 +46,8 @@
 #include "qgsrasterlayer.h"
 #include "qgsrectangle.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectordataprovider.h"
+#include "qgsmaplayerregistry.h"
 
 
 QgsMapLayer::QgsMapLayer( QgsMapLayer::LayerType type,
@@ -57,7 +59,7 @@ QgsMapLayer::QgsMapLayer( QgsMapLayer::LayerType type,
     , mID( "" )
     , mLayerType( type )
     , mBlendMode( QPainter::CompositionMode_SourceOver ) // Default to normal blending
-    , mLegend( 0 )
+    , mLegend( nullptr )
     , mStyleManager( new QgsMapLayerStyleManager( this ) )
 {
   mCRS = new QgsCoordinateReferenceSystem();
@@ -66,6 +68,9 @@ QgsMapLayer::QgsMapLayer( QgsMapLayer::LayerType type,
   QgsDebugMsg( "original name: '" + mLayerOrigName + '\'' );
   mLayerName = capitaliseLayerName( mLayerOrigName );
   QgsDebugMsg( "display name: '" + mLayerName + '\'' );
+
+  // Set short name = the first original name
+  mShortName = lyrname;
 
   // Generate the unique ID of this layer
   QDateTime dt = QDateTime::currentDateTime();
@@ -383,7 +388,7 @@ bool QgsMapLayer::readLayerXML( const QDomElement& layerElement )
   // Do not validate any projections in children, they will be overwritten anyway.
   // No need to ask the user for a projections when it is overwritten, is there?
   savedValidation = QgsCoordinateReferenceSystem::customSrsValidation();
-  QgsCoordinateReferenceSystem::setCustomSrsValidation( NULL );
+  QgsCoordinateReferenceSystem::setCustomSrsValidation( nullptr );
 
   // now let the children grab what they need from the Dom node.
   layerError = !readXml( layerElement );
@@ -424,6 +429,13 @@ bool QgsMapLayer::readLayerXML( const QDomElement& layerElement )
   mnl = layerElement.namedItem( "layername" );
   mne = mnl.toElement();
   setLayerName( mne.text() );
+
+  //short name
+  QDomElement shortNameElem = layerElement.firstChildElement( "shortname" );
+  if ( !shortNameElem.isNull() )
+  {
+    mShortName = shortNameElem.text();
+  }
 
   //title
   QDomElement titleElem = layerElement.firstChildElement( "title" );
@@ -559,6 +571,11 @@ bool QgsMapLayer::writeLayerXML( QDomElement& layerElement, QDomDocument& docume
     urlDest.setQueryItems( urlSource.queryItems() );
     src = QString::fromAscii( urlDest.toEncoded() );
   }
+  else if ( vlayer && vlayer->providerType() == "memory" )
+  {
+    // Refetch the source from the provider, because adding fields actually changes the source for this provider.
+    src = vlayer->dataProvider()->dataSourceUri();
+  }
   else
   {
     bool handled = false;
@@ -640,6 +657,11 @@ bool QgsMapLayer::writeLayerXML( QDomElement& layerElement, QDomDocument& docume
   QDomText layerNameText = document.createTextNode( originalName() );
   layerName.appendChild( layerNameText );
 
+  // layer short name
+  QDomElement layerShortName = document.createElement( "shortname" );
+  QDomText layerShortNameText = document.createTextNode( shortName() );
+  layerShortName.appendChild( layerShortNameText );
+
   // layer title
   QDomElement layerTitle = document.createElement( "title" );
   QDomText layerTitleText = document.createTextNode( title() );
@@ -651,12 +673,13 @@ bool QgsMapLayer::writeLayerXML( QDomElement& layerElement, QDomDocument& docume
   layerAbstract.appendChild( layerAbstractText );
 
   layerElement.appendChild( layerName );
+  layerElement.appendChild( layerShortName );
   layerElement.appendChild( layerTitle );
   layerElement.appendChild( layerAbstract );
 
   // layer keyword list
   QStringList keywordStringList = keywordList().split( ',' );
-  if ( keywordStringList.size() > 0 )
+  if ( !keywordStringList.isEmpty() )
   {
     QDomElement layerKeywordList = document.createElement( "keywordList" );
     for ( int i = 0; i < keywordStringList.size(); ++i )
@@ -766,7 +789,7 @@ QDomDocument QgsMapLayer::asLayerDefinition( const QList<QgsMapLayer *>& layers,
   return doc;
 }
 
-QList<QgsMapLayer*> QgsMapLayer::fromLayerDefinition( QDomDocument& document )
+QList<QgsMapLayer*> QgsMapLayer::fromLayerDefinition( QDomDocument& document, bool addToRegistry, bool addToLegend )
 {
   QList<QgsMapLayer*> layers;
   QDomNodeList layernodes = document.elementsByTagName( "maplayer" );
@@ -777,7 +800,7 @@ QList<QgsMapLayer*> QgsMapLayer::fromLayerDefinition( QDomDocument& document )
 
     QString type = layerElem.attribute( "type" );
     QgsDebugMsg( type );
-    QgsMapLayer *layer = 0;
+    QgsMapLayer *layer = nullptr;
 
     if ( type == "vector" )
     {
@@ -798,7 +821,11 @@ QList<QgsMapLayer*> QgsMapLayer::fromLayerDefinition( QDomDocument& document )
 
     bool ok = layer->readLayerXML( layerElem );
     if ( ok )
+    {
       layers << layer;
+      if ( addToRegistry )
+        QgsMapLayerRegistry::instance()->addMapLayer( layer, addToLegend );
+    }
   }
   return layers;
 }
@@ -1061,7 +1088,7 @@ bool QgsMapLayer::loadNamedStyleFromDb( const QString &db, const QString &theURI
   if ( db.isEmpty() || !QFile( db ).exists() )
     return false;
 
-  myResult = sqlite3_open_v2( db.toUtf8().data(), &myDatabase, SQLITE_OPEN_READONLY, NULL );
+  myResult = sqlite3_open_v2( db.toUtf8().data(), &myDatabase, SQLITE_OPEN_READONLY, nullptr );
   if ( myResult != SQLITE_OK )
   {
     return false;
@@ -1076,7 +1103,7 @@ bool QgsMapLayer::loadNamedStyleFromDb( const QString &db, const QString &theURI
     if ( sqlite3_bind_text( myPreparedStatement, 1, param.data(), param.length(), SQLITE_STATIC ) == SQLITE_OK &&
          sqlite3_step( myPreparedStatement ) == SQLITE_ROW )
     {
-      qml = QString::fromUtf8(( char * )sqlite3_column_text( myPreparedStatement, 0 ) );
+      qml = QString::fromUtf8( reinterpret_cast< const char * >( sqlite3_column_text( myPreparedStatement, 0 ) ) );
       theResultFlag = true;
     }
 
@@ -1147,8 +1174,15 @@ QString QgsMapLayer::loadNamedStyle( const QString &theURI, bool &theResultFlag 
 
 bool QgsMapLayer::importNamedStyle( QDomDocument& myDocument, QString& myErrorMessage )
 {
+  QDomElement myRoot = myDocument.firstChildElement( "qgis" );
+  if ( myRoot.isNull() )
+  {
+    myErrorMessage = tr( "Root <qgis> element could not be found" );
+    return false;
+  }
+
   // get style file version string, if any
-  QgsProjectVersion fileVersion( myDocument.firstChildElement( "qgis" ).attribute( "version" ) );
+  QgsProjectVersion fileVersion( myRoot.attribute( "version" ) );
   QgsProjectVersion thisVersion( QGis::QGIS_VERSION );
 
   if ( thisVersion > fileVersion )
@@ -1164,13 +1198,16 @@ bool QgsMapLayer::importNamedStyle( QDomDocument& myDocument, QString& myErrorMe
     // styleFile.dump();
   }
 
-  // now get the layer node out and pass it over to the layer
-  // to deserialise...
-  QDomElement myRoot = myDocument.firstChildElement( "qgis" );
-  if ( myRoot.isNull() )
+  //Test for matching geometry type on vector layers when applying, if geometry type is given in the style
+  if ( type() == QgsMapLayer::VectorLayer && !myRoot.firstChildElement( "layerGeometryType" ).isNull() )
   {
-    myErrorMessage = tr( "Root <qgis> element could not be found" );
-    return false;
+    QgsVectorLayer *vl = static_cast<QgsVectorLayer*>( this );
+    int importLayerGeometryType = myRoot.firstChildElement( "layerGeometryType" ).text().toInt();
+    if ( vl->geometryType() != importLayerGeometryType )
+    {
+      myErrorMessage = tr( "Cannot apply style to layer with a different geometry type" );
+      return false;
+    }
   }
 
   // use scale dependent visibility flag
@@ -1220,6 +1257,25 @@ void QgsMapLayer::exportNamedStyle( QDomDocument &doc, QString &errorMsg )
     errorMsg = QObject::tr( "Could not save symbology because:\n%1" ).arg( errorMsg );
     return;
   }
+
+  /*
+   * Check to see if the layer is vector - in which case we should also export its geometryType
+   * to avoid eventually pasting to a layer with a different geometry
+  */
+  if ( type() == QgsMapLayer::VectorLayer )
+  {
+    //Getting the selectionLayer geometry
+    QgsVectorLayer *vl = static_cast<QgsVectorLayer*>( this );
+    QString geoType = QString::number( vl->geometryType() );
+
+    //Adding geometryinformation
+    QDomElement layerGeometryType = myDocument.createElement( "layerGeometryType" );
+    QDomText type = myDocument.createTextNode( geoType );
+
+    layerGeometryType.appendChild( type );
+    myRootNode.appendChild( layerGeometryType );
+  }
+
   doc = myDocument;
 }
 
@@ -1253,6 +1309,9 @@ QString QgsMapLayer::saveNamedStyle( const QString &theURI, bool &theResultFlag 
   else if ( vlayer && vlayer->providerType() == "delimitedtext" )
   {
     filename = QUrl::fromEncoded( theURI.toAscii() ).toLocalFile();
+    // toLocalFile() returns an empty string if theURI is a plain Windows-path, e.g. "C:/style.qml"
+    if ( filename.isEmpty() )
+      filename = theURI;
   }
   else
   {
@@ -1437,6 +1496,9 @@ QString QgsMapLayer::saveSldStyle( const QString &theURI, bool &theResultFlag )
   else if ( vlayer->providerType() == "delimitedtext" )
   {
     filename = QUrl::fromEncoded( theURI.toAscii() ).toLocalFile();
+    // toLocalFile() returns an empty string if theURI is a plain Windows-path, e.g. "C:/style.qml"
+    if ( filename.isEmpty() )
+      filename = theURI;
   }
   else
   {

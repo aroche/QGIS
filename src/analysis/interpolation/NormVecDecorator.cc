@@ -22,7 +22,7 @@
 NormVecDecorator::~NormVecDecorator()
 {
   //remove all the normals
-  if ( mNormVec->count() > 0 )
+  if ( !mNormVec->isEmpty() )
   {
     for ( int i = 0; i < mNormVec->count(); i++ )
     {
@@ -518,7 +518,7 @@ bool NormVecDecorator::estimateFirstDerivatives( QProgressDialog* d )
   {
     d->setMinimum( 0 );
     d->setMaximum( getNumberOfPoints() );
-    d->setCancelButton( 0 ); //we cannot cancel derivative estimation
+    d->setCancelButton( nullptr ); //we cannot cancel derivative estimation
     d->show();
   }
 

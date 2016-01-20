@@ -167,4 +167,27 @@ class QgsWKBTypes
      * @see hasM()
      */
     static Type addM( Type type );
+
+    /** Drops the z dimension (if present) for a WKB type and returns the new type.
+     * @param type original type
+     * @note added in QGIS 2.14
+     * @see dropM()
+     * @see addZ()
+     */
+    static Type dropZ( Type type );
+
+    /** Drops the m dimension (if present) for a WKB type and returns the new type.
+     * @param type original type
+     * @note added in QGIS 2.14
+     * @see dropZ()
+     * @see addM()
+     */
+    static Type dropM( Type type );
+
+    /**
+     * Will convert the 25D version of the flat type if supported or Unknown if not supported.
+     * @param type The type to convert
+     * @return the 25D version of the type or Unknown
+     */
+    static Type to25D( Type type );
 };

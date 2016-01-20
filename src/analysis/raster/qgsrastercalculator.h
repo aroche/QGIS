@@ -72,18 +72,18 @@ class ANALYSIS_EXPORT QgsRasterCalculator
     /** Starts the calculation and writes new raster
       @param p progress bar (or 0 if called from non-gui code)
       @return 0 in case of success*/
-    int processCalculation( QProgressDialog* p = 0 );
+    int processCalculation( QProgressDialog* p = nullptr );
 
   private:
     //default constructor forbidden. We need formula, output file, output format and output raster resolution obligatory
     QgsRasterCalculator();
 
     /** Opens the output driver and tests if it supports the creation of a new dataset
-      @return NULL on error and the driver handle on success*/
+      @return nullptr on error and the driver handle on success*/
     GDALDriverH openOutputDriver();
 
     /** Opens the output file and sets the same geotransform and CRS as the input data
-      @return the output dataset or NULL in case of error*/
+      @return the output dataset or nullptr in case of error*/
     GDALDatasetH openOutputFile( GDALDriverH outputDriver );
 
     /** Sets gdal 6 parameters array from mOutputRectangle, mNumOutputColumns, mNumOutputRows

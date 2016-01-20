@@ -17,7 +17,7 @@ import tempfile
 import shutil
 import glob
 
-from qgis.core import QGis, QgsField, QgsPoint, QgsVectorLayer, QgsFeatureRequest, QgsFeature, QgsProviderRegistry, \
+from qgis.core import QGis, QgsField, QgsPoint, QgsMapLayer, QgsVectorLayer, QgsFeatureRequest, QgsFeature, QgsProviderRegistry, \
     QgsGeometry, NULL
 from PyQt4.QtCore import QSettings
 from utilities import (unitTestDataPath,
@@ -39,28 +39,28 @@ class TestPyQgsMemoryProvider(TestCase, ProviderTestCase):
     def setUpClass(cls):
         """Run before all tests"""
         # Create test layer
-        cls.vl = QgsVectorLayer(u'Point?crs=epsg:4326&field=pk:integer&field=cnt:integer&field=name:string(0)&field=name2:string(0)&key=pk',
+        cls.vl = QgsVectorLayer(u'Point?crs=epsg:4326&field=pk:integer&field=cnt:integer&field=name:string(0)&field=name2:string(0)&field=num_char:string&key=pk',
                                 u'test', u'memory')
         assert (cls.vl.isValid())
         cls.provider = cls.vl.dataProvider()
 
         f1 = QgsFeature()
-        f1.setAttributes([5, -200, NULL, 'NuLl'])
+        f1.setAttributes([5, -200, NULL, 'NuLl', '5'])
         f1.setGeometry(QgsGeometry.fromWkt('Point (-71.123 78.23)'))
 
         f2 = QgsFeature()
-        f2.setAttributes([3, 300, 'Pear', 'PEaR'])
+        f2.setAttributes([3, 300, 'Pear', 'PEaR', '3'])
 
         f3 = QgsFeature()
-        f3.setAttributes([1, 100, 'Orange', 'oranGe'])
+        f3.setAttributes([1, 100, 'Orange', 'oranGe', '1'])
         f3.setGeometry(QgsGeometry.fromWkt('Point (-70.332 66.33)'))
 
         f4 = QgsFeature()
-        f4.setAttributes([2, 200, 'Apple', 'Apple'])
+        f4.setAttributes([2, 200, 'Apple', 'Apple', '2'])
         f4.setGeometry(QgsGeometry.fromWkt('Point (-68.2 70.8)'))
 
         f5 = QgsFeature()
-        f5.setAttributes([4, 400, 'Honey', 'Honey'])
+        f5.setAttributes([4, 400, 'Honey', 'Honey', '4'])
         f5.setGeometry(QgsGeometry.fromWkt('Point (-65.32 78.3)'))
 
         cls.provider.addFeatures([f1, f2, f3, f4, f5])
@@ -69,20 +69,30 @@ class TestPyQgsMemoryProvider(TestCase, ProviderTestCase):
     def tearDownClass(cls):
         """Run after all tests"""
 
-    def testPointCtor(self):
-        layer = QgsVectorLayer("Point", "test", "memory")
-        assert layer.isValid(), "Failed to create valid point memory layer"
+    def testCtors(self):
+        testVectors = ["Point", "LineString", "Polygon", "MultiPoint", "MultiLineString", "MultiPolygon", "None"]
+        for v in testVectors:
+            layer = QgsVectorLayer(v, "test", "memory")
+            assert layer.isValid(), "Failed to create valid %s memory layer" % (v)
 
     def testLayerGeometry(self):
-        layer = QgsVectorLayer("Point", "test", "memory")
+        testVectors = [("Point", QGis.Point, QGis.WKBPoint),
+                       ("LineString", QGis.Line, QGis.WKBLineString),
+                       ("Polygon", QGis.Polygon, QGis.WKBPolygon),
+                       ("MultiPoint", QGis.Point, QGis.WKBMultiPoint),
+                       ("MultiLineString", QGis.Line, QGis.WKBMultiLineString),
+                       ("MultiPolygon", QGis.Polygon, QGis.WKBMultiPolygon),
+                       ("None", QGis.NoGeometry, QGis.WKBNoGeometry)]
+        for v in testVectors:
+            layer = QgsVectorLayer(v[0], "test", "memory")
 
-        myMessage = ('Expected: %s\nGot: %s\n' %
-                     (QGis.Point, layer.geometryType()))
-        assert layer.geometryType() == QGis.Point, myMessage
+            myMessage = ('Expected: %s\nGot: %s\n' %
+                         (v[1], layer.geometryType()))
+            assert layer.geometryType() == v[1], myMessage
 
-        myMessage = ('Expected: %s\nGot: %s\n' %
-                     (QGis.WKBPoint, layer.wkbType()))
-        assert layer.wkbType() == QGis.WKBPoint, myMessage
+            myMessage = ('Expected: %s\nGot: %s\n' %
+                         (v[2], layer.wkbType()))
+            assert layer.wkbType() == v[2], myMessage
 
     def testAddFeatures(self):
         layer = QgsVectorLayer("Point", "test", "memory")
@@ -170,6 +180,39 @@ class TestPyQgsMemoryProvider(TestCase, ProviderTestCase):
         assert myMemoryLayer is not None, 'Provider not initialised'
         myProvider = myMemoryLayer.dataProvider()
         assert myProvider is not None
+
+    def testSaveFields(self):
+        # Create a new memory layer with no fields
+        myMemoryLayer = QgsVectorLayer(
+            ('Point?crs=epsg:4326&index=yes'),
+            'test',
+            'memory')
+
+        # Add some fields to the layer
+        myFields = [QgsField('TestInt', QVariant.Int, 'integer', 2, 0),
+                    QgsField('TestDbl', QVariant.Double, 'double', 8, 6),
+                    QgsField('TestString', QVariant.String, 'string', 50, 0)]
+        assert myMemoryLayer.startEditing()
+        for f in myFields:
+            assert myMemoryLayer.addAttribute(f)
+        assert myMemoryLayer.commitChanges()
+        myMemoryLayer.updateFields()
+
+        # Export the layer to a layer-definition-XML
+        qlr = QgsMapLayer.asLayerDefinition([myMemoryLayer])
+        assert qlr is not None
+
+        # Import the layer from the layer-definition-XML
+        layers = QgsMapLayer.fromLayerDefinition(qlr)
+        assert layers is not None
+        myImportedLayer = layers[0]
+        assert myImportedLayer is not None
+
+        # Check for the presence of the fields
+        importedFields = myImportedLayer.fields()
+        assert importedFields is not None
+        for f in myFields:
+            assert f == importedFields.field(f.name())
 
 
 if __name__ == '__main__':

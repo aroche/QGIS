@@ -21,6 +21,7 @@
 QgsSimplifyMethod::QgsSimplifyMethod()
     : mMethodType( QgsSimplifyMethod::NoSimplification )
     , mTolerance( 1 )
+    , mThreshold( 1 )
     , mForceLocalOptimization( true )
 {
 }
@@ -34,6 +35,7 @@ QgsSimplifyMethod& QgsSimplifyMethod::operator=( const QgsSimplifyMethod & rh )
 {
   mMethodType = rh.mMethodType;
   mTolerance = rh.mTolerance;
+  mThreshold = rh.mThreshold;
   mForceLocalOptimization = rh.mForceLocalOptimization;
 
   return *this;
@@ -71,6 +73,6 @@ QgsAbstractGeometrySimplifier* QgsSimplifyMethod::createGeometrySimplifier( cons
   else
   {
     QgsDebugMsg( QString( "Simplification method type (%1) is not recognised" ).arg( methodType ) );
-    return NULL;
+    return nullptr;
   }
 }

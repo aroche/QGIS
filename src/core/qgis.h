@@ -53,7 +53,8 @@ class CORE_EXPORT QGis
     //! Used for symbology operations
     // Feature types
     // @deprecated use QgsWKBTypes::Type
-    /* Q_DECL_DEPRECATED */ enum WkbType
+    /* Q_DECL_DEPRECATED */
+    enum WkbType
     {
       WKBUnknown = 0,
       WKBPoint = 1,
@@ -73,27 +74,33 @@ class CORE_EXPORT QGis
 
     //! Map multi to single type
     // @deprecated use QgsWKBTypes::singleType
-    /* Q_DECL_DEPRECATED */ static WkbType singleType( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static WkbType singleType( WkbType type );
 
     //! Map single to multitype type
     // @deprecated use QgsWKBTypes::multiType
-    /* Q_DECL_DEPRECATED */ static WkbType multiType( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static WkbType multiType( WkbType type );
 
     //! Map 2d+ to 2d type
     // @deprecated use QgsWKBTypes::flatType
-    /* Q_DECL_DEPRECATED */ static WkbType flatType( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static WkbType flatType( WkbType type );
 
     //! Return if type is a single type
     // @deprecated use QgsWKBTypes::isSingleType
-    /* Q_DECL_DEPRECATED */ static bool isSingleType( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static bool isSingleType( WkbType type );
 
     //! Return if type is a multi type
     // @deprecated use QgsWKBTypes::isMultiType
-    /* Q_DECL_DEPRECATED */ static bool isMultiType( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static bool isMultiType( WkbType type );
 
     // get dimension of points
     // @deprecated use QgsWKBTypes::hasZ() and QgsWKBTypes::hasM()
-    /* Q_DECL_DEPRECATED */ static int wkbDimensions( WkbType type );
+    /* Q_DECL_DEPRECATED */
+    static int wkbDimensions( WkbType type );
 
     //! Converts from old (pre 2.10) WKB type to new WKB type
     static QgsWKBTypes::Type fromOldWkbType( QGis::WkbType type );
@@ -203,7 +210,7 @@ class CORE_EXPORT QGis
 
     /** Old search radius in % of canvas width
      *  @deprecated since 2.3, use DEFAULT_SEARCH_RADIUS_MM */
-    static const double DEFAULT_IDENTIFY_RADIUS;
+    Q_DECL_DEPRECATED static const double DEFAULT_IDENTIFY_RADIUS;
 
     /** Identify search radius in mm
      *  @note added in 2.3 */

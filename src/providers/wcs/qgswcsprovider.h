@@ -102,7 +102,7 @@ class QgsWcsProvider : public QgsRasterDataProvider, QgsGdalProviderBase
     *                otherwise we contact the host directly.
     *
     */
-    explicit QgsWcsProvider( QString const & uri = 0 );
+    explicit QgsWcsProvider( QString const & uri = nullptr );
 
     //! Destructor
     virtual ~QgsWcsProvider();
@@ -207,9 +207,6 @@ class QgsWcsProvider : public QgsRasterDataProvider, QgsGdalProviderBase
 
     /** \brief emit a signal to notify of a progress event */
     void progressChanged( int theProgress, int theTotalSteps );
-
-    /** \brief emit a signal to be caught by qgisapp and display a msg on status bar */
-    void statusChanged( QString const &  theStatusQString );
 
     void dataChanged();
 

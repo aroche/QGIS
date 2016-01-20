@@ -49,7 +49,7 @@ double QgsGeometryCheckPrecision::reducedTolerance()
 }
 
 QgsGeometryCheckError::QgsGeometryCheckError( const QgsGeometryCheck* check,
-    const QgsFeatureId& featureId,
+    QgsFeatureId featureId,
     const QgsPointV2& errorLocation,
     const QgsVertexId& vidx,
     const QVariant& value , ValueType valueType )
@@ -71,7 +71,7 @@ QgsAbstractGeometryV2 *QgsGeometryCheckError::geometry()
   QgsFeature f;
   if ( mCheck->getFeaturePool()->get( featureId(), f ) && f.geometry() )
     return f.geometry()->geometry()->clone();
-  return 0;
+  return nullptr;
 }
 
 bool QgsGeometryCheckError::handleChanges( const QgsGeometryCheck::Changes& changes )

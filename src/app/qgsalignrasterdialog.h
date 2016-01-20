@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgsalignrasterdialog.h
+    ---------------------
+    begin                : June 2015
+    copyright            : (C) 2015 by Martin Dobias
+    email                : wonder dot sk at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #ifndef QGSALIGNRASTERDIALOG_H
 #define QGSALIGNRASTERDIALOG_H
 
@@ -12,7 +26,7 @@ class QgsAlignRasterDialog : public QDialog, private Ui::QgsAlignRasterDialog
 {
     Q_OBJECT
   public:
-    explicit QgsAlignRasterDialog( QWidget *parent = 0 );
+    explicit QgsAlignRasterDialog( QWidget *parent = nullptr );
     ~QgsAlignRasterDialog();
 
   signals:

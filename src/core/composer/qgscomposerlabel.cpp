@@ -49,8 +49,8 @@ QgsComposerLabel::QgsComposerLabel( QgsComposition *composition )
     , mFontColor( QColor( 0, 0, 0 ) )
     , mHAlignment( Qt::AlignLeft )
     , mVAlignment( Qt::AlignTop )
-    , mExpressionLayer( 0 )
-    , mDistanceArea( 0 )
+    , mExpressionLayer( nullptr )
+    , mDistanceArea( nullptr )
 {
   mDistanceArea = new QgsDistanceArea();
   mHtmlUnitsToMM = htmlUnitsToMM();
@@ -233,7 +233,7 @@ void QgsComposerLabel::setHtmlState( int state )
 
 void QgsComposerLabel::setExpressionContext( QgsFeature *feature, QgsVectorLayer* layer, const QMap<QString, QVariant>& substitutions )
 {
-  mExpressionFeature.reset( feature ? new QgsFeature( *feature ) : 0 );
+  mExpressionFeature.reset( feature ? new QgsFeature( *feature ) : nullptr );
   mExpressionLayer = layer;
   mSubstitutions = substitutions;
 
@@ -264,13 +264,13 @@ void QgsComposerLabel::setSubstitutions( const QMap<QString, QVariant>& substitu
 
 void QgsComposerLabel::refreshExpressionContext()
 {
-  mExpressionLayer = 0;
+  mExpressionLayer = nullptr;
   mExpressionFeature.reset();
 
   if ( !mComposition )
     return;
 
-  QgsVectorLayer* layer = 0;
+  QgsVectorLayer* layer = nullptr;
   if ( mComposition->atlasComposition().enabled() )
   {
     layer = mComposition->atlasComposition().coverageLayer();
@@ -448,17 +448,17 @@ bool QgsComposerLabel::readXML( const QDomElement& itemElem, const QDomDocument&
   }
 
   //Horizontal alignment
-  mHAlignment = ( Qt::AlignmentFlag )( itemElem.attribute( "halign" ).toInt() );
+  mHAlignment = static_cast< Qt::AlignmentFlag >( itemElem.attribute( "halign" ).toInt() );
 
   //Vertical alignment
-  mVAlignment = ( Qt::AlignmentFlag )( itemElem.attribute( "valign" ).toInt() );
+  mVAlignment = static_cast< Qt::AlignmentFlag >( itemElem.attribute( "valign" ).toInt() );
 
   //font
   QgsFontUtils::setFromXmlChildNode( mFont, itemElem, "LabelFont" );
 
   //font color
   QDomNodeList fontColorList = itemElem.elementsByTagName( "FontColor" );
-  if ( fontColorList.size() > 0 )
+  if ( !fontColorList.isEmpty() )
   {
     QDomElement fontColorElem = fontColorList.at( 0 ).toElement();
     int red = fontColorElem.attribute( "red", "0" ).toInt();
@@ -473,12 +473,12 @@ bool QgsComposerLabel::readXML( const QDomElement& itemElem, const QDomDocument&
 
   //restore general composer item properties
   QDomNodeList composerItemList = itemElem.elementsByTagName( "ComposerItem" );
-  if ( composerItemList.size() > 0 )
+  if ( !composerItemList.isEmpty() )
   {
     QDomElement composerItemElem = composerItemList.at( 0 ).toElement();
 
     //rotation
-    if ( composerItemElem.attribute( "rotation", "0" ).toDouble() != 0 )
+    if ( !qgsDoubleNear( composerItemElem.attribute( "rotation", "0" ).toDouble(), 0.0 ) )
     {
       //check for old (pre 2.1) rotation attribute
       setItemRotation( composerItemElem.attribute( "rotation", "0" ).toDouble() );

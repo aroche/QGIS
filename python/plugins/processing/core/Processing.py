@@ -142,13 +142,10 @@ class Processing:
 
         # And initialize
         AlgorithmClassification.loadClassification()
-        AlgorithmClassification.loadDisplayNames()
-        ProcessingLog.startLogging()
         ProcessingConfig.initialize()
         ProcessingConfig.readSettings()
         RenderingStyles.loadStyles()
         Processing.loadFromProviders()
-
         # Inform registered listeners that all providers' algorithms have been loaded
         Processing.fireAlgsListHasChanged()
 
@@ -299,7 +296,7 @@ class Processing:
             # fill any missing parameters with default values if allowed
             for param in alg.parameters:
                 if param.name not in setParams:
-                    if not param.setValue(None):
+                    if not param.setDefaultValue():
                         print ('Error: Missing parameter value for parameter %s.' % (param.name))
                         QgsMessageLog.logMessage(Processing.tr('Error: Missing parameter value for parameter {0}.').format(param.name), Processing.tr("Processing"))
                         ProcessingLog.addToLog(

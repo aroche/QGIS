@@ -192,7 +192,7 @@ void QgsSimpleLineSymbolLayerV2::startRender( QgsSymbolV2RenderContext& context 
   mPen.setColor( penColor );
   double scaledWidth = QgsSymbolLayerV2Utils::convertToPainterUnits( context.renderContext(), mWidth, mWidthUnit, mWidthMapUnitScale );
   mPen.setWidthF( scaledWidth );
-  if ( mUseCustomDashPattern && scaledWidth != 0 )
+  if ( mUseCustomDashPattern && !qgsDoubleNear( scaledWidth, 0 ) )
   {
     mPen.setStyle( Qt::CustomDashLine );
 
@@ -252,7 +252,7 @@ void QgsSimpleLineSymbolLayerV2::renderPolygonOutline( const QPolygonF& points, 
     QPainterPath clipPath;
     clipPath.addPolygon( points );
 
-    if ( rings != NULL )
+    if ( rings )
     {
       //add polygon rings
       QList<QPolygonF>::const_iterator it = rings->constBegin();
@@ -413,7 +413,7 @@ void QgsSimpleLineSymbolLayerV2::toSld( QDomDocument &doc, QDomElement &element,
                                     &mPenJoinStyle, &mPenCapStyle, &mCustomDashVector );
 
   // <se:PerpendicularOffset>
-  if ( mOffset != 0 )
+  if ( !qgsDoubleNear( mOffset, 0.0 ) )
   {
     QDomElement perpOffsetElem = doc.createElement( "se:PerpendicularOffset" );
     perpOffsetElem.appendChild( doc.createTextNode( QString::number( mOffset ) ) );
@@ -442,7 +442,7 @@ QgsSymbolLayerV2* QgsSimpleLineSymbolLayerV2::createFromSld( QDomElement &elemen
 
   QDomElement strokeElem = element.firstChildElement( "Stroke" );
   if ( strokeElem.isNull() )
-    return NULL;
+    return nullptr;
 
   Qt::PenStyle penStyle;
   QColor color;
@@ -455,7 +455,7 @@ QgsSymbolLayerV2* QgsSimpleLineSymbolLayerV2::createFromSld( QDomElement &elemen
        color, width,
        &penJoinStyle, &penCapStyle,
        &customDashVector ) )
-    return NULL;
+    return nullptr;
 
   double offset = 0.0;
   QDomElement perpOffsetElem = element.firstChildElement( "PerpendicularOffset" );
@@ -649,8 +649,7 @@ double QgsSimpleLineSymbolLayerV2::dxfOffset( const QgsDxfExport& e, QgsSymbolV2
 
 /////////
 
-///@cond
-//not part of public API
+///@cond PRIVATE
 
 class MyLine
 {
@@ -661,7 +660,7 @@ class MyLine
         return; // invalid
 
       // tangent and direction
-      if ( p1.x() == p2.x() )
+      if ( qgsDoubleNear( p1.x(), p2.x() ) )
       {
         // vertical line - tangent undefined
         mVertical = true;
@@ -718,7 +717,7 @@ QgsMarkerLineSymbolLayerV2::QgsMarkerLineSymbolLayerV2( bool rotateMarker, doubl
   mRotateMarker = rotateMarker;
   mInterval = interval;
   mIntervalUnit = QgsSymbolV2::MM;
-  mMarker = NULL;
+  mMarker = nullptr;
   mPlacement = Interval;
   mOffsetAlongLine = 0;
   mOffsetAlongLineUnit = QgsSymbolV2::MM;
@@ -877,7 +876,7 @@ void QgsMarkerLineSymbolLayerV2::renderPolyline( const QPolygonF& points, QgsSym
     }
   }
 
-  if ( offset == 0 )
+  if ( qgsDoubleNear( offset, 0.0 ) )
   {
     if ( placement == Interval )
       renderPolylineInterval( points, context );
@@ -888,7 +887,7 @@ void QgsMarkerLineSymbolLayerV2::renderPolyline( const QPolygonF& points, QgsSym
   }
   else
   {
-    context.renderContext().setGeometry( 0 ); //always use segmented geometry with offset
+    context.renderContext().setGeometry( nullptr ); //always use segmented geometry with offset
     QList<QPolygonF> mline = ::offsetLine( points, QgsSymbolLayerV2Utils::convertToPainterUnits( context.renderContext(), offset, mOffsetUnit, mOffsetMapUnitScale ), context.feature() ? context.feature()->constGeometry()->type() : QGis::Line );
 
     for ( int part = 0; part < mline.count(); ++part )
@@ -1031,13 +1030,13 @@ void QgsMarkerLineSymbolLayerV2::renderPolylineVertex( const QPolygonF& points, 
     context.setOriginalValueVariable( mOffsetAlongLine );
     offsetAlongLine = evaluateDataDefinedProperty( QgsSymbolLayerV2::EXPR_OFFSET_ALONG_LINE, context, mOffsetAlongLine ).toDouble();
   }
-  if ( offsetAlongLine != 0 )
+  if ( !qgsDoubleNear( offsetAlongLine, 0.0 ) )
   {
     //scale offset along line
     offsetAlongLine = QgsSymbolLayerV2Utils::convertToPainterUnits( rc, offsetAlongLine, mOffsetAlongLineUnit, mOffsetAlongLineMapUnitScale );
   }
 
-  if ( offsetAlongLine == 0 && context.renderContext().geometry()
+  if ( qgsDoubleNear( offsetAlongLine, 0.0 ) && context.renderContext().geometry()
        && context.renderContext().geometry()->hasCurvedSegments() && ( placement == Vertex || placement == CurvePoint ) )
   {
     const QgsCoordinateTransform* ct = context.renderContext().coordinateTransform();
@@ -1053,12 +1052,14 @@ void QgsMarkerLineSymbolLayerV2::renderPolylineVertex( const QPolygonF& points, 
           || ( placement == CurvePoint && vId.type == QgsVertexId::CurveVertex ) )
       {
         //transform
-        x = vPoint.x(), y = vPoint.y(); z = vPoint.z();
+        x = vPoint.x(), y = vPoint.y();
+        z = vPoint.z();
         if ( ct )
         {
           ct->transformInPlace( x, y, z );
         }
-        mapPoint.setX( x ); mapPoint.setY( y );
+        mapPoint.setX( x );
+        mapPoint.setY( y );
         mtp.transformInPlace( mapPoint.rx(), mapPoint.ry() );
         if ( mRotateMarker )
         {
@@ -1205,7 +1206,7 @@ void QgsMarkerLineSymbolLayerV2::renderOffsetVertexAlongLine( const QPolygonF &p
 
   QgsRenderContext& rc = context.renderContext();
   double origAngle = mMarker->angle();
-  if ( distance == 0 )
+  if ( qgsDoubleNear( distance, 0.0 ) )
   {
     // rotate marker (if desired)
     if ( mRotateMarker )
@@ -1259,7 +1260,7 @@ void QgsMarkerLineSymbolLayerV2::renderOffsetVertexAlongLine( const QPolygonF &p
 
 void QgsMarkerLineSymbolLayerV2::renderPolylineCentral( const QPolygonF& points, QgsSymbolV2RenderContext& context )
 {
-  if ( points.size() > 0 )
+  if ( !points.isEmpty() )
   {
     // calc length
     qreal length = 0;
@@ -1343,7 +1344,7 @@ QgsSymbolV2* QgsMarkerLineSymbolLayerV2::subSymbol()
 
 bool QgsMarkerLineSymbolLayerV2::setSubSymbol( QgsSymbolV2* symbol )
 {
-  if ( symbol == NULL || symbol->type() != QgsSymbolV2::Marker )
+  if ( !symbol || symbol->type() != QgsSymbolV2::Marker )
   {
     delete symbol;
     return false;
@@ -1454,11 +1455,11 @@ QgsSymbolLayerV2* QgsMarkerLineSymbolLayerV2::createFromSld( QDomElement &elemen
 
   QDomElement strokeElem = element.firstChildElement( "Stroke" );
   if ( strokeElem.isNull() )
-    return NULL;
+    return nullptr;
 
   QDomElement graphicStrokeElem = strokeElem.firstChildElement( "GraphicStroke" );
   if ( graphicStrokeElem.isNull() )
-    return NULL;
+    return nullptr;
 
   // retrieve vendor options
   bool rotateMarker = true;
@@ -1480,7 +1481,7 @@ QgsSymbolLayerV2* QgsMarkerLineSymbolLayerV2::createFromSld( QDomElement &elemen
     }
   }
 
-  QgsMarkerSymbolV2 *marker = 0;
+  QgsMarkerSymbolV2 *marker = nullptr;
 
   QgsSymbolLayerV2 *l = QgsSymbolLayerV2Utils::createMarkerLayerFromSld( graphicStrokeElem );
   if ( l )
@@ -1491,7 +1492,7 @@ QgsSymbolLayerV2* QgsMarkerLineSymbolLayerV2::createFromSld( QDomElement &elemen
   }
 
   if ( !marker )
-    return NULL;
+    return nullptr;
 
   double interval = 0.0;
   QDomElement gapElem = graphicStrokeElem.firstChildElement( "Gap" );

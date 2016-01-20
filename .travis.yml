@@ -1,6 +1,8 @@
 language: cpp
 
 sudo: required
+dist: precise
+group: legacy
 
 os:
   - linux

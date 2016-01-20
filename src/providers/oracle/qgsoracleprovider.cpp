@@ -33,6 +33,7 @@
 #include "qgsoraclesourceselect.h"
 #include "qgsoracledataitems.h"
 #include "qgsoraclefeatureiterator.h"
+#include "qgsoracleconnpool.h"
 
 #include <QSqlRecord>
 #include <QSqlField>
@@ -69,7 +70,7 @@ QgsOracleProvider::QgsOracleProvider( QString const & uri )
   mRequestedGeomType = mUri.wkbType();
   mUseEstimatedMetadata = mUri.useEstimatedMetadata();
 
-  mConnection = QgsOracleConn::connectDb( mUri );
+  mConnection = QgsOracleConnPool::instance()->acquireConnection( mUri.connectionInfo() );
   if ( !mConnection )
   {
     return;
@@ -210,7 +211,7 @@ QgsAbstractFeatureSource *QgsOracleProvider::featureSource() const
 void QgsOracleProvider::disconnectDb()
 {
   if ( mConnection )
-    mConnection->disconnect();
+    QgsOracleConnPool::instance()->releaseConnection( mConnection );
   mConnection = 0;
 }
 
@@ -1888,7 +1889,7 @@ void QgsOracleProvider::appendGeomParam( const QgsGeometry *geom, QSqlQuery &qry
   qry.addBindValue( QVariant::fromValue( g ) );
 }
 
-bool QgsOracleProvider::changeGeometryValues( QgsGeometryMap & geometry_map )
+bool QgsOracleProvider::changeGeometryValues( const QgsGeometryMap &geometry_map )
 {
   QgsDebugMsg( "entering." );
 
@@ -1918,8 +1919,8 @@ bool QgsOracleProvider::changeGeometryValues( QgsGeometryMap & geometry_map )
       throw OracleException( tr( "Could not prepare update statement." ), qry );
     }
 
-    for ( QgsGeometryMap::iterator iter  = geometry_map.begin();
-          iter != geometry_map.end();
+    for ( QgsGeometryMap::const_iterator iter = geometry_map.constBegin();
+          iter != geometry_map.constEnd();
           ++iter )
     {
       appendGeomParam( &iter.value(), qry );
@@ -2221,23 +2222,27 @@ bool QgsOracleProvider::getGeometryDetails()
   if ( detectedType == QGis::WKBUnknown || detectedSrid <= 0 )
   {
     QgsOracleLayerProperty layerProperty;
-    layerProperty.ownerName = ownerName;
-    layerProperty.tableName = tableName;
-    layerProperty.geometryColName = mGeometryColumn;
-    layerProperty.types << detectedType;
-    layerProperty.srids << detectedSrid;
 
-    QString delim = "";
-
-    if ( !mSqlWhereClause.isEmpty() )
+    if ( !mIsQuery )
     {
-      layerProperty.sql += delim + "(" + mSqlWhereClause + ")";
-      delim = " AND ";
+      layerProperty.ownerName = ownerName;
+      layerProperty.tableName = tableName;
+      layerProperty.geometryColName = mGeometryColumn;
+      layerProperty.types << detectedType;
+      layerProperty.srids << detectedSrid;
+
+      QString delim = "";
+
+      if ( !mSqlWhereClause.isEmpty() )
+      {
+        layerProperty.sql += delim + "(" + mSqlWhereClause + ")";
+        delim = " AND ";
+      }
+
+      mConnection->retrieveLayerTypes( layerProperty, mUseEstimatedMetadata, false );
+
+      Q_ASSERT( layerProperty.types.size() == layerProperty.srids.size() );
     }
-
-    mConnection->retrieveLayerTypes( layerProperty, mUseEstimatedMetadata, false );
-
-    Q_ASSERT( layerProperty.types.size() == layerProperty.srids.size() );
 
     if ( layerProperty.types.isEmpty() )
     {
@@ -2969,7 +2974,6 @@ QGISEXTERN bool deleteLayer( const QString& uri, QString& errCause )
   if ( !conn )
   {
     errCause = QObject::tr( "Connection to database failed" );
-    conn->disconnect();
     return false;
   }
 

@@ -56,7 +56,7 @@ QgsDistanceArea::QgsDistanceArea()
 
 //! Copy constructor
 QgsDistanceArea::QgsDistanceArea( const QgsDistanceArea & origDA )
-    : mCoordTransform( 0 )
+    : mCoordTransform( nullptr )
 {
   _copy( origDA );
 }
@@ -158,7 +158,7 @@ bool QgsDistanceArea::setEllipsoid( const QString& ellipsoid )
   // Continue with PROJ.4 list of ellipsoids.
 
   //check the db is available
-  myResult = sqlite3_open_v2( QgsApplication::srsDbFilePath().toUtf8().data(), &myDatabase, SQLITE_OPEN_READONLY, NULL );
+  myResult = sqlite3_open_v2( QgsApplication::srsDbFilePath().toUtf8().data(), &myDatabase, SQLITE_OPEN_READONLY, nullptr );
   if ( myResult )
   {
     QgsMessageLog::logMessage( QObject::tr( "Can't open database: %1" ).arg( sqlite3_errmsg( myDatabase ) ) );
@@ -174,8 +174,8 @@ bool QgsDistanceArea::setEllipsoid( const QString& ellipsoid )
   {
     if ( sqlite3_step( myPreparedStatement ) == SQLITE_ROW )
     {
-      radius = QString(( char * )sqlite3_column_text( myPreparedStatement, 0 ) );
-      parameter2 = QString(( char * )sqlite3_column_text( myPreparedStatement, 1 ) );
+      radius = QString( reinterpret_cast< const char * >( sqlite3_column_text( myPreparedStatement, 0 ) ) );
+      parameter2 = QString( reinterpret_cast< const char * >( sqlite3_column_text( myPreparedStatement, 1 ) ) );
     }
   }
   // close the sqlite3 statement
@@ -534,7 +534,7 @@ const unsigned char *QgsDistanceArea::measurePolygon( const unsigned char* featu
   if ( !feature )
   {
     QgsDebugMsg( "no feature to measure" );
-    return 0;
+    return nullptr;
   }
 
   QgsConstWkbPtr wkbPtr( feature + 1 + sizeof( int ) );
@@ -546,7 +546,7 @@ const unsigned char *QgsDistanceArea::measurePolygon( const unsigned char* featu
   if ( numRings == 0 )
   {
     QgsDebugMsg( "no rings to measure" );
-    return 0;
+    return nullptr;
   }
 
   // Set pointer to the first ring
@@ -694,7 +694,7 @@ double QgsDistanceArea::computeDistanceBearing(
   const QgsPoint& p1, const QgsPoint& p2,
   double* course1, double* course2 ) const
 {
-  if ( p1.x() == p2.x() && p1.y() == p2.y() )
+  if ( qgsDoubleNear( p1.x(), p2.x() ) && qgsDoubleNear( p1.y(), p2.y() ) )
     return 0;
 
   // ellipsoid

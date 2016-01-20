@@ -17,12 +17,13 @@
 #define QGSVECTORLAYERDIAGRAMPROVIDER_H
 
 #include "qgslabelingenginev2.h"
-
+#include "qgslabelfeature.h"
 
 /**
  * Class that adds extra information to QgsLabelFeature for labeling of diagrams
  *
- * @note not part of public API
+ * @note this class is not a part of public API yet. See notes in QgsLabelingEngineV2
+ * @note not available in Python bindings
  */
 class QgsDiagramLabelFeature : public QgsLabelFeature
 {
@@ -50,6 +51,8 @@ class QgsAbstractFeatureSource;
  * the labeling engine. Parameters for the diagrams are taken from the layer settings.
  *
  * @note added in QGIS 2.12
+ * @note this class is not a part of public API yet. See notes in QgsLabelingEngineV2
+ * @note not available in Python bindings
  */
 class CORE_EXPORT QgsVectorLayerDiagramProvider : public QgsAbstractLabelProvider
 {
@@ -96,13 +99,13 @@ class CORE_EXPORT QgsVectorLayerDiagramProvider : public QgsAbstractLabelProvide
      * the feature's original geometry will be used as an obstacle for labels. Ownership of obstacleGeometry
      * is transferred.
      */
-    virtual void registerFeature( QgsFeature& feature, QgsRenderContext &context, QgsGeometry* obstacleGeometry = 0 );
+    virtual void registerFeature( QgsFeature& feature, QgsRenderContext &context, QgsGeometry* obstacleGeometry = nullptr );
 
   protected:
     //! initialization method - called from constructors
     void init();
     //! helper method to register one diagram feautre
-    QgsLabelFeature* registerDiagram( QgsFeature& feat, QgsRenderContext& context, QgsGeometry* obstacleGeometry = 0 );
+    QgsLabelFeature* registerDiagram( QgsFeature& feat, QgsRenderContext& context, QgsGeometry* obstacleGeometry = nullptr );
 
   protected:
 

@@ -22,6 +22,7 @@
 #include "qgspointdisplacementrenderer.h"
 #include "qgsinvertedpolygonrenderer.h"
 #include "qgsheatmaprenderer.h"
+#include "qgs25drenderer.h"
 
 QgsRendererV2Registry::QgsRendererV2Registry()
 {
@@ -55,6 +56,11 @@ QgsRendererV2Registry::QgsRendererV2Registry()
   addRenderer( new QgsRendererV2Metadata( "heatmapRenderer",
                                           QObject::tr( "Heatmap" ),
                                           QgsHeatmapRenderer::create ) );
+
+
+  addRenderer( new QgsRendererV2Metadata( "25dRenderer",
+                                          QObject::tr( "2.5 D" ),
+                                          Qgs25DRenderer::create ) );
 }
 
 QgsRendererV2Registry::~QgsRendererV2Registry()
@@ -75,7 +81,7 @@ QgsRendererV2Registry* QgsRendererV2Registry::instance()
 
 bool QgsRendererV2Registry::addRenderer( QgsRendererV2AbstractMetadata* metadata )
 {
-  if ( metadata == NULL || mRenderers.contains( metadata->name() ) )
+  if ( !metadata || mRenderers.contains( metadata->name() ) )
     return false;
 
   mRenderers[metadata->name()] = metadata;

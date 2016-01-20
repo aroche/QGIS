@@ -65,7 +65,7 @@ class QgsGdalProvider : public QgsRasterDataProvider, QgsGdalProviderBase
     *                otherwise we contact the host directly.
     *
     */
-    QgsGdalProvider( QString const & uri = 0, bool update = false );
+    QgsGdalProvider( QString const & uri = nullptr, bool update = false );
 
     /** Create invalid provider with error */
     QgsGdalProvider( QString const & uri, QgsError error );
@@ -246,9 +246,6 @@ class QgsGdalProvider : public QgsRasterDataProvider, QgsGdalProviderBase
     QString validateCreationOptions( const QStringList& createOptions, const QString& format ) override;
     QString validatePyramidsCreationOptions( QgsRaster::RasterPyramidsFormat pyramidsFormat,
         const QStringList & theConfigOptions, const QString & fileFormat );
-
-  signals:
-    void statusChanged( const QString& );
 
   private:
     // update mode

@@ -32,7 +32,7 @@ static const QString TEXT_PROVIDER_DESCRIPTION = "Memory provider";
 
 QgsMemoryProvider::QgsMemoryProvider( const QString& uri )
     : QgsVectorDataProvider( uri )
-    , mSpatialIndex( 0 )
+    , mSpatialIndex( nullptr )
 {
   // Initialize the geometry with the uri to support old style uri's
   // (ie, just 'point', 'line', 'polygon')
@@ -60,6 +60,8 @@ QgsMemoryProvider::QgsMemoryProvider( const QString& uri )
     mWkbType = QGis::WKBMultiLineString;
   else if ( geometry == "multipolygon" )
     mWkbType = QGis::WKBMultiPolygon;
+  else if ( geometry == "none" )
+    mWkbType = QGis::WKBNoGeometry;
   else
     mWkbType = QGis::WKBUnknown;
 
@@ -200,6 +202,9 @@ QString QgsMemoryProvider::dataSourceUri( bool expandAuthConfig ) const
       break;
     case QGis::WKBMultiPolygon :
       geometry = "MultiPolygon";
+      break;
+    case QGis::WKBNoGeometry :
+      geometry = "None";
       break;
     default:
       geometry = "";
@@ -387,7 +392,7 @@ bool QgsMemoryProvider::deleteAttributes( const QgsAttributeIds& attributes )
   return true;
 }
 
-bool QgsMemoryProvider::changeAttributeValues( const QgsChangedAttributesMap & attr_map )
+bool QgsMemoryProvider::changeAttributeValues( const QgsChangedAttributesMap &attr_map )
 {
   for ( QgsChangedAttributesMap::const_iterator it = attr_map.begin(); it != attr_map.end(); ++it )
   {
@@ -396,13 +401,13 @@ bool QgsMemoryProvider::changeAttributeValues( const QgsChangedAttributesMap & a
       continue;
 
     const QgsAttributeMap& attrs = it.value();
-    for ( QgsAttributeMap::const_iterator it2 = attrs.begin(); it2 != attrs.end(); ++it2 )
+    for ( QgsAttributeMap::const_iterator it2 = attrs.constBegin(); it2 != attrs.constEnd(); ++it2 )
       fit->setAttribute( it2.key(), it2.value() );
   }
   return true;
 }
 
-bool QgsMemoryProvider::changeGeometryValues( QgsGeometryMap & geometry_map )
+bool QgsMemoryProvider::changeGeometryValues( const QgsGeometryMap &geometry_map )
 {
   for ( QgsGeometryMap::const_iterator it = geometry_map.begin(); it != geometry_map.end(); ++it )
   {
@@ -455,7 +460,7 @@ bool QgsMemoryProvider::createSpatialIndex()
     mSpatialIndex = new QgsSpatialIndex();
 
     // add existing features to index
-    for ( QgsFeatureMap::iterator it = mFeatures.begin(); it != mFeatures.end(); ++it )
+    for ( QgsFeatureMap::const_iterator it = mFeatures.constBegin(); it != mFeatures.constEnd(); ++it )
     {
       mSpatialIndex->insertFeature( *it );
     }
@@ -467,13 +472,13 @@ int QgsMemoryProvider::capabilities() const
 {
   return AddFeatures | DeleteFeatures | ChangeGeometries |
          ChangeAttributeValues | AddAttributes | DeleteAttributes | CreateSpatialIndex |
-         SelectAtId | SelectGeometryAtId;
+         SelectAtId | SelectGeometryAtId | CircularGeometries;
 }
 
 
 void QgsMemoryProvider::updateExtent()
 {
-  if ( mFeatures.count() == 0 )
+  if ( mFeatures.isEmpty() )
   {
     mExtent = QgsRectangle();
   }

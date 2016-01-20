@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgsrulebasedlabeling.h
+    ---------------------
+    begin                : September 2015
+    copyright            : (C) 2015 by Martin Dobias
+    email                : wonder dot sk at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #ifndef QGSRULEBASEDLABELING_H
 #define QGSRULEBASEDLABELING_H
 
@@ -15,6 +29,12 @@ class QgsPalLayerSettings;
 class QgsRenderContext;
 class QgsGeometry;
 
+/**
+ * @class QgsRuleBasedLabeling
+ * @note not available in Python bindings
+ * @note this class is not a part of public API yet. See notes in QgsLabelingEngineV2
+ */
+
 class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
 {
   public:
@@ -22,6 +42,12 @@ class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
     typedef QList<Rule*> RuleList;
     typedef QMap<Rule*, QgsVectorLayerLabelProvider*> RuleToProviderMap;
 
+
+    /**
+     * @class QgsRuleBasedLabeling::Rule
+     * @note not available in Python bindings
+     * @note this class is not a part of public API yet. See notes in QgsLabelingEngineV2
+     */
     class CORE_EXPORT Rule
     {
       public:
@@ -194,7 +220,7 @@ class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
         void prepare( const QgsRenderContext& context, QStringList& attributeNames, RuleToProviderMap& subProviders );
 
         //! register individual features
-        RegisterResult registerFeature( QgsFeature& feature, QgsRenderContext& context, RuleToProviderMap& subProviders, QgsGeometry* obstacleGeometry = 0 );
+        RegisterResult registerFeature( QgsFeature& feature, QgsRenderContext& context, RuleToProviderMap& subProviders, QgsGeometry* obstacleGeometry = nullptr );
 
       protected:
         /**
@@ -263,7 +289,11 @@ class CORE_EXPORT QgsRuleBasedLabeling : public QgsAbstractVectorLayerLabeling
 
 #include "qgsvectorlayerlabelprovider.h"
 
-
+/**
+ * @class QgsRuleBasedLabelProvider
+ * @note not available in Python bindings
+ * @note this class is not a part of public API yet. See notes in QgsLabelingEngineV2
+ */
 class CORE_EXPORT QgsRuleBasedLabelProvider : public QgsVectorLayerLabelProvider
 {
   public:
@@ -274,7 +304,7 @@ class CORE_EXPORT QgsRuleBasedLabelProvider : public QgsVectorLayerLabelProvider
 
     virtual bool prepare( const QgsRenderContext& context, QStringList& attributeNames ) override;
 
-    virtual void registerFeature( QgsFeature& feature, QgsRenderContext& context, QgsGeometry* obstacleGeometry = 0 ) override;
+    virtual void registerFeature( QgsFeature& feature, QgsRenderContext& context, QgsGeometry* obstacleGeometry = nullptr ) override;
 
     // new methods
 

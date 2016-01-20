@@ -58,6 +58,9 @@ extern "C"
 #include <sys/types.h>
 #endif
 #include <grass/version.h>
+#if defined(_MSC_VER) && defined(M_PI_4)
+#undef M_PI_4 //avoid redefinition warning
+#endif
 #include <grass/gprojects.h>
 
 #if GRASS_VERSION_MAJOR < 7
@@ -368,9 +371,11 @@ bool QgsGrass::init( void )
     return false;
   }
 
-  // I think that mask should not be used in QGIS as it can only confuses people,
+  // I think that mask should not be used in QGIS as it can confuse users,
   // anyway, I don't think anybody is using MASK
   // TODO7: Rast_suppress_masking (see G_suppress_masking() macro above) needs MAPSET
+  // (it should not be necessary, because rasters are read by modules qgis.g.info and qgis.d.rast
+  //  where masking is suppressed)
 #if GRASS_VERSION_MAJOR < 7
   G_suppress_masking();
 #endif
@@ -647,6 +652,52 @@ void QgsGrass::setMapset( QgsGrassObject grassObject )
 bool QgsGrass::isMapsetInSearchPath( QString mapset )
 {
   return mMapsetSearchPath.contains( mapset );
+}
+
+void QgsGrass::addMapsetToSearchPath( const QString & mapset, QString& error )
+{
+  QgsDebugMsg( "entered" );
+  QString cmd = gisbase() + "/bin/g.mapsets";
+  QStringList arguments;
+
+#if GRASS_VERSION_MAJOR < 7
+  arguments << "addmapset=" + mapset;
+#else
+  arguments << "operation=add" << "mapset=" + mapset;
+#endif
+
+  try
+  {
+    int timeout = -1; // What timeout to use? It can take long time on network or database
+    runModule( getDefaultGisdbase(), getDefaultLocation(), getDefaultMapset(), cmd, arguments, timeout, false );
+  }
+  catch ( QgsGrass::Exception &e )
+  {
+    error = tr( "Cannot add mapset %1 to search path:" ).arg( mapset ) + " " + e.what();
+  }
+}
+
+void QgsGrass::removeMapsetFromSearchPath( const QString & mapset, QString& error )
+{
+  QgsDebugMsg( "entered" );
+  QString cmd = gisbase() + "/bin/g.mapsets";
+  QStringList arguments;
+
+#if GRASS_VERSION_MAJOR < 7
+  arguments << "removemapset=" + mapset;
+#else
+  arguments << "operation=remove" << "mapset=" + mapset;
+#endif
+
+  try
+  {
+    int timeout = -1; // What timeout to use? It can take long time on network or database
+    runModule( getDefaultGisdbase(), getDefaultLocation(), getDefaultMapset(), cmd, arguments, timeout, false );
+  }
+  catch ( QgsGrass::Exception &e )
+  {
+    error = tr( "Cannot remove mapset %1 from search path:" ).arg( mapset ) + " " + e.what();
+  }
 }
 
 void QgsGrass::loadMapsetSearchPath()
@@ -1883,7 +1934,7 @@ bool QgsGrass::mapRegion( QgsGrassObject::Type type, QString gisdbase,
 #if GRASS_VERSION_MAJOR < 7
     if ( G__get_window( window, ( char * ) "windows",
                         map.toUtf8().data(),
-                        mapset.toUtf8().data() ) != NULL )
+                        mapset.toUtf8().data() ) )
     {
       warning( tr( "Cannot read region" ) );
       return false;
@@ -2868,7 +2919,7 @@ void QgsGrass::sleep( int ms )
   Sleep( uint( ms ) );
 #else
   struct timespec ts = { ms / 1000, ( ms % 1000 ) * 1000 * 1000 };
-  nanosleep( &ts, NULL );
+  nanosleep( &ts, nullptr );
 #endif
 }
 

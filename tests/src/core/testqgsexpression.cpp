@@ -175,10 +175,10 @@ class TestQgsExpression: public QObject
     {
       // check that parsing of numbers works correctly even when using some other locale
 
-      char* old_locale = setlocale( LC_NUMERIC, NULL );
+      char* old_locale = setlocale( LC_NUMERIC, nullptr );
       qDebug( "Old locale: %s", old_locale );
       setlocale( LC_NUMERIC, "de_DE.UTF8" );
-      char* new_locale = setlocale( LC_NUMERIC, NULL );
+      char* new_locale = setlocale( LC_NUMERIC, nullptr );
       qDebug( "New locale: %s", new_locale );
 
       QgsExpression exp( "1.23 + 4.56" );
@@ -357,6 +357,8 @@ class TestQgsExpression: public QObject
       QTest::newRow( "abs(0)" ) << "abs(0)" << false << QVariant( 0. );
       QTest::newRow( "abs(-0.1)" ) << "abs(-0.1)" << false << QVariant( 0.1 );
       QTest::newRow( "invalid sqrt value" ) << "sqrt('a')" << true << QVariant();
+      QTest::newRow( "degrees to radians" ) << "toint(radians(45)*1000000)" << false << QVariant( 785398 ); // sorry for the nasty hack to work around floating point comparison problems
+      QTest::newRow( "radians to degrees" ) << "toint(degrees(2)*1000)" << false << QVariant( 114592 );
       QTest::newRow( "sin 0" ) << "sin(0)" << false << QVariant( 0. );
       QTest::newRow( "cos 0" ) << "cos(0)" << false << QVariant( 1. );
       QTest::newRow( "tan 0" ) << "tan(0)" << false << QVariant( 0. );
@@ -419,6 +421,66 @@ class TestQgsExpression: public QObject
 
       // geometry functions
       QTest::newRow( "num_points" ) << "num_points(geom_from_wkt('GEOMETRYCOLLECTION(LINESTRING(0 0, 1 0),POINT(6 5))'))" << false << QVariant( 3 );
+      QTest::newRow( "num_interior_rings not geom" ) << "num_interior_rings('g')" << true << QVariant();
+      QTest::newRow( "num_interior_rings null" ) << "num_interior_rings(NULL)" << false << QVariant();
+      QTest::newRow( "num_interior_rings point" ) << "num_interior_rings(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
+      QTest::newRow( "num_interior_rings polygon" ) << "num_interior_rings(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( 0 );
+      QTest::newRow( "num_interior_rings polygon with rings" ) << "num_interior_rings(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( 2 );
+      QTest::newRow( "num_interior_rings line" ) << "num_interior_rings(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant();
+      QTest::newRow( "num_interior_rings collection no polygon" ) << "num_interior_rings(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'))" << false << QVariant();
+      QTest::newRow( "num_interior_rings collection with polygon" ) << "num_interior_rings(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 1), POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1)), POINT(1 0))'))" << false << QVariant( 2 );
+      QTest::newRow( "num_rings not geom" ) << "num_rings('g')" << true << QVariant();
+      QTest::newRow( "num_rings null" ) << "num_rings(NULL)" << false << QVariant();
+      QTest::newRow( "num_rings point" ) << "num_rings(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
+      QTest::newRow( "num_rings polygon" ) << "num_rings(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( 1 );
+      QTest::newRow( "num_rings polygon with rings" ) << "num_rings(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( 3 );
+      QTest::newRow( "num_rings line" ) << "num_rings(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant();
+      QTest::newRow( "num_rings collection no polygon" ) << "num_rings(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'))" << false << QVariant();
+      QTest::newRow( "num_rings collection with polygon" ) << "num_rings(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 1), POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1)), POINT(1 0))'))" << false << QVariant( 3 );
+      QTest::newRow( "num_rings collection two polygons" ) << "num_rings(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1)), POINT(0 0), POINT(1 1), POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1)), POINT(1 0))'))" << false << QVariant( 4 );
+      QTest::newRow( "num_geometries not geom" ) << "num_geometries('g')" << true << QVariant();
+      QTest::newRow( "num_geometries null" ) << "num_geometries(NULL)" << false << QVariant();
+      QTest::newRow( "num_geometries point" ) << "num_geometries(geom_from_wkt('POINT(1 2)'))" << false << QVariant( 1 );
+      QTest::newRow( "num_geometries polygon" ) << "num_geometries(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant( 1 );
+      QTest::newRow( "num_geometries line" ) << "num_geometries(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant( 1 );
+      QTest::newRow( "num_geometries collection 1" ) << "num_geometries(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'))" << false << QVariant( 4 );
+      QTest::newRow( "num_geometries collection 2" ) << "num_geometries(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 1), POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1)), POINT(1 0))'))" << false << QVariant( 5 );
+      QTest::newRow( "num_geometries empty collection" ) << "num_geometries(geom_from_wkt('GEOMETRYCOLLECTION()'))" << false << QVariant( 0 );
+      QTest::newRow( "nodes_to_points not geom" ) << "nodes_to_points('g')" << true << QVariant();
+      QTest::newRow( "nodes_to_points null" ) << "nodes_to_points(NULL)" << false << QVariant();
+      QTest::newRow( "nodes_to_points point" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('POINT(1 2)')))" << false << QVariant( QString( "MultiPoint ((1 2))" ) );
+      QTest::newRow( "nodes_to_points polygon" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))')))" << false << QVariant( QString( "MultiPoint ((-1 -1),(4 0),(4 2),(0 2),(-1 -1))" ) );
+      QTest::newRow( "nodes_to_points polygon with rings" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-0.3 -0.9, -0.3 0, 4 -0.1, 0.1 2.1, -0.3 -0.9))')))" << false
+      << QVariant( QString( "MultiPoint ((-1 -1),(4 0),(4 2),(0 2),(-1 -1),(-0.1 -0.1),(0.4 0),(0.4 0.2),(0 0.2),(-0.1 -0.1),(-0.3 -0.9),(-0.3 0),(4 -0.1),(0.1 2.1),(-0.3 -0.9))" ) );
+      QTest::newRow( "nodes_to_points line" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false
+      << QVariant( QString( "MultiPoint ((0 0),(1 1),(2 2))" ) );
+      QTest::newRow( "nodes_to_points collection 1" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))')))" << false
+      << QVariant( QString( "MultiPoint ((0 1),(0 0),(1 0),(1 1))" ) );
+      QTest::newRow( "nodes_to_points collection 2" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('GEOMETRYCOLLECTION(POINTZM(0 1 2 3), POINTZM(0 0 3 4), POINTZM(1 1 5 6), POLYGONZM((-1 -1 7 8, 4 0 1 2, 4 2 7 6, 0 2 1 3, -1 -1 7 8),(-0.1 -0.1 5 4, 0.4 0 9 8, 0.4 0.2 7 10, 0 0.2 0 0, -0.1 -0.1 5 4),(-1 -1 0 0, 4 0 0 1, 4 2 1 2, 0 2 2 3, -1 -1 0 0)), POINTZM(1 0 1 2))')))" << false
+      << QVariant( QString( "MultiPointZM ((0 1 2 3),(0 0 3 4),(1 1 5 6),(-1 -1 7 8),(4 0 1 2),(4 2 7 6),(0 2 1 3),(-1 -1 7 8),(-0.1 -0.1 5 4),(0.4 0 9 8),(0.4 0.2 7 10),(0 0.2 0 0),(-0.1 -0.1 5 4),(-1 -1 0 0),(4 0 0 1),(4 2 1 2),(0 2 2 3),(-1 -1 0 0),(1 0 1 2))" ) );
+      QTest::newRow( "nodes_to_points empty collection" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('GEOMETRYCOLLECTION()')))" << false <<
+      QVariant( QString( "MultiPoint ()" ) );
+      QTest::newRow( "nodes_to_points no close polygon" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'),true))" << false << QVariant( QString( "MultiPoint ((-1 -1),(4 0),(4 2),(0 2))" ) );
+      QTest::newRow( "nodes_to_points no close polygon with rings" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-0.3 -0.9, -0.3 0, 4 -0.1, 0.1 2.1, -0.3 -0.9))'),true))" << false
+      << QVariant( QString( "MultiPoint ((-1 -1),(4 0),(4 2),(0 2),(-0.1 -0.1),(0.4 0),(0.4 0.2),(0 0.2),(-0.3 -0.9),(-0.3 0),(4 -0.1),(0.1 2.1))" ) );
+      QTest::newRow( "nodes_to_points no close unclosed line" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'),true))" << false
+      << QVariant( QString( "MultiPoint ((0 0),(1 1),(2 2))" ) );
+      QTest::newRow( "nodes_to_points no close closed line" ) << "geom_to_wkt(nodes_to_points(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2, 0 0)'),true))" << false
+      << QVariant( QString( "MultiPoint ((0 0),(1 1),(2 2))" ) );
+      QTest::newRow( "segments_to_lines not geom" ) << "segments_to_lines('g')" << true << QVariant();
+      QTest::newRow( "segments_to_lines null" ) << "segments_to_lines(NULL)" << false << QVariant();
+      QTest::newRow( "segments_to_lines point" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('POINT(1 2)')))" << false << QVariant( QString( "MultiLineString ()" ) );
+      QTest::newRow( "segments_to_lines polygon" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))')))" << false << QVariant( QString( "MultiLineString ((-1 -1, 4 0),(4 0, 4 2),(4 2, 0 2),(0 2, -1 -1))" ) );
+      QTest::newRow( "segments_to_lines polygon with rings" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-0.3 -0.9, -0.3 0, 4 -0.1, 0.1 2.1, -0.3 -0.9))')))" << false
+      << QVariant( QString( "MultiLineString ((-1 -1, 4 0),(4 0, 4 2),(4 2, 0 2),(0 2, -1 -1),(-0.1 -0.1, 0.4 0),(0.4 0, 0.4 0.2),(0.4 0.2, 0 0.2),(0 0.2, -0.1 -0.1),(-0.3 -0.9, -0.3 0),(-0.3 0, 4 -0.1),(4 -0.1, 0.1 2.1),(0.1 2.1, -0.3 -0.9))" ) );
+      QTest::newRow( "segments_to_lines line" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false
+      << QVariant( QString( "MultiLineString ((0 0, 1 1),(1 1, 2 2))" ) );
+      QTest::newRow( "segments_to_lines collection 1" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))')))" << false
+      << QVariant( QString( "MultiLineString ()" ) );
+      QTest::newRow( "segments_to_lines collection 2" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('GEOMETRYCOLLECTION(POINTZM(0 1 2 3), LINESTRINGZM(0 0 1 2, 1 1 3 4, 2 2 5 6), POINTZM(1 1 5 6), POLYGONZM((-1 -1 7 8, 4 0 1 2, 4 2 7 6, 0 2 1 3, -1 -1 7 8)), POINTZM(1 0 1 2))')))" << false
+      << QVariant( QString( "MultiLineStringZM ((0 0 1 2, 1 1 3 4),(1 1 3 4, 2 2 5 6),(-1 -1 7 8, 4 0 1 2),(4 0 1 2, 4 2 7 6),(4 2 7 6, 0 2 1 3),(0 2 1 3, -1 -1 7 8))" ) );
+      QTest::newRow( "segments_to_lines empty collection" ) << "geom_to_wkt(segments_to_lines(geom_from_wkt('GEOMETRYCOLLECTION()')))" << false <<
+      QVariant( QString( "MultiLineString ()" ) );
       QTest::newRow( "length line" ) << "length(geom_from_wkt('LINESTRING(0 0, 4 0)'))" << false << QVariant( 4.0 );
       QTest::newRow( "length polygon" ) << "length(geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))'))" << false << QVariant();
       QTest::newRow( "length point" ) << "length(geom_from_wkt('POINT(0 0)'))" << false << QVariant();
@@ -434,6 +496,26 @@ class TestQgsExpression: public QObject
       QTest::newRow( "point_n multipoint" ) << "geom_to_wkt(point_n(geom_from_wkt('MULTIPOINT((0 0), (1 1), (2 2))'),2))" << false << QVariant( "Point (1 1)" );
       QTest::newRow( "point_n line" ) << "geom_to_wkt(point_n(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'),3))" << false << QVariant( "Point (2 2)" );
       QTest::newRow( "point_n polygon" ) << "geom_to_wkt(point_n(geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))'),3))" << false << QVariant( "Point (4 2)" );
+      QTest::newRow( "interior_ring_n not geom" ) << "interior_ring_n('g', 1)" << true << QVariant();
+      QTest::newRow( "interior_ring_n null" ) << "interior_ring_n(NULL, 1)" << false << QVariant();
+      QTest::newRow( "interior_ring_n point" ) << "interior_ring_n(geom_from_wkt('POINT(1 2)'), 1)" << false << QVariant();
+      QTest::newRow( "interior_ring_n polygon no rings" ) << "interior_ring_n(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'),1)" << false << QVariant();
+      QTest::newRow( "interior_ring_n polygon with rings" ) << "geom_to_wkt(interior_ring_n(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1))'),1))" << false
+      << QVariant( QString( "LineString (-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1)" ) );
+      QTest::newRow( "interior_ring_n polygon with rings bad index 1" ) << "interior_ring_n(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1))'),0)" << false
+      << QVariant();
+      QTest::newRow( "interior_ring_n polygon with rings bad index 2" ) << "interior_ring_n(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),(-0.1 -0.1, 0.4 0, 0.4 0.2, 0 0.2, -0.1 -0.1),(-1 -1, 4 0, 4 2, 0 2, -1 -1))'),3)" << false
+      << QVariant();
+      QTest::newRow( "interior_ring_n line" ) << "interior_ring_n(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'), 1)" << false << QVariant();
+      QTest::newRow( "interior_ring_n collection" ) << "interior_ring_n(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'),1)" << false << QVariant();
+      QTest::newRow( "geometry_n not geom" ) << "geometry_n('g', 1)" << true << QVariant();
+      QTest::newRow( "geometry_n null" ) << "geometry_n(NULL, 1)" << false << QVariant();
+      QTest::newRow( "geometry_n point" ) << "geometry_n(geom_from_wkt('POINT(1 2)'), 1)" << false << QVariant();
+      QTest::newRow( "geometry_n polygon" ) << "geometry_n(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'),1)" << false << QVariant();
+      QTest::newRow( "geometry_n line" ) << "geometry_n(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'), 1)" << false << QVariant();
+      QTest::newRow( "geometry_n collection" ) << "geom_to_wkt(geometry_n(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'),3))" << false << QVariant( QString( "Point (1 0)" ) );
+      QTest::newRow( "geometry_n collection bad index 1" ) << "geometry_n(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'),0)" << false << QVariant();
+      QTest::newRow( "geometry_n collection bad index 2" ) << "geometry_n(geom_from_wkt('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))'),5)" << false << QVariant();
       QTest::newRow( "start_point point" ) << "geom_to_wkt(start_point(geom_from_wkt('POINT(2 0)')))" << false << QVariant( "Point (2 0)" );
       QTest::newRow( "start_point multipoint" ) << "geom_to_wkt(start_point(geom_from_wkt('MULTIPOINT((3 3), (1 1), (2 2))')))" << false << QVariant( "Point (3 3)" );
       QTest::newRow( "start_point line" ) << "geom_to_wkt(start_point(geom_from_wkt('LINESTRING(4 1, 1 1, 2 2)')))" << false << QVariant( "Point (4 1)" );
@@ -447,6 +529,29 @@ class TestQgsExpression: public QObject
       QTest::newRow( "reverse point" ) << "reverse(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
       QTest::newRow( "reverse polygon" ) << "reverse(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant();
       QTest::newRow( "reverse line" ) << "geom_to_wkt(reverse(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)')))" << false << QVariant( "LineString (2 2, 1 1, 0 0)" );
+      QTest::newRow( "exterior_ring not geom" ) << "exterior_ring('g')" << true << QVariant();
+      QTest::newRow( "exterior_ring null" ) << "exterior_ring(NULL)" << false << QVariant();
+      QTest::newRow( "exterior_ring point" ) << "exterior_ring(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
+      QTest::newRow( "exterior_ring polygon" ) << "geom_to_wkt(exterior_ring(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1),( 0.1 0.1, 0.1 0.2, 0.2 0.2, 0.2, 0.1, 0.1 0.1))')))" << false << QVariant( "LineString (-1 -1, 4 0, 4 2, 0 2, -1 -1)" );
+      QTest::newRow( "exterior_ring line" ) << "exterior_ring(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant();
+      QTest::newRow( "centroid polygon" ) << "geom_to_wkt(centroid( geomFromWKT('POLYGON((0 0,0 9,9 0,0 0))')))" << false << QVariant( "Point (3 3)" );
+      QTest::newRow( "centroid multi polygon" ) << "geom_to_wkt(centroid( geomFromWKT('MULTIPOLYGON(((0 0,0 1,1 1,1 0,0 0)),((2 0,2 1,3 1,3 0,2 0)))') ))" << false << QVariant( "Point (1.5 0.5)" );
+      QTest::newRow( "centroid point" ) << "geom_to_wkt(centroid( geomFromWKT('POINT (1.5 0.5)') ))" << false << QVariant( "Point (1.5 0.5)" );
+      QTest::newRow( "centroid line" ) << "geom_to_wkt(centroid( geomFromWKT('LINESTRING (-1 2, 9 12)') ))" << false << QVariant( "Point (4 7)" );
+      QTest::newRow( "centroid not geom" ) << "centroid('g')" << true << QVariant();
+      QTest::newRow( "centroid null" ) << "centroid(NULL)" << false << QVariant();
+      QTest::newRow( "point on surface polygon" ) << "geom_to_wkt(point_on_surface( geomFromWKT('POLYGON((0 0,0 9,9 0,0 0))')))" << false << QVariant( "Point (2.25 4.5)" );
+      QTest::newRow( "point on surface multi polygon" ) << "geom_to_wkt(point_on_surface( geomFromWKT('MULTIPOLYGON(((0 0,0 1,1 1,1 0,0 0)),((2 0,2 1,3 1,3 0,2 0)))') ))" << false << QVariant( "Point (0.5 0.5)" );
+      QTest::newRow( "point on surface point" ) << "geom_to_wkt(point_on_surface( geomFromWKT('POINT (1.5 0.5)') ))" << false << QVariant( "Point (1.5 0.5)" );
+      QTest::newRow( "point on surface line" ) << "geom_to_wkt(point_on_surface( geomFromWKT('LINESTRING (-1 2, 9 12)') ))" << false << QVariant( "Point (-1 2)" );
+      QTest::newRow( "point on surface not geom" ) << "point_on_surface('g')" << true << QVariant();
+      QTest::newRow( "point on surface null" ) << "point_on_surface(NULL)" << false << QVariant();
+      QTest::newRow( "is_closed not geom" ) << "is_closed('g')" << true << QVariant();
+      QTest::newRow( "is_closed null" ) << "is_closed(NULL)" << false << QVariant();
+      QTest::newRow( "is_closed point" ) << "is_closed(geom_from_wkt('POINT(1 2)'))" << false << QVariant();
+      QTest::newRow( "is_closed polygon" ) << "is_closed(geom_from_wkt('POLYGON((-1 -1, 4 0, 4 2, 0 2, -1 -1))'))" << false << QVariant();
+      QTest::newRow( "is_closed not closed" ) << "is_closed(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2)'))" << false << QVariant( false );
+      QTest::newRow( "is_closed closed" ) << "is_closed(geom_from_wkt('LINESTRING(0 0, 1 1, 2 2, 0 0)'))" << false << QVariant( true );
       QTest::newRow( "make_point" ) << "geom_to_wkt(make_point(2.2,4.4))" << false << QVariant( "Point (2.2 4.4)" );
       QTest::newRow( "make_point z" ) << "geom_to_wkt(make_point(2.2,4.4,5.5))" << false << QVariant( "PointZ (2.2 4.4 5.5)" );
       QTest::newRow( "make_point zm" ) << "geom_to_wkt(make_point(2.2,4.4,5.5,6.6))" << false << QVariant( "PointZM (2.2 4.4 5.5 6.6)" );
@@ -476,6 +581,20 @@ class TestQgsExpression: public QObject
       QTest::newRow( "relate bad 2" ) << "relate(geom_from_wkt('POINT(110 120)'),geom_from_wkt(''))" << false << QVariant();
       QTest::newRow( "relate pattern true" ) << "relate( geom_from_wkt( 'LINESTRING(40 40,120 120)' ), geom_from_wkt( 'LINESTRING(40 40,60 120)' ), '**1F001**' )" << false << QVariant( true );
       QTest::newRow( "relate pattern false" ) << "relate( geom_from_wkt( 'LINESTRING(40 40,120 120)' ), geom_from_wkt( 'LINESTRING(40 40,60 120)' ), '**1F002**' )" << false << QVariant( false );
+      QTest::newRow( "azimuth" ) << "toint(degrees(azimuth( make_point(25, 45), make_point(75, 100)))*1000000)" << false << QVariant( 42273689 );
+      QTest::newRow( "azimuth" ) << "toint(degrees( azimuth( make_point(75, 100), make_point(25,45) ) )*1000000)" << false << QVariant( 222273689 );
+      QTest::newRow( "extrude geom" ) << "geom_to_wkt(extrude( geom_from_wkt('LineString( 1 2, 3 2, 4 3)'),1,2))" << false << QVariant( "Polygon ((1 2, 3 2, 4 3, 5 5, 4 4, 2 4, 1 2))" );
+      QTest::newRow( "extrude not geom" ) << "extrude('g',5,6)" << true << QVariant();
+      QTest::newRow( "extrude null" ) << "extrude(NULL,5,6)" << false << QVariant();
+      QTest::newRow( "order parts" ) << "geom_to_wkt(order_parts(geom_from_wkt('MultiPolygon (((1 1, 5 1, 5 5, 1 5, 1 1)),((1 1, 9 1, 9 9, 1 9, 1 1)))'), 'area($geometry)', False ) )" << false << QVariant( "MultiPolygon (((1 1, 9 1, 9 9, 1 9, 1 1)),((1 1, 5 1, 5 5, 1 5, 1 1)))" );
+      QTest::newRow( "order parts not geom" ) << "order_parts('g', 'area($geometry)', False )" << true << QVariant();
+      QTest::newRow( "order parts single geom" ) << "geom_to_wkt(order_parts(geom_from_wkt('POLYGON((2 0,2 2, 3 2, 3 0, 2 0))'), 'area($geometry)', False))" << false << QVariant( "Polygon ((2 0, 2 2, 3 2, 3 0, 2 0))" );
+      QTest::newRow( "closest_point geom" ) << "geom_to_wkt(closest_point( geom_from_wkt('LineString( 1 1, 5 1, 5 5 )'),geom_from_wkt('Point( 6 3 )')))" << false << QVariant( "Point (5 3)" );
+      QTest::newRow( "closest_point not geom" ) << "closest_point('g','b')" << true << QVariant();
+      QTest::newRow( "closest_point null" ) << "closest_point(NULL,NULL)" << false << QVariant();
+      QTest::newRow( "shortest_line geom" ) << "geom_to_wkt(shortest_line( geom_from_wkt('LineString( 1 1, 5 1, 5 5 )'),geom_from_wkt('Point( 6 3 )')))" << false << QVariant( "LineString (5 3, 6 3)" );
+      QTest::newRow( "shortest_line not geom" ) << "shortest_line('g','a')" << true << QVariant();
+      QTest::newRow( "shortest_line null" ) << "shortest_line(NULL,NULL)" << false << QVariant();
 
       // string functions
       QTest::newRow( "lower" ) << "lower('HeLLo')" << false << QVariant( "hello" );
@@ -607,6 +726,11 @@ class TestQgsExpression: public QObject
       QTest::newRow( "set color part yellow" ) << "to_int(color_part(set_color_part(color_cmyk(21,0,92,70),'yellow',96),'yellow'))" << false << QVariant( 96 );
       QTest::newRow( "set color part black" ) << "to_int(color_part(set_color_part(color_cmyk(21,0,92,70),'black',100),'black'))" << false << QVariant( 100 );
 
+      QTest::newRow( "color darker" ) << "darker('200,100,30',150)" << false << QVariant( "133,66,20,255" );
+      QTest::newRow( "color darker bad color" ) << "darker('notacolor',150)" << true << QVariant();
+      QTest::newRow( "color lighter" ) << "lighter('200,100,30',150)" << false << QVariant( "255,154,83,255" );
+      QTest::newRow( "color lighter bad color" ) << "lighter('notacolor',150)" << true << QVariant();
+
       // Precedence and associativity
       QTest::newRow( "multiplication first" ) << "1+2*3" << false << QVariant( 7 );
       QTest::newRow( "brackets first" ) << "(1+2)*(3+4)" << false << QVariant( 21 );
@@ -643,55 +767,59 @@ class TestQgsExpression: public QObject
       QTest::newRow( "geometry to bool true" ) << QString( "case when geom_from_wkt('Point(3 4)') then true else false end" ) << false << QVariant( true );
     }
 
-    void run_evaluation_test( QgsExpression& exp, bool evalError, QVariant& result )
+    void run_evaluation_test( QgsExpression& exp, bool evalError, QVariant& expected )
     {
       QCOMPARE( exp.hasParserError(), false );
       if ( exp.hasParserError() )
         qDebug() << exp.parserErrorString();
 
-      QVariant res = exp.evaluate();
+      QVariant result = exp.evaluate();
       if ( exp.hasEvalError() )
         qDebug() << exp.evalErrorString();
-      if ( res.type() != result.type() )
+      if ( result.type() != expected.type() )
       {
-        qDebug() << "got " << res.typeName() << " instead of " << result.typeName();
+        qDebug() << "got " << result.typeName() << " instead of " << expected.typeName();
       }
       //qDebug() << res.type() << " " << result.type();
       //qDebug() << "type " << res.typeName();
       QCOMPARE( exp.hasEvalError(), evalError );
 
-      QCOMPARE( res.type(), result.type() );
-      switch ( res.type() )
+      QgsExpressionContext context;
+
+      Q_ASSERT( exp.prepare( &context ) );
+
+      QCOMPARE( result.type(), expected.type() );
+      switch ( result.type() )
       {
         case QVariant::Invalid:
           break; // nothing more to check
         case QVariant::Int:
-          QCOMPARE( res.toInt(), result.toInt() );
+          QCOMPARE( result.toInt(), expected.toInt() );
           break;
         case QVariant::Double:
-          QCOMPARE( res.toDouble(), result.toDouble() );
+          QCOMPARE( result.toDouble(), expected.toDouble() );
           break;
         case QVariant::Bool:
-          QCOMPARE( res.toBool(), result.toBool() );
+          QCOMPARE( result.toBool(), expected.toBool() );
           break;
         case QVariant::String:
-          QCOMPARE( res.toString(), result.toString() );
+          QCOMPARE( result.toString(), expected.toString() );
           break;
         case QVariant::Date:
-          QCOMPARE( res.toDate(), result.toDate() );
+          QCOMPARE( result.toDate(), expected.toDate() );
           break;
         case QVariant::DateTime:
-          QCOMPARE( res.toDateTime(), result.toDateTime() );
+          QCOMPARE( result.toDateTime(), expected.toDateTime() );
           break;
         case QVariant::Time:
-          QCOMPARE( res.toTime(), result.toTime() );
+          QCOMPARE( result.toTime(), expected.toTime() );
           break;
         case QVariant::UserType:
         {
-          if ( res.userType() == qMetaTypeId<QgsExpression::Interval>() )
+          if ( result.userType() == qMetaTypeId<QgsExpression::Interval>() )
           {
-            QgsExpression::Interval inter = res.value<QgsExpression::Interval>();
-            QgsExpression::Interval gotinter = result.value<QgsExpression::Interval>();
+            QgsExpression::Interval inter = result.value<QgsExpression::Interval>();
+            QgsExpression::Interval gotinter = expected.value<QgsExpression::Interval>();
             QCOMPARE( inter.seconds(), gotinter.seconds() );
           }
           else
@@ -717,6 +845,8 @@ class TestQgsExpression: public QObject
       run_evaluation_test( exp2, evalError, result );
       QgsExpression exp3( exp.expression() );
       run_evaluation_test( exp3, evalError, result );
+      QgsExpression exp4( exp );
+      run_evaluation_test( exp4, evalError, result );
     }
 
     void eval_precedence()
@@ -1424,7 +1554,9 @@ class TestQgsExpression: public QObject
       QTest::addColumn<bool>( "needGeom" );
       QTest::addColumn<void*>( "resultptr" );
 
-      QgsPolyline polygon_ring;
+      QgsPoint point( 0, 0 );
+      QgsPolyline line, polygon_ring;
+      line << QgsPoint( 0, 0 ) << QgsPoint( 10, 10 );
       polygon_ring << QgsPoint( 0, 0 ) << QgsPoint( 10, 10 ) << QgsPoint( 10, 0 ) << QgsPoint( 0, 0 );
       QgsPolygon polygon;
       polygon << polygon_ring;
@@ -1451,15 +1583,18 @@ class TestQgsExpression: public QObject
       QTest::newRow( "symDifference" ) << "symDifference( $geometry, geomFromWKT('POLYGON((0 0, 0 10, 10 0, 0 0))') )" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromWkt( "MULTIPOLYGON(((5 5,0 0,0 10,5 5)),((5 5,10 10,10 0,5 5)))" );
 
       geom = QgsGeometry::fromPolygon( polygon );
-      QTest::newRow( "centroid polygon" ) << "centroid( $geometry )" << ( void* ) geom << false << true << ( void* ) geom->centroid();
-      geom = QgsGeometry::fromPolygon( polygon );
-      QTest::newRow( "centroid multi polygon" ) << "centroid( geomFromWKT('MULTIPOLYGON(((0 0,0 1,1 1,1 0,0 0)),((2 0,2 1,3 1,3 0,2 0)))') )" << ( void* ) geom << false << false << ( void* ) QgsGeometry::fromWkt( "POINT (1.5 0.5)" );
-      geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "convexHull simple" ) << "convexHull( $geometry )" << ( void* ) geom << false << true << ( void* ) geom->convexHull();
       geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "convexHull multi" ) << "convexHull( geomFromWKT('GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))') )" << ( void* ) geom << false << false << ( void* ) QgsGeometry::fromWkt( "POLYGON ((0 0,0 1,1 1,1 0,0 0))" );
       geom = QgsGeometry::fromPolygon( polygon );
       QTest::newRow( "bounds" ) << "bounds( $geometry )" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromRect( geom->boundingBox() );
+
+      geom = QgsGeometry::fromPolygon( polygon );
+      QTest::newRow( "translate" ) << "translate( $geometry, 1, 2)" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromWkt( "POLYGON ((1 2,11 12,11 2,1 2))" );
+      geom = QgsGeometry::fromPolyline( line );
+      QTest::newRow( "translate" ) << "translate( $geometry, -1, 2)" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromWkt( "LINESTRING (-1 2, 9 12)" );
+      geom = QgsGeometry::fromPoint( point );
+      QTest::newRow( "translate" ) << "translate( $geometry, 1, -2)" << ( void* ) geom << false << true << ( void* ) QgsGeometry::fromWkt( "POINT(1 -2)" );
     }
 
     void eval_geometry_method()
@@ -1530,6 +1665,36 @@ class TestQgsExpression: public QObject
       Q_NOWARN_DEPRECATED_POP
     }
 
+    void eval_eval()
+    {
+      QgsFeature f( 100 );
+      QgsFields fields;
+      fields.append( QgsField( "col1" ) );
+      fields.append( QgsField( "second_column", QVariant::Int ) );
+      f.setFields( fields, true );
+      f.setAttribute( QString( "col1" ), QString( "test value" ) );
+      f.setAttribute( QString( "second_column" ), 5 );
+
+      QgsExpressionContext context = QgsExpressionContextUtils::createFeatureBasedContext( f, QgsFields() );
+
+      QgsExpression exp1( "eval()" );
+      QVariant v1 = exp1.evaluate( &context );
+
+      Q_ASSERT( !v1.isValid() );
+
+      QgsExpression exp2( "eval('4')" );
+      QVariant v2 = exp2.evaluate( &context );
+      QCOMPARE( v2, QVariant( 4 ) );
+
+      QgsExpression exp3( "eval('\"second_column\" * 2')" );
+      QVariant v3 = exp3.evaluate( &context );
+      QCOMPARE( v3, QVariant( 10 ) );
+
+      QgsExpression exp4( "eval('\"col1\"')" );
+      QVariant v4 = exp4.evaluate( &context );
+      QCOMPARE( v4, QVariant( "test value" ) );
+    }
+
     void expression_from_expression_data()
     {
       QTest::addColumn<QString>( "string" );
@@ -1554,6 +1719,20 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression::quotedString( "hello\nworld" ), QString( "'hello\\nworld'" ) );
       QCOMPARE( QgsExpression::quotedString( "hello\tworld" ), QString( "'hello\\tworld'" ) );
       QCOMPARE( QgsExpression::quotedString( "hello\\world" ), QString( "'hello\\\\world'" ) );
+    }
+
+    void quoted_value()
+    {
+      QCOMPARE( QgsExpression::quotedValue( QVariant( "a string" ) ), QString( "'a string'" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( "a\nstring" ) ), QString( "'a\\nstring'" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( 5 ) ), QString( "5" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( 5 ), QVariant::String ), QString( "'5'" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( 5LL ) ), QString( "5" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( 5.5 ) ), QString( "5.5" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( true ) ), QString( "TRUE" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant( true ), QVariant::String ), QString( "'true'" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant() ), QString( "NULL" ) );
+      QCOMPARE( QgsExpression::quotedValue( QVariant(), QVariant::String ), QString( "NULL" ) );
     }
 
     void reentrant()
@@ -1583,6 +1762,82 @@ class TestQgsExpression: public QObject
       QCOMPARE( QgsExpression( "\"foo bar\"" ).isField(), true );
       QCOMPARE( QgsExpression( "sqrt(foo)" ).isField(), false );
       QCOMPARE( QgsExpression( "foo + bar" ).isField(), false );
+    }
+
+    void test_implicitSharing()
+    {
+      QgsExpression* exp = new QgsExpression( "Pilots > 2" );
+
+      QgsExpression expcopy( *exp );
+
+      QVERIFY( expcopy.rootNode() );
+      QCOMPARE( expcopy.expression(), QString( "Pilots > 2" ) );
+
+      // Delete original instance, should preserve copy.
+      delete exp;
+
+      // This mainly should not crash, root node should have outlived the original one
+      QVERIFY( !expcopy.rootNode()->dump().isEmpty() );
+
+
+      // Let's take another copy
+      QgsExpression expcopy2( expcopy );
+
+      QgsExpressionContext ctx = QgsExpressionContextUtils::createFeatureBasedContext( 0, mPointsLayer->fields() );
+
+      // Prepare with the current set of fields
+      expcopy.prepare( &ctx );
+
+      QgsFeatureIterator it = mPointsLayer->getFeatures();
+      QgsFeature feat;
+
+      // Let's count some features
+      int count = 0;
+      while ( it.nextFeature( feat ) )
+      {
+        QgsExpressionContext ctx = QgsExpressionContextUtils::createFeatureBasedContext( feat, mPointsLayer->fields() );
+        if ( expcopy.evaluate( &ctx ).toBool() )
+          count++;
+      }
+
+      QCOMPARE( count, 6 );
+
+      // Let's remove the field referenced in the expression
+      mPointsLayer->startEditing();
+      mPointsLayer->deleteAttribute( mPointsLayer->fieldNameIndex( "Pilots" ) );
+
+      // Now the prepared expression is broken
+      // The cached field index points to the index which now is
+      // used by "Cabin Crew". Not a particularly good test
+      // since it actually relies on undefined behavior (changing
+      // fields after prepare() )
+
+      it = mPointsLayer->getFeatures();
+      count = 0;
+      while ( it.nextFeature( feat ) )
+      {
+        QgsExpressionContext ctx = QgsExpressionContextUtils::createFeatureBasedContext( feat, mPointsLayer->fields() );
+        if ( expcopy.evaluate( &ctx ).toBool() )
+          count++;
+      }
+
+      QCOMPARE( count, 3 );
+
+      // But the copy should not have cached field indexes
+      it = mPointsLayer->getFeatures();
+      count = 0;
+      while ( it.nextFeature( feat ) )
+      {
+        QgsExpressionContext ctx = QgsExpressionContextUtils::createFeatureBasedContext( feat, mPointsLayer->fields() );
+        if ( expcopy2.evaluate( &ctx ).toBool() )
+          count++;
+      }
+
+      QCOMPARE( count, 0 );
+
+      // Detach a more complex expression
+      QgsExpression nodeExpression( "1 IN (1, 2, 3, 4)" );
+      QgsExpression nodeExpression2( nodeExpression );
     }
 };
 

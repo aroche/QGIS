@@ -23,7 +23,7 @@
 
 QgsSnappingUtils::QgsSnappingUtils( QObject* parent )
     : QObject( parent )
-    , mCurrentLayer( 0 )
+    , mCurrentLayer( nullptr )
     , mSnapToMapMode( SnapCurrentLayer )
     , mStrategy( IndexHybrid )
     , mDefaultType( QgsPointLocator::Vertex )
@@ -44,7 +44,7 @@ QgsSnappingUtils::~QgsSnappingUtils()
 QgsPointLocator* QgsSnappingUtils::locatorForLayer( QgsVectorLayer* vl )
 {
   if ( !vl )
-    return 0;
+    return nullptr;
 
   if ( !mLocators.contains( vl ) )
   {
@@ -167,7 +167,7 @@ static QgsPointLocator::Match _findClosestSegmentIntersection( const QgsPoint& p
     }
   }
 
-  return QgsPointLocator::Match( QgsPointLocator::Vertex, 0, 0, sqrt( minSqrDist ), minP );
+  return QgsPointLocator::Match( QgsPointLocator::Vertex, nullptr, 0, sqrt( minSqrDist ), minP );
 }
 
 
@@ -274,7 +274,7 @@ QgsPointLocator::Match QgsSnappingUtils::snapToMap( const QgsPoint& pointMap, Qg
   else if ( mSnapToMapMode == SnapAllLayers )
   {
     // data from project
-    double tolerance = QgsTolerance::toleranceInProjectUnits( mDefaultTolerance, 0, mMapSettings, mDefaultUnit );
+    double tolerance = QgsTolerance::toleranceInProjectUnits( mDefaultTolerance, nullptr, mMapSettings, mDefaultUnit );
     int type = mDefaultType;
 
     QList<QgsVectorLayer*> layers;
@@ -323,12 +323,14 @@ void QgsSnappingUtils::prepareIndex( const QList<QgsVectorLayer*>& layers )
   if ( !layersToIndex.isEmpty() )
   {
     // build indexes
-    QTime t; t.start();
+    QTime t;
+    t.start();
     int i = 0;
     prepareIndexStarting( layersToIndex.count() );
     Q_FOREACH ( QgsVectorLayer* vl, layersToIndex )
     {
-      QTime tt; tt.start();
+      QTime tt;
+      tt.start();
       if ( !locatorForLayer( vl )->init( mStrategy == IndexHybrid ? 1000000 : -1 ) )
         mHybridNonindexableLayers.insert( vl->id() );
       QgsDebugMsg( QString( "Index init: %1 ms (%2)" ).arg( tt.elapsed() ).arg( vl->id() ) );
@@ -367,15 +369,35 @@ void QgsSnappingUtils::setMapSettings( const QgsMapSettings& settings )
     clearAllLocators();
 }
 
+void QgsSnappingUtils::setCurrentLayer( QgsVectorLayer* layer )
+{
+  mCurrentLayer = layer;
+}
+
+void QgsSnappingUtils::setSnapToMapMode( QgsSnappingUtils::SnapToMapMode mode )
+{
+  if ( mSnapToMapMode == mode )
+    return;
+
+  mSnapToMapMode = mode;
+  emit configChanged();
+}
+
 void QgsSnappingUtils::setDefaultSettings( int type, double tolerance, QgsTolerance::UnitType unit )
 {
   // force map units - can't use layer units for just any layer
   if ( unit == QgsTolerance::LayerUnits )
     unit = QgsTolerance::ProjectUnits;
 
+  if ( mDefaultType == type && mDefaultTolerance == tolerance && mDefaultUnit == unit )
+    return;
+
   mDefaultType = type;
   mDefaultTolerance = tolerance;
   mDefaultUnit = unit;
+
+  if ( mSnapToMapMode != SnapAdvanced ) // does not affect advanced mode
+    emit configChanged();
 }
 
 void QgsSnappingUtils::defaultSettings( int& type, double& tolerance, QgsTolerance::UnitType& unit )
@@ -385,9 +407,28 @@ void QgsSnappingUtils::defaultSettings( int& type, double& tolerance, QgsToleran
   unit = mDefaultUnit;
 }
 
+void QgsSnappingUtils::setLayers( const QList<QgsSnappingUtils::LayerConfig>& layers )
+{
+  if ( mLayers == layers )
+    return;
+
+  mLayers = layers;
+  if ( mSnapToMapMode == SnapAdvanced ) // only affects advanced mode
+    emit configChanged();
+}
+
+void QgsSnappingUtils::setSnapOnIntersections( bool enabled )
+{
+  if ( mSnapOnIntersection == enabled )
+    return;
+
+  mSnapOnIntersection = enabled;
+  emit configChanged();
+}
+
 const QgsCoordinateReferenceSystem* QgsSnappingUtils::destCRS()
 {
-  return mMapSettings.hasCrsTransformEnabled() ? &mMapSettings.destinationCrs() : 0;
+  return mMapSettings.hasCrsTransformEnabled() ? &mMapSettings.destinationCrs() : nullptr;
 }
 
 
@@ -407,7 +448,7 @@ void QgsSnappingUtils::readConfigFromProject()
   else if ( snapType == "to vertex" )
     type = QgsPointLocator::Vertex;
   double tolerance = QgsProject::instance()->readDoubleEntry( "Digitizing", "/DefaultSnapTolerance", 0 );
-  QgsTolerance::UnitType unit = ( QgsTolerance::UnitType ) QgsProject::instance()->readNumEntry( "Digitizing", "/DefaultSnapToleranceUnit", QgsTolerance::ProjectUnits );
+  QgsTolerance::UnitType unit = static_cast< QgsTolerance::UnitType >( QgsProject::instance()->readNumEntry( "Digitizing", "/DefaultSnapToleranceUnit", QgsTolerance::ProjectUnits ) );
   setDefaultSettings( type, tolerance, unit );
 
   //snapping on intersection on?
@@ -462,9 +503,10 @@ void QgsSnappingUtils::readConfigFromProject()
                                 QgsPointLocator::Vertex | QgsPointLocator::Edge
                               )
                             );
-    mLayers.append( LayerConfig( vlayer, t, tolIt->toDouble(), ( QgsTolerance::UnitType ) tolUnitIt->toInt() ) );
+    mLayers.append( LayerConfig( vlayer, t, tolIt->toDouble(), static_cast< QgsTolerance::UnitType >( tolUnitIt->toInt() ) ) );
   }
 
+  emit configChanged();
 }
 
 void QgsSnappingUtils::onLayersWillBeRemoved( const QStringList& layerIds )

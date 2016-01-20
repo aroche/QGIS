@@ -125,13 +125,13 @@ QgsVectorLayer::QgsVectorLayer( const QString& vectorLayerPath,
                                 const QString& providerKey,
                                 bool loadDefaultStyleFlag )
     : QgsMapLayer( VectorLayer, baseName, vectorLayerPath )
-    , mDataProvider( NULL )
+    , mDataProvider( nullptr )
     , mProviderKey( providerKey )
     , mReadOnly( false )
     , mEditFormConfig( new QgsEditFormConfig( this ) )
     , mWkbType( QGis::WKBUnknown )
-    , mRendererV2( NULL )
-    , mLabel( 0 )
+    , mRendererV2( nullptr )
+    , mLabel( nullptr )
     , mLabelOn( false )
     , mLabeling( new QgsVectorLayerSimpleLabeling )
     , mLabelFontNotFoundNotified( false )
@@ -139,11 +139,11 @@ QgsVectorLayer::QgsVectorLayer( const QString& vectorLayerPath,
     , mLayerTransparency( 0 )
     , mVertexMarkerOnlyForSelection( false )
     , mCache( new QgsGeometryCache() )
-    , mEditBuffer( 0 )
-    , mJoinBuffer( 0 )
-    , mExpressionFieldBuffer( 0 )
-    , mDiagramRenderer( 0 )
-    , mDiagramLayerSettings( 0 )
+    , mEditBuffer( nullptr )
+    , mJoinBuffer( nullptr )
+    , mExpressionFieldBuffer( nullptr )
+    , mDiagramRenderer( nullptr )
+    , mDiagramLayerSettings( nullptr )
     , mValidExtent( false )
     , mLazyExtent( true )
     , mSymbolFeatureCounted( false )
@@ -164,7 +164,7 @@ QgsVectorLayer::QgsVectorLayer( const QString& vectorLayerPath,
 
   // Default simplify drawing settings
   QSettings settings;
-  mSimplifyMethod.setSimplifyHints(( QgsVectorSimplifyMethod::SimplifyHints ) settings.value( "/qgis/simplifyDrawingHints", ( int ) mSimplifyMethod.simplifyHints() ).toInt() );
+  mSimplifyMethod.setSimplifyHints( static_cast< QgsVectorSimplifyMethod::SimplifyHints >( settings.value( "/qgis/simplifyDrawingHints", static_cast< int>( mSimplifyMethod.simplifyHints() ) ).toInt() ) );
   mSimplifyMethod.setThreshold( settings.value( "/qgis/simplifyDrawingTol", mSimplifyMethod.threshold() ).toFloat() );
   mSimplifyMethod.setForceLocalOptimization( settings.value( "/qgis/simplifyLocal", mSimplifyMethod.forceLocalOptimization() ).toBool() );
   mSimplifyMethod.setMaximumScale( settings.value( "/qgis/simplifyMaxScale", mSimplifyMethod.maximumScale() ).toFloat() );
@@ -202,7 +202,7 @@ QString QgsVectorLayer::storageType() const
   {
     return mDataProvider->storageType();
   }
-  return 0;
+  return nullptr;
 }
 
 
@@ -212,7 +212,7 @@ QString QgsVectorLayer::capabilitiesString() const
   {
     return mDataProvider->capabilitiesString();
   }
-  return 0;
+  return nullptr;
 }
 
 QString QgsVectorLayer::dataComment() const
@@ -354,7 +354,7 @@ void QgsVectorLayer::drawLabels( QgsRenderContext& rendererContext )
         if ( mRendererV2->willRenderFeature( fet, rendererContext ) )
         {
           bool sel = mSelectedFeatureIds.contains( fet.id() );
-          mLabel->renderLabel( rendererContext, fet, sel, 0 );
+          mLabel->renderLabel( rendererContext, fet, sel, nullptr );
         }
         featureCount++;
       }
@@ -409,7 +409,7 @@ void QgsVectorLayer::drawVertexMarker( double x, double y, QPainter& p, QgsVecto
   }
 }
 
-void QgsVectorLayer::select( const QgsFeatureId& fid )
+void QgsVectorLayer::select( QgsFeatureId fid )
 {
   mSelectedFeatureIds.insert( fid );
 
@@ -469,7 +469,7 @@ void QgsVectorLayer::select( QgsRectangle & rect, bool addToSelection )
 void QgsVectorLayer::modifySelection( QgsFeatureIds selectIds, QgsFeatureIds deselectIds )
 {
   QgsFeatureIds intersectingIds = selectIds & deselectIds;
-  if ( intersectingIds.count() > 0 )
+  if ( !intersectingIds.isEmpty() )
   {
     QgsDebugMsg( "Trying to select and deselect the same item at the same time. Unsure what to do. Selecting dubious items." );
   }
@@ -540,7 +540,7 @@ void QgsVectorLayer::invertSelectionInRectangle( QgsRectangle & rect )
 
 void QgsVectorLayer::removeSelection()
 {
-  if ( mSelectedFeatureIds.size() == 0 )
+  if ( mSelectedFeatureIds.isEmpty() )
     return;
 
   setSelectedFeatures( QgsFeatureIds() );
@@ -577,7 +577,7 @@ QGis::GeometryType QgsVectorLayer::geometryType() const
   if ( mValid && mDataProvider )
   {
     QGis::WkbType type = mDataProvider->geometryType();
-    return ( QGis::GeometryType )( QgsWKBTypes::geometryType(( QgsWKBTypes::Type )type ) );
+    return static_cast< QGis::GeometryType >( QgsWKBTypes::geometryType( static_cast< QgsWKBTypes::Type >( type ) ) );
   }
   else
   {
@@ -607,7 +607,7 @@ QGis::WkbType QgsVectorLayer::wkbType() const
 
 QgsRectangle QgsVectorLayer::boundingBoxOfSelected()
 {
-  if ( !mValid || mSelectedFeatureIds.size() == 0 ) //no selected features
+  if ( !mValid || mSelectedFeatureIds.isEmpty() ) //no selected features
   {
     return QgsRectangle( 0, 0, 0, 0 );
   }
@@ -684,7 +684,7 @@ bool QgsVectorLayer::diagramsEnabled() const
     return false;
 
   QList<QgsDiagramSettings> settingList = mDiagramRenderer->diagramSettings();
-  if ( settingList.size() > 0 )
+  if ( !settingList.isEmpty() )
   {
     return settingList.at( 0 ).enabled;
   }
@@ -839,7 +839,7 @@ QgsRectangle QgsVectorLayer::extent()
 
     if ( mEditBuffer )
     {
-      for ( QgsFeatureMap::iterator it = mEditBuffer->mAddedFeatures.begin(); it != mEditBuffer->mAddedFeatures.end(); ++it )
+      for ( QgsFeatureMap::const_iterator it = mEditBuffer->mAddedFeatures.constBegin(); it != mEditBuffer->mAddedFeatures.constEnd(); ++it )
       {
         if ( it->constGeometry() )
         {
@@ -884,7 +884,7 @@ QString QgsVectorLayer::subsetString()
   if ( !mValid || !mDataProvider )
   {
     QgsDebugMsg( "invoked with invalid layer or null mDataProvider" );
-    return 0;
+    return nullptr;
   }
   return mDataProvider->subsetString();
 }
@@ -1313,6 +1313,8 @@ bool QgsVectorLayer::startEditing()
     return false;
   }
 
+  emit beforeEditingStarted();
+
   if ( mDataProvider->transaction() )
   {
     mEditBuffer = new QgsVectorLayerEditPassthrough( this );
@@ -1493,8 +1495,7 @@ bool QgsVectorLayer::setDataProvider( QString const & provider )
   //XXX - This was a dynamic cast but that kills the Windows
   //      version big-time with an abnormal termination error
   delete mDataProvider;
-  mDataProvider =
-    ( QgsVectorDataProvider* )( QgsProviderRegistry::instance()->provider( provider, mDataSource ) );
+  mDataProvider = ( QgsVectorDataProvider* )( QgsProviderRegistry::instance()->provider( provider, mDataSource ) );
 
   if ( !mDataProvider )
   {
@@ -1621,6 +1622,16 @@ bool QgsVectorLayer::writeXml( QDomNode & layer_node,
   //save joins
   mJoinBuffer->writeXml( layer_node, document );
 
+  // dependencies
+  QDomElement dependenciesElement = document.createElement( "layerDependencies" );
+  foreach ( QString layerId, layerDependencies() )
+  {
+    QDomElement depElem = document.createElement( "layer" );
+    depElem.setAttribute( "id", layerId );
+    dependenciesElement.appendChild( depElem );
+  }
+  layer_node.appendChild( dependenciesElement );
+
   // save expression fields
   mExpressionFieldBuffer->writeXml( layer_node, document );
 
@@ -1677,7 +1688,7 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     if ( !blendModeNode.isNull() )
     {
       QDomElement e = blendModeNode.toElement();
-      setBlendMode( QgsMapRenderer::getCompositionMode(( QgsMapRenderer::BlendMode ) e.text().toInt() ) );
+      setBlendMode( QgsMapRenderer::getCompositionMode( static_cast< QgsMapRenderer::BlendMode >( e.text().toInt() ) ) );
     }
 
     // get and set the feature blend mode if it exists
@@ -1685,7 +1696,7 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     if ( !featureBlendModeNode.isNull() )
     {
       QDomElement e = featureBlendModeNode.toElement();
-      setFeatureBlendMode( QgsMapRenderer::getCompositionMode(( QgsMapRenderer::BlendMode ) e.text().toInt() ) );
+      setFeatureBlendMode( QgsMapRenderer::getCompositionMode( static_cast< QgsMapRenderer::BlendMode >( e.text().toInt() ) ) );
     }
 
     // get and set the layer transparency if it exists
@@ -1706,7 +1717,7 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     }
 
     // get the simplification drawing settings
-    mSimplifyMethod.setSimplifyHints(( QgsVectorSimplifyMethod::SimplifyHints ) e.attribute( "simplifyDrawingHints", "1" ).toInt() );
+    mSimplifyMethod.setSimplifyHints( static_cast< QgsVectorSimplifyMethod::SimplifyHints >( e.attribute( "simplifyDrawingHints", "1" ).toInt() ) );
     mSimplifyMethod.setThreshold( e.attribute( "simplifyDrawingTol", "1" ).toFloat() );
     mSimplifyMethod.setForceLocalOptimization( e.attribute( "simplifyLocal", "1" ).toInt() );
     mSimplifyMethod.setMaximumScale( e.attribute( "simplifyMaxScale", "1" ).toFloat() );
@@ -1738,7 +1749,8 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     }
 
     //diagram renderer and diagram layer settings
-    delete mDiagramRenderer; mDiagramRenderer = 0;
+    delete mDiagramRenderer;
+    mDiagramRenderer = nullptr;
     QDomElement singleCatDiagramElem = node.firstChildElement( "SingleCategoryDiagramRenderer" );
     if ( !singleCatDiagramElem.isNull() )
     {
@@ -1767,41 +1779,7 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
   // process the attribute actions
   mActions->readXML( node );
 
-  QDomNode editFormNode = node.namedItem( "editform" );
-  if ( !editFormNode.isNull() )
-  {
-    QDomElement e = editFormNode.toElement();
-    mEditFormConfig->setUiForm( QgsProject::instance()->readPath( e.text() ) );
-  }
-
-  QDomNode editFormInitNode = node.namedItem( "editforminit" );
-  if ( !editFormInitNode.isNull() )
-  {
-    mEditFormConfig->setInitFunction( editFormInitNode.toElement().text() );
-  }
-
-  QDomNode editFormInitCodeNode = node.namedItem( "editforminitcode" );
-  if ( !editFormInitCodeNode.isNull() )
-  {
-    mEditFormConfig->setInitCode( editFormInitCodeNode.toElement().text() );
-  }
-
-  QDomNode editFormInitUseCodeNode = node.namedItem( "editforminitusecode" );
-  if ( !editFormInitCodeNode.isNull() || ( !editFormInitNode.isNull() && !editFormInitNode.toElement().text().isEmpty() ) )
-  {
-    mEditFormConfig->setUseInitCode( editFormInitUseCodeNode.toElement().text().toInt() );
-  }
-
-  QDomNode fFSuppNode = node.namedItem( "featformsuppress" );
-  if ( fFSuppNode.isNull() )
-  {
-    mEditFormConfig->setSuppress( QgsEditFormConfig::SuppressDefault );
-  }
-  else
-  {
-    QDomElement e = fFSuppNode.toElement();
-    mEditFormConfig->setSuppress(( QgsEditFormConfig::FeatureFormSuppress )e.text().toInt() );
-  }
+  mEditFormConfig->readXml( node );
 
   QDomNode annotationFormNode = node.namedItem( "annotationform" );
   if ( !annotationFormNode.isNull() )
@@ -1838,28 +1816,6 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     }
   }
 
-  // tab display
-  QDomNode editorLayoutNode = node.namedItem( "editorlayout" );
-  if ( editorLayoutNode.isNull() )
-  {
-    mEditFormConfig->setLayout( QgsEditFormConfig::GeneratedLayout );
-  }
-  else
-  {
-    if ( editorLayoutNode.toElement().text() == "uifilelayout" )
-    {
-      mEditFormConfig->setLayout( QgsEditFormConfig::UiFileLayout );
-    }
-    else if ( editorLayoutNode.toElement().text() == "tablayout" )
-    {
-      mEditFormConfig->setLayout( QgsEditFormConfig::TabLayout );
-    }
-    else
-    {
-      mEditFormConfig->setLayout( QgsEditFormConfig::GeneratedLayout );
-    }
-  }
-
   //Attributes excluded from WMS and WFS
   mExcludeAttributesWMS.clear();
   QDomNode excludeWMSNode = node.namedItem( "excludeAttributesWMS" );
@@ -1883,58 +1839,11 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     }
   }
 
-  // tabs and groups display info
-  mEditFormConfig->clearTabs();
-  QDomNode attributeEditorFormNode = node.namedItem( "attributeEditorForm" );
-  QDomNodeList attributeEditorFormNodeList = attributeEditorFormNode.toElement().childNodes();
+  mEditFormConfig->readXml( node );
 
-  for ( int i = 0; i < attributeEditorFormNodeList.size(); i++ )
-  {
-    QDomElement elem = attributeEditorFormNodeList.at( i ).toElement();
-
-    QgsAttributeEditorElement *attributeEditorWidget = attributeEditorElementFromDomElement( elem, this );
-    mEditFormConfig->addTab( attributeEditorWidget );
-  }
-
-  conditionalStyles()->readXml( node );
+  mConditionalStyles->readXml( node );
 
   return true;
-}
-
-QgsAttributeEditorElement* QgsVectorLayer::attributeEditorElementFromDomElement( QDomElement &elem, QObject* parent )
-{
-  QgsAttributeEditorElement* newElement = NULL;
-
-  if ( elem.tagName() == "attributeEditorContainer" )
-  {
-    QgsAttributeEditorContainer* container = new QgsAttributeEditorContainer( elem.attribute( "name" ), parent );
-
-    QDomNodeList childNodeList = elem.childNodes();
-
-    for ( int i = 0; i < childNodeList.size(); i++ )
-    {
-      QDomElement childElem = childNodeList.at( i ).toElement();
-      QgsAttributeEditorElement *myElem = attributeEditorElementFromDomElement( childElem, container );
-      if ( myElem )
-        container->addChildElement( myElem );
-    }
-
-    newElement = container;
-  }
-  else if ( elem.tagName() == "attributeEditorField" )
-  {
-    QString name = elem.attribute( "name" );
-    int idx = fieldNameIndex( name );
-    newElement = new QgsAttributeEditorField( name, idx, parent );
-  }
-  else if ( elem.tagName() == "attributeEditorRelation" )
-  {
-    // At this time, the relations are not loaded
-    // So we only grab the id and delegate the rest to onRelationsLoaded()
-    QString name = elem.attribute( "name" );
-    newElement = new QgsAttributeEditorRelation( name, elem.attribute( "relation", "[None]" ), parent );
-  }
-  return newElement;
 }
 
 bool QgsVectorLayer::writeSymbology( QDomNode& node, QDomDocument& doc, QString& errorMessage ) const
@@ -2044,56 +1953,13 @@ bool QgsVectorLayer::writeSymbology( QDomNode& node, QDomDocument& doc, QString&
   // still other editing settings are written here,
   // although they are not part of symbology either
 
-  QDomElement efField  = doc.createElement( "editform" );
-  QDomText efText = doc.createTextNode( QgsProject::instance()->writePath( mEditFormConfig->uiForm() ) );
-  efField.appendChild( efText );
-  node.appendChild( efField );
-
-  QDomElement efiField  = doc.createElement( "editforminit" );
-  if ( !mEditFormConfig->initFunction().isEmpty() )
-    efiField.appendChild( doc.createTextNode( mEditFormConfig->initFunction() ) );
-  node.appendChild( efiField );
-
-  QDomElement efiucField  = doc.createElement( "editforminitusecode" );
-  efiucField.appendChild( doc.createTextNode( mEditFormConfig->useInitCode() ? "1" : "0" ) );
-  node.appendChild( efiucField );
-
-  QDomElement eficField  = doc.createElement( "editforminitcode" );
-  eficField.appendChild( doc.createCDATASection( mEditFormConfig->initCode() ) );
-  node.appendChild( eficField );
-
-  QDomElement fFSuppElem  = doc.createElement( "featformsuppress" );
-  QDomText fFSuppText = doc.createTextNode( QString::number( mEditFormConfig->suppress() ) );
-  fFSuppElem.appendChild( fFSuppText );
-  node.appendChild( fFSuppElem );
-
   QDomElement afField = doc.createElement( "annotationform" );
   QDomText afText = doc.createTextNode( QgsProject::instance()->writePath( mAnnotationForm ) );
   afField.appendChild( afText );
   node.appendChild( afField );
 
-  // tab display
-  QDomElement editorLayoutElem  = doc.createElement( "editorlayout" );
-  switch ( mEditFormConfig->layout() )
-  {
-    case QgsEditFormConfig::UiFileLayout:
-      editorLayoutElem.appendChild( doc.createTextNode( "uifilelayout" ) );
-      break;
-
-    case QgsEditFormConfig::TabLayout:
-      editorLayoutElem.appendChild( doc.createTextNode( "tablayout" ) );
-      break;
-
-    case QgsEditFormConfig::GeneratedLayout:
-    default:
-      editorLayoutElem.appendChild( doc.createTextNode( "generatedlayout" ) );
-      break;
-  }
-
-  node.appendChild( editorLayoutElem );
-
   //attribute aliases
-  if ( mAttributeAliasMap.size() > 0 )
+  if ( !mAttributeAliasMap.isEmpty() )
   {
     QDomElement aliasElem = doc.createElement( "aliases" );
     QMap<QString, QString>::const_iterator a_it = mAttributeAliasMap.constBegin();
@@ -2136,22 +2002,10 @@ bool QgsVectorLayer::writeSymbology( QDomNode& node, QDomDocument& doc, QString&
   }
   node.appendChild( excludeWFSElem );
 
-  // tabs and groups of edit form
-  if ( mEditFormConfig->tabs().size() > 0 )
-  {
-    QDomElement tabsElem = doc.createElement( "attributeEditorForm" );
-
-    for ( QList< QgsAttributeEditorElement* >::const_iterator it = mEditFormConfig->tabs().constBegin(); it != mEditFormConfig->tabs().constEnd(); ++it )
-    {
-      QDomElement attributeEditorWidgetElem = ( *it )->toDomElement( doc );
-      tabsElem.appendChild( attributeEditorWidgetElem );
-    }
-
-    node.appendChild( tabsElem );
-  }
-
   // add attribute actions
   mActions->writeXML( node, doc );
+
+  mEditFormConfig->writeXml( node );
 
   mConditionalStyles->writeXml( node, doc );
 
@@ -2332,6 +2186,21 @@ bool QgsVectorLayer::deleteFeature( QgsFeatureId fid )
   return res;
 }
 
+bool QgsVectorLayer::deleteFeatures( QgsFeatureIds fids )
+{
+  if ( !mEditBuffer )
+    return false;
+
+  bool res = mEditBuffer->deleteFeatures( fids );
+
+  if ( res )
+    mSelectedFeatureIds.subtract( fids ); // remove it from selection
+
+  updateExtents();
+
+  return res;
+}
+
 QgsAttributeList QgsVectorLayer::pkAttributeList() const
 {
   QgsAttributeList pkAttributesList;
@@ -2376,7 +2245,7 @@ bool QgsVectorLayer::commitChanges()
   if ( success )
   {
     delete mEditBuffer;
-    mEditBuffer = 0;
+    mEditBuffer = nullptr;
     undoStack()->clear();
     emit editingStopped();
   }
@@ -2426,7 +2295,7 @@ bool QgsVectorLayer::rollBack( bool deleteBuffer )
   if ( deleteBuffer )
   {
     delete mEditBuffer;
-    mEditBuffer = 0;
+    mEditBuffer = nullptr;
     undoStack()->clear();
   }
   emit editingStopped();
@@ -2489,7 +2358,7 @@ QgsFeatureList QgsVectorLayer::selectedFeatures()
 
 QgsFeatureIterator QgsVectorLayer::selectedFeaturesIterator( QgsFeatureRequest request )
 {
-  if ( mSelectedFeatureIds.count() == 0 )
+  if ( mSelectedFeatureIds.isEmpty() )
     return QgsFeatureIterator();
 
   if ( geometryType() == QGis::NoGeometry )
@@ -2648,7 +2517,7 @@ void QgsVectorLayer::snapToGeometry( const QgsPoint& startPoint,
   {
     if ( geometryType() != QGis::Point ) // cannot snap to segment for points/multipoints
     {
-      sqrDistSegmentSnap = geom->closestSegmentWithContext( startPoint, snappedPoint, afterVertex, NULL, crs().geographicFlag() ? 1e-12 : 1e-8 );
+      sqrDistSegmentSnap = geom->closestSegmentWithContext( startPoint, snappedPoint, afterVertex, nullptr, crs().geographicFlag() ? 1e-12 : 1e-8 );
 
       if ( sqrDistSegmentSnap < sqrSnappingTolerance )
       {
@@ -2839,7 +2708,7 @@ void QgsVectorLayer::endEditCommand()
   {
     undoStack()->endMacro();
     mEditCommandActive = false;
-    if ( mDeletedFids.count() )
+    if ( !mDeletedFids.isEmpty() )
     {
       emit featuresDeleted( mDeletedFids );
       mDeletedFids.clear();
@@ -3474,7 +3343,7 @@ void QgsVectorLayer::readSldLabeling( const QDomNode& node )
     setCustomProperty( "labeling/textColorR", textColor.red() );
     setCustomProperty( "labeling/textColorG", textColor.green() );
     setCustomProperty( "labeling/textColorB", textColor.blue() );
-    setCustomProperty( "labeling/textTransp", 100 - ( int )( 100 * textColor.alphaF() ) );
+    setCustomProperty( "labeling/textTransp", 100 - static_cast< int >( 100 * textColor.alphaF() ) );
   }
 
   // Halo
@@ -3501,7 +3370,7 @@ void QgsVectorLayer::readSldLabeling( const QDomNode& node )
       setCustomProperty( "labeling/bufferColorR", bufferColor.red() );
       setCustomProperty( "labeling/bufferColorG", bufferColor.green() );
       setCustomProperty( "labeling/bufferColorB", bufferColor.blue() );
-      setCustomProperty( "labeling/bufferTransp", 100 - ( int )( 100 * bufferColor.alphaF() ) );
+      setCustomProperty( "labeling/bufferTransp", 100 - static_cast< int >( 100 * bufferColor.alphaF() ) );
     }
   }
 
@@ -3826,7 +3695,7 @@ void QgsVectorLayer::onJoinedFieldsChanged()
   updateFields();
 }
 
-void QgsVectorLayer::onFeatureDeleted( const QgsFeatureId& fid )
+void QgsVectorLayer::onFeatureDeleted( QgsFeatureId fid )
 {
   if ( mEditCommandActive )
     mDeletedFids << fid;
@@ -3923,7 +3792,7 @@ int QgsVectorLayer::listStylesInDatabase( QStringList &ids, QStringList &names, 
     msgError = QObject::tr( "Unable to load %1 provider" ).arg( mProviderKey );
     return -1;
   }
-  listStyles_t* listStylesExternalMethod = ( listStyles_t * ) cast_to_fptr( myLib->resolve( "listStyles" ) );
+  listStyles_t* listStylesExternalMethod = reinterpret_cast< listStyles_t * >( cast_to_fptr( myLib->resolve( "listStyles" ) ) );
 
   if ( !listStylesExternalMethod )
   {
@@ -3944,7 +3813,7 @@ QString QgsVectorLayer::getStyleFromDatabase( const QString& styleId, QString &m
     msgError = QObject::tr( "Unable to load %1 provider" ).arg( mProviderKey );
     return QObject::tr( "" );
   }
-  getStyleById_t* getStyleByIdMethod = ( getStyleById_t * ) cast_to_fptr( myLib->resolve( "getStyleById" ) );
+  getStyleById_t* getStyleByIdMethod = reinterpret_cast< getStyleById_t * >( cast_to_fptr( myLib->resolve( "getStyleById" ) ) );
 
   if ( !getStyleByIdMethod )
   {
@@ -3969,7 +3838,7 @@ void QgsVectorLayer::saveStyleToDatabase( const QString& name, const QString& de
     msgError = QObject::tr( "Unable to load %1 provider" ).arg( mProviderKey );
     return;
   }
-  saveStyle_t* saveStyleExternalMethod = ( saveStyle_t * ) cast_to_fptr( myLib->resolve( "saveStyle" ) );
+  saveStyle_t* saveStyleExternalMethod = reinterpret_cast< saveStyle_t * >( cast_to_fptr( myLib->resolve( "saveStyle" ) ) );
 
   if ( !saveStyleExternalMethod )
   {
@@ -4013,14 +3882,16 @@ QString QgsVectorLayer::loadNamedStyle( const QString &theURI, bool &theResultFl
     QLibrary *myLib = pReg->providerLibrary( mProviderKey );
     if ( myLib )
     {
-      loadStyle_t* loadStyleExternalMethod = ( loadStyle_t * ) cast_to_fptr( myLib->resolve( "loadStyle" ) );
+      loadStyle_t* loadStyleExternalMethod = reinterpret_cast< loadStyle_t * >( cast_to_fptr( myLib->resolve( "loadStyle" ) ) );
       if ( loadStyleExternalMethod )
       {
         QString qml, errorMsg;
         qml = loadStyleExternalMethod( mDataSource, errorMsg );
         if ( !qml.isEmpty() )
         {
-          theResultFlag = this->applyNamedStyle( qml, errorMsg );
+          Q_NOWARN_DEPRECATED_PUSH
+          theResultFlag = applyNamedStyle( qml, errorMsg );
+          Q_NOWARN_DEPRECATED_POP
           return QObject::tr( "Loaded from Provider" );
         }
       }
@@ -4051,4 +3922,13 @@ bool QgsAttributeEditorRelation::init( QgsRelationManager* relationManager )
 {
   mRelation = relationManager->relation( mRelationId );
   return mRelation.isValid();
+}
+
+QSet<QString> QgsVectorLayer::layerDependencies() const
+{
+  if ( mDataProvider )
+  {
+    return mDataProvider->layerDependencies();
+  }
+  return QSet<QString>();
 }

@@ -29,15 +29,22 @@
 
 
 QgsGuiVectorLayerTools::QgsGuiVectorLayerTools()
-    : QObject( NULL )
+    : QObject( nullptr )
 {}
 
-bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer* layer, const QgsAttributeMap& defaultValues, const QgsGeometry& defaultGeometry ) const
+bool QgsGuiVectorLayerTools::addFeature( QgsVectorLayer* layer, const QgsAttributeMap& defaultValues, const QgsGeometry& defaultGeometry, QgsFeature* feat ) const
 {
-  QgsFeature f;
-  f.setGeometry( defaultGeometry );
-  QgsFeatureAction a( tr( "Add feature" ), f, layer );
-  return a.addFeature( defaultValues );
+  QgsFeature* f = feat;
+  if ( !feat )
+    f = new QgsFeature();
+
+  f->setGeometry( defaultGeometry );
+  QgsFeatureAction a( tr( "Add feature" ), *f, layer );
+  bool added = a.addFeature( defaultValues );
+  if ( !feat )
+    delete f;
+
+  return added;
 }
 
 bool QgsGuiVectorLayerTools::startEditing( QgsVectorLayer* layer ) const
@@ -99,7 +106,7 @@ bool QgsGuiVectorLayerTools::stopEditing( QgsVectorLayer* layer, bool allowCance
     if ( allowCancel )
       buttons |= QMessageBox::Cancel;
 
-    switch ( QMessageBox::information( 0,
+    switch ( QMessageBox::information( nullptr,
                                        tr( "Stop editing" ),
                                        tr( "Do you want to save the changes to layer %1?" ).arg( layer->name() ),
                                        buttons ) )

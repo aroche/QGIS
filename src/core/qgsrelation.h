@@ -29,11 +29,11 @@ class CORE_EXPORT QgsRelation
 {
   public:
     /**
-     * Defines a relation between matchin fields of the two involved tables of a relation.
+     * Defines a relation between matching fields of the two involved tables of a relation.
      * Often, a relation is only defined by just one FieldPair with the name of the foreign key
      * column of the referencing table as first element and the name of the primary key column
      * of the referenced table as the second element.
-     *
+     * @note not available in Python bindings
      */
     class FieldPair : public QPair< QString, QString >
     {
@@ -228,6 +228,22 @@ class CORE_EXPORT QgsRelation
     QList< FieldPair > fieldPairs() const;
 
     /**
+     * Returns a list of attributes used to form the referenced fields
+     * (most likely primary key) on the referenced layer.
+     *
+     * @return A list of attributes
+     */
+    QgsAttributeList referencedFields() const;
+
+    /**
+     * Returns a list of attributes used to form the referencing fields
+     * (foreign key) on the referencing layer.
+     *
+     * @return A list of attributes
+     */
+    QgsAttributeList referencingFields() const;
+
+    /**
      * Returns the validity of this relation. Don't use the information if it's not valid.
      *
      * @return true if the relation is valid
@@ -235,6 +251,10 @@ class CORE_EXPORT QgsRelation
     bool isValid() const;
 
   protected:
+    /**
+     * Updates the validity status of this relation.
+     * Will be called internally whenever a member is changed.
+     */
     void updateRelationStatus();
 
   private:

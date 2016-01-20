@@ -33,6 +33,9 @@ class CORE_EXPORT QgsCircularStringV2: public QgsCurveV2
     QgsCircularStringV2();
     ~QgsCircularStringV2();
 
+    virtual bool operator==( const QgsCurveV2& other ) const override;
+    virtual bool operator!=( const QgsCurveV2& other ) const override;
+
     virtual QString geometryType() const override { return "CircularString"; }
     virtual int dimension() const override { return 1; }
     virtual QgsCircularStringV2* clone() const override;
@@ -129,6 +132,9 @@ class CORE_EXPORT QgsCircularStringV2: public QgsCurveV2
 
     virtual bool addZValue( double zValue = 0 ) override;
     virtual bool addMValue( double mValue = 0 ) override;
+
+    virtual bool dropZValue() override;
+    virtual bool dropMValue() override;
 
   private:
     QVector<double> mX;

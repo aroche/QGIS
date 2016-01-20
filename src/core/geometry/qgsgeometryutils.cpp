@@ -73,15 +73,23 @@ void QgsGeometryUtils::adjacentVertices( const QgsAbstractGeometryV2& geom, cons
   //vertex in the middle
   if ( atVertex.vertex > 0 && atVertex.vertex < ring.size() - 1 )
   {
-    beforeVertex.part = atVertex.part; beforeVertex.ring = atVertex.ring; beforeVertex.vertex = atVertex.vertex - 1;
-    afterVertex.part = atVertex.part; afterVertex.ring = atVertex.ring; afterVertex.vertex = atVertex.vertex + 1;
+    beforeVertex.part = atVertex.part;
+    beforeVertex.ring = atVertex.ring;
+    beforeVertex.vertex = atVertex.vertex - 1;
+    afterVertex.part = atVertex.part;
+    afterVertex.ring = atVertex.ring;
+    afterVertex.vertex = atVertex.vertex + 1;
   }
   else if ( atVertex.vertex == 0 )
   {
-    afterVertex.part = atVertex.part; afterVertex.ring = atVertex.ring; afterVertex.vertex = atVertex.vertex + 1;
+    afterVertex.part = atVertex.part;
+    afterVertex.ring = atVertex.ring;
+    afterVertex.vertex = atVertex.vertex + 1;
     if ( polygonType && ring.size() > 3 )
     {
-      beforeVertex.part = atVertex.part; beforeVertex.ring = atVertex.ring; beforeVertex.vertex = ring.size() - 2;
+      beforeVertex.part = atVertex.part;
+      beforeVertex.ring = atVertex.ring;
+      beforeVertex.vertex = ring.size() - 2;
     }
     else
     {
@@ -90,10 +98,14 @@ void QgsGeometryUtils::adjacentVertices( const QgsAbstractGeometryV2& geom, cons
   }
   else if ( atVertex.vertex == ring.size() - 1 )
   {
-    beforeVertex.part = atVertex.part; beforeVertex.ring = atVertex.ring; beforeVertex.vertex = atVertex.vertex - 1;
+    beforeVertex.part = atVertex.part;
+    beforeVertex.ring = atVertex.ring;
+    beforeVertex.vertex = atVertex.vertex - 1;
     if ( polygonType )
     {
-      afterVertex.part = atVertex.part; afterVertex.ring = atVertex.ring; afterVertex.vertex = 1;
+      afterVertex.part = atVertex.part;
+      afterVertex.ring = atVertex.ring;
+      afterVertex.vertex = 1;
     }
     else
     {
@@ -149,7 +161,7 @@ bool QgsGeometryUtils::lineIntersection( const QgsPointV2& p1, const QgsVector& 
 {
   double d = v.y() * w.x() - v.x() * w.y();
 
-  if ( d == 0 )
+  if ( qgsDoubleNear( d, 0 ) )
     return false;
 
   double dx = q1.x() - p1.x();
@@ -268,7 +280,7 @@ double QgsGeometryUtils::ccwAngle( double dy, double dx )
 
 void QgsGeometryUtils::circleCenterRadius( const QgsPointV2& pt1, const QgsPointV2& pt2, const QgsPointV2& pt3, double& radius, double& centerX, double& centerY )
 {
-  double temp, bc, cd, det;
+  double dx21, dy21, dx31, dy31, h21, h31, d;
 
   //closed circle
   if ( qgsDoubleNear( pt1.x(), pt3.x() ) && qgsDoubleNear( pt1.y(), pt3.y() ) )
@@ -279,22 +291,29 @@ void QgsGeometryUtils::circleCenterRadius( const QgsPointV2& pt1, const QgsPoint
     return;
   }
 
-  temp = pt2.x() * pt2.x() + pt2.y() * pt2.y();
-  bc = ( pt1.x() * pt1.x() + pt1.y() * pt1.y() - temp ) / 2.0;
-  cd = ( temp - pt3.x() * pt3.x() - pt3.y() * pt3.y() ) / 2.0;
-  det = ( pt1.x() - pt2.x() ) * ( pt2.y() - pt3.y() ) - ( pt2.x() - pt3.x() ) * ( pt1.y() - pt2.y() );
+  // Using cartesian circumcenter eguations from page https://en.wikipedia.org/wiki/Circumscribed_circle
+  dx21 = pt2.x() - pt1.x();
+  dy21 = pt2.y() - pt1.y();
+  dx31 = pt3.x() - pt1.x();
+  dy31 = pt3.y() - pt1.y();
 
-  /* Check colinearity */
-  if ( qgsDoubleNear( fabs( det ), 0.0, 0.00000000001 ) )
+  h21 = pow( dx21, 2.0 ) + pow( dy21, 2.0 );
+  h31 = pow( dx31, 2.0 ) + pow( dy31, 2.0 );
+
+  // 2*Cross product, d<0 means clockwise and d>0 counterclockwise sweeping angle
+  d = 2 * ( dx21 * dy31 - dx31 * dy21 );
+
+  // Check colinearity, Cross product = 0
+  if ( qgsDoubleNear( fabs( d ), 0.0, 0.00000000001 ) )
   {
     radius = -1.0;
     return;
   }
 
-  det = 1.0 / det;
-  centerX = ( bc * ( pt2.y() - pt3.y() ) - cd * ( pt1.y() - pt2.y() ) ) * det;
-  centerY = (( pt1.x() - pt2.x() ) * cd - ( pt2.x() - pt3.x() ) * bc ) * det;
-  radius = sqrt(( centerX - pt1.x() ) * ( centerX - pt1.x() ) + ( centerY - pt1.y() ) * ( centerY - pt1.y() ) );
+  // Calculate centroid coordinates and radius
+  centerX = pt1.x() + ( h21 * dy31 - h31 * dy21 ) / d;
+  centerY = pt1.y() - ( h21 * dx31 - h31 * dx21 ) / d;
+  radius = sqrt( pow( centerX - pt1.x(), 2.0 ) + pow( centerY - pt1.y(), 2.0 ) );
 }
 
 bool QgsGeometryUtils::circleClockwise( double angle1, double angle2, double angle3 )
@@ -613,6 +632,20 @@ QString QgsGeometryUtils::pointsToJSON( const QList<QgsPointV2>& points, int pre
   return json;
 }
 
+double QgsGeometryUtils::normalizedAngle( double angle )
+{
+  double clippedAngle = angle;
+  if ( clippedAngle >= M_PI * 2 || clippedAngle <= -2 * M_PI )
+  {
+    clippedAngle = fmod( clippedAngle, 2 * M_PI );
+  }
+  if ( clippedAngle < 0.0 )
+  {
+    clippedAngle += 2 * M_PI;
+  }
+  return clippedAngle;
+}
+
 QPair<QgsWKBTypes::Type, QString> QgsGeometryUtils::wktReadBlock( const QString &wkt )
 {
   QgsWKBTypes::Type wkbType = QgsWKBTypes::parseType( wkt );
@@ -662,38 +695,28 @@ double QgsGeometryUtils::lineAngle( double x1, double y1, double x2, double y2 )
 {
   double at = atan2( y2 - y1, x2 - x1 );
   double a = -at + M_PI / 2.0;
-  if ( a < 0 )
-  {
-    a = 2 * M_PI + a;
-  }
-  if ( a >= 2 * M_PI )
-  {
-    a -= 2 * M_PI;
-  }
-  return a;
+  return normalizedAngle( a );
 }
 
 double QgsGeometryUtils::linePerpendicularAngle( double x1, double y1, double x2, double y2 )
 {
   double a = lineAngle( x1, y1, x2, y2 );
   a += ( M_PI / 2.0 );
-  if ( a >= 2 * M_PI )
-  {
-    a -= ( 2 * M_PI );
-  }
-  return a;
+  return normalizedAngle( a );
 }
 
 double QgsGeometryUtils::averageAngle( double x1, double y1, double x2, double y2, double x3, double y3 )
 {
   // calc average angle between the previous and next point
-  double a1 = linePerpendicularAngle( x1, y1, x2, y2 );
-  double a2 = linePerpendicularAngle( x2, y2, x3, y3 );
+  double a1 = lineAngle( x1, y1, x2, y2 );
+  double a2 = lineAngle( x2, y2, x3, y3 );
   return averageAngle( a1, a2 );
 }
 
 double QgsGeometryUtils::averageAngle( double a1, double a2 )
 {
+  a1 = normalizedAngle( a1 );
+  a2 = normalizedAngle( a2 );
   double clockwiseDiff = 0.0;
   if ( a2 >= a1 )
   {
@@ -714,14 +737,5 @@ double QgsGeometryUtils::averageAngle( double a1, double a2 )
   {
     resultAngle = a1 - counterClockwiseDiff / 2.0;
   }
-
-  if ( resultAngle >= 2 * M_PI )
-  {
-    resultAngle -= 2 * M_PI;
-  }
-  else if ( resultAngle < 0 )
-  {
-    resultAngle = 2 * M_PI - resultAngle;
-  }
-  return resultAngle;
+  return normalizedAngle( resultAngle );
 }

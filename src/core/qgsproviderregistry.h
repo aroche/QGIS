@@ -80,7 +80,7 @@ class CORE_EXPORT QgsProviderRegistry
     int providerCapabilities( const QString& providerKey ) const;
 
     QWidget *selectWidget( const QString & providerKey,
-                           QWidget * parent = 0, const Qt::WindowFlags& fl = 0 );
+                           QWidget * parent = nullptr, const Qt::WindowFlags& fl = nullptr );
 
 #if QT_VERSION >= 0x050000
     /** Get pointer to provider function
@@ -171,6 +171,9 @@ class CORE_EXPORT QgsProviderRegistry
   private:
     /** Ctor private since instance() creates it */
     QgsProviderRegistry( const QString& pluginPath );
+
+    void init();
+    void clean();
 
     /** Associative container of provider metadata handles */
     Providers mProviders;

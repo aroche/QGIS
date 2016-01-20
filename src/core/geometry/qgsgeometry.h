@@ -142,7 +142,7 @@ class CORE_EXPORT QgsGeometry
       Set the geometry, feeding in the buffer containing OGC Well-Known Binary and the buffer's length.
       This class will take ownership of the buffer.
      */
-    void fromWkb( unsigned char * wkb, size_t length );
+    void fromWkb( unsigned char * wkb, int length );
 
     /**
        Returns the buffer containing this geometry in WKB format.
@@ -155,7 +155,7 @@ class CORE_EXPORT QgsGeometry
      * Returns the size of the WKB in asWkb().
      * @see asWkb
      */
-    size_t wkbSize() const;
+    int wkbSize() const;
 
     /** Returns a geos geometry. QgsGeometry retains ownership of the geometry, so the returned object should not be deleted.
         @param precision The precision of the grid to which to snap the geometry vertices. If 0, no snapping is performed.
@@ -202,7 +202,10 @@ class CORE_EXPORT QgsGeometry
      */
     double length() const;
 
-    /** Returns the minimum distanace between this geometry and another geometry, using GEOS
+    /**
+     * Returns the minimum distance between this geometry and another geometry, using GEOS.
+     * Will return a negative value if a geometry is missing.
+     *
      * @param geom geometry to find minimum distance to
      */
     double distance( const QgsGeometry& geom ) const;
@@ -282,6 +285,18 @@ class CORE_EXPORT QgsGeometry
      */
     double sqrDistToVertexAt( QgsPoint& point, int atVertex ) const;
 
+    /** Returns the nearest point on this geometry to another geometry.
+     * @note added in QGIS 2.14
+     * @see shortestLine()
+     */
+    QgsGeometry nearestPoint( const QgsGeometry& other ) const;
+
+    /** Returns the shortest line joining this geometry to another geometry.
+     * @note added in QGIS 2.14
+     * @see nearestPoint()
+     */
+    QgsGeometry shortestLine( const QgsGeometry& other ) const;
+
     /**
      * Searches for the closest vertex in this geometry to the given point.
      * @param point Specifiest the point for search
@@ -300,7 +315,7 @@ class CORE_EXPORT QgsGeometry
      * @param epsilon epsilon for segment snapping (added in 1.8)
      * @return The squared cartesian distance is also returned in sqrDist, negative number on error
      */
-    double closestSegmentWithContext( const QgsPoint& point, QgsPoint& minDistPoint, int& afterVertex, double* leftOf = 0, double epsilon = DEFAULT_SEGMENT_EPSILON ) const;
+    double closestSegmentWithContext( const QgsPoint& point, QgsPoint& minDistPoint, int& afterVertex, double* leftOf = nullptr, double epsilon = DEFAULT_SEGMENT_EPSILON ) const;
 
     /** Adds a new ring to this geometry. This makes only sense for polygon and multipolygons.
      @return 0 in case of success (ring added), 1 problem with geometry type, 2 ring not closed,
@@ -460,7 +475,8 @@ class CORE_EXPORT QgsGeometry
     /** Returns the smallest convex polygon that contains all the points in the geometry. */
     QgsGeometry* convexHull() const;
 
-    /* Return interpolated point on line at distance
+    /**
+     * Return interpolated point on line at distance
      * @note added in 1.9
      */
     QgsGeometry* interpolate( double distance ) const;
@@ -476,8 +492,11 @@ class CORE_EXPORT QgsGeometry
     /** Returns a geometry representing the points making up this geometry that do not make up other. */
     QgsGeometry* difference( const QgsGeometry* geometry ) const;
 
-    /** Returns a Geometry representing the points making up this Geometry that do not make up other. */
+    /** Returns a geometry representing the points making up this geometry that do not make up other. */
     QgsGeometry* symDifference( const QgsGeometry* geometry ) const;
+
+    /** Returns an extruded version of this geometry. */
+    QgsGeometry extrude( double x, double y );
 
     /** Exports the geometry to WKT
      *  @note precision parameter added in 2.4
@@ -496,7 +515,7 @@ class CORE_EXPORT QgsGeometry
     /** Try to convert the geometry to the requested type
      * @param destType the geometry type to be converted to
      * @param destMultipart determines if the output geometry will be multipart or not
-     * @return the converted geometry or NULL pointer if the conversion fails.
+     * @return the converted geometry or nullptr if the conversion fails.
      * @note added in 2.2
      */
     QgsGeometry* convertToType( QGis::GeometryType destType, bool destMultipart = false ) const;

@@ -23,32 +23,17 @@
 Q_GUI_EXPORT extern int qt_defaultDpiX();
 Q_GUI_EXPORT extern int qt_defaultDpiY();
 
-<<<<<<< HEAD
-static void _fixQPictureDPI( QPainter* p )
-{
-  // QPicture makes an assumption that we drawing to it with system DPI.
-  // Then when being drawn, it scales the painter. The following call
-  // negates the effect. There is no way of setting QPicture's DPI.
-  // See QTBUG-20361
-  p->scale(( double )qt_defaultDpiX() / p->device()->logicalDpiX(),
-           ( double )qt_defaultDpiY() / p->device()->logicalDpiY() );
-}
 
 QgsPaintEffect::QgsPaintEffect()
     : mEnabled( true )
     , mDrawMode( ModifyAndRender )
-=======
-QgsPaintEffect::QgsPaintEffect()
-    : mEnabled( true )
-    , mDrawMode( ModifyAndRender )
     , requiresQPainterDpiFix( true )
->>>>>>> upstream/master
-    , mPicture( 0 )
-    , mSourceImage( 0 )
+    , mPicture( nullptr )
+    , mSourceImage( nullptr )
     , mOwnsImage( false )
-    , mPrevPainter( 0 )
-    , mEffectPainter( 0 )
-    , mTempPicture( 0 )
+    , mPrevPainter( nullptr )
+    , mEffectPainter( nullptr )
+    , mTempPicture( nullptr )
 {
 
 }
@@ -56,16 +41,13 @@ QgsPaintEffect::QgsPaintEffect()
 QgsPaintEffect::QgsPaintEffect( const QgsPaintEffect &other )
     : mEnabled( other.enabled() )
     , mDrawMode( other.drawMode() )
-<<<<<<< HEAD
-=======
     , requiresQPainterDpiFix( true )
->>>>>>> upstream/master
-    , mPicture( 0 )
-    , mSourceImage( 0 )
+    , mPicture( nullptr )
+    , mSourceImage( nullptr )
     , mOwnsImage( false )
-    , mPrevPainter( 0 )
-    , mEffectPainter( 0 )
-    , mTempPicture( 0 )
+    , mPrevPainter( nullptr )
+    , mEffectPainter( nullptr )
+    , mTempPicture( nullptr )
 {
 
 }
@@ -148,7 +130,7 @@ void QgsPaintEffect::render( QPicture &picture, QgsRenderContext &context )
   //set source picture
   mPicture = &picture;
   delete mSourceImage;
-  mSourceImage = 0;
+  mSourceImage = nullptr;
 
   draw( context );
 }
@@ -175,28 +157,22 @@ void QgsPaintEffect::end( QgsRenderContext &context )
 
   mEffectPainter->end();
   delete mEffectPainter;
-  mEffectPainter = 0;
+  mEffectPainter = nullptr;
 
   //restore previous painter for context
   context.setPainter( mPrevPainter );
-  mPrevPainter = 0;
+  mPrevPainter = nullptr;
 
   //draw using effect
   render( *mTempPicture, context );
 
   //clean up
   delete mTempPicture;
-  mTempPicture = 0;
+  mTempPicture = nullptr;
 }
 
 void QgsPaintEffect::drawSource( QPainter &painter )
 {
-<<<<<<< HEAD
-  painter.save();
-  _fixQPictureDPI( &painter );
-  painter.drawPicture( 0, 0, *mPicture );
-  painter.restore();
-=======
   if ( requiresQPainterDpiFix )
   {
     painter.save();
@@ -208,7 +184,6 @@ void QgsPaintEffect::drawSource( QPainter &painter )
   {
     painter.drawPicture( 0, 0, *mPicture );
   }
->>>>>>> upstream/master
 }
 
 QImage* QgsPaintEffect::sourceAsImage( QgsRenderContext &context )
@@ -220,7 +195,7 @@ QImage* QgsPaintEffect::sourceAsImage( QgsRenderContext &context )
   }
 
   if ( !mPicture )
-    return 0;
+    return nullptr;
 
   //else create it
   //TODO - test with premultiplied image for speed
@@ -247,19 +222,17 @@ QRectF QgsPaintEffect::boundingRect( const QRectF &rect, const QgsRenderContext 
   return rect;
 }
 
-<<<<<<< HEAD
-=======
+
 void QgsPaintEffect::fixQPictureDpi( QPainter *painter ) const
 {
   // QPicture makes an assumption that we drawing to it with system DPI.
   // Then when being drawn, it scales the painter. The following call
   // negates the effect. There is no way of setting QPicture's DPI.
   // See QTBUG-20361
-  painter->scale(( double )qt_defaultDpiX() / painter->device()->logicalDpiX(),
-                 ( double )qt_defaultDpiY() / painter->device()->logicalDpiY() );
+  painter->scale( static_cast< double >( qt_defaultDpiX() ) / painter->device()->logicalDpiX(),
+                  static_cast< double >( qt_defaultDpiY() ) / painter->device()->logicalDpiY() );
 }
 
->>>>>>> upstream/master
 QRectF QgsPaintEffect::imageBoundingRect( const QgsRenderContext &context ) const
 {
   return boundingRect( mPicture->boundingRect(), context );
@@ -314,11 +287,7 @@ void QgsDrawSourceEffect::draw( QgsRenderContext &context )
   }
 }
 
-<<<<<<< HEAD
-QgsPaintEffect *QgsDrawSourceEffect::clone() const
-=======
 QgsDrawSourceEffect* QgsDrawSourceEffect::clone() const
->>>>>>> upstream/master
 {
   return new QgsDrawSourceEffect( *this );
 }
@@ -336,7 +305,7 @@ QgsStringMap QgsDrawSourceEffect::properties() const
 void QgsDrawSourceEffect::readProperties( const QgsStringMap &props )
 {
   bool ok;
-  QPainter::CompositionMode mode = ( QPainter::CompositionMode )props.value( "blend_mode" ).toInt( &ok );
+  QPainter::CompositionMode mode = static_cast< QPainter::CompositionMode >( props.value( "blend_mode" ).toInt( &ok ) );
   if ( ok )
   {
     mBlendMode = mode;
@@ -347,5 +316,5 @@ void QgsDrawSourceEffect::readProperties( const QgsStringMap &props )
     mTransparency = transparency;
   }
   mEnabled = props.value( "enabled", "1" ).toInt();
-  mDrawMode = ( QgsPaintEffect::DrawMode )props.value( "draw_mode", "2" ).toInt();
+  mDrawMode = static_cast< QgsPaintEffect::DrawMode >( props.value( "draw_mode", "2" ).toInt() );
 }

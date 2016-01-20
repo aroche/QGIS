@@ -105,7 +105,7 @@ class QgsMapCanvas : QGraphicsView
     int mapUpdateInterval() const;
 
     //! @deprecated since 2.4 - there could be more than just one "map" items
-    QgsMapCanvasMap* map();
+    QgsMapCanvasMap* map() /Deprecated/;
 
     //! @deprecated since 2.4 - use mapSettings() for anything related to current renderer settings
     //// SIP: removed /Transfer/ because it crashes after few calls to iface.mapCanvas().mapRenderer().hasCrsTransformEnabled()
@@ -167,6 +167,11 @@ class QgsMapCanvas : QGraphicsView
     /** Zoom to the extent of the selected features of current (vector) layer.
       @param layer optionally specify different than current layer */
     void zoomToSelected( QgsVectorLayer* layer = NULL );
+
+    /** Set canvas extent to the bounding box of a set of features
+        @param layer the vector layer
+        @param ids the feature ids*/
+    void zoomToFeatureIds( QgsVectorLayer* layer, const QgsFeatureIds& ids );
 
     /** Pan to the selected features of current (vector) layer keeping same extent. */
     void panToSelected( QgsVectorLayer* layer = NULL );
@@ -275,6 +280,9 @@ class QgsMapCanvas : QGraphicsView
 
     //! true if antialising is enabled
     bool antiAliasingEnabled() const;
+
+    //! sets map tile rendering flag
+    void enableMapTileRendering( bool theFlag );
 
     //! Select which Qt class to render with
     //! @deprecated since 2.4 - does nothing because now we always render to QImage
@@ -501,6 +509,9 @@ class QgsMapCanvas : QGraphicsView
     //! @note added in 2.12
     void layerStyleOverridesChanged();
 
+    //! emit a message (usually to be displayed in a message bar)
+    void messageEmitted( const QString& title, const QString& message, QgsMessageBar::MessageLevel = QgsMessageBar::INFO );
+
   protected:
     //! Overridden standard event to be gestures aware
     bool event( QEvent * e );
@@ -538,8 +549,15 @@ class QgsMapCanvas : QGraphicsView
     //! called when panning is in action, reset indicates end of panning
     void moveCanvasContents( bool reset = false );
 
+    //! Zooms to feature extent. Adds a small margin around the extent
+    //! and does a pan if rect is empty (point extent)
+    void zoomToFeatureExtent( QgsRectangle& rect );
+
     //! called on resize or changed extent to notify canvas items to change their rectangle
     void updateCanvasItemPositions();
+
+    //! Make sure the datum transform store is properly populated
+    void updateDatumTransformEntries();
 
 private:
     void connectNotify( const char * signal );

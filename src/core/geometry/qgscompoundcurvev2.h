@@ -34,6 +34,9 @@ class CORE_EXPORT QgsCompoundCurveV2: public QgsCurveV2
     QgsCompoundCurveV2& operator=( const QgsCompoundCurveV2& curve );
     ~QgsCompoundCurveV2();
 
+    virtual bool operator==( const QgsCurveV2& other ) const override;
+    virtual bool operator!=( const QgsCurveV2& other ) const override;
+
     virtual QString geometryType() const override { return "CompoundCurve"; }
     virtual int dimension() const override { return 1; }
     virtual QgsCompoundCurveV2* clone() const override;
@@ -113,6 +116,9 @@ class CORE_EXPORT QgsCompoundCurveV2: public QgsCurveV2
 
     virtual bool addZValue( double zValue = 0 ) override;
     virtual bool addMValue( double mValue = 0 ) override;
+
+    virtual bool dropZValue() override;
+    virtual bool dropMValue() override;
 
   private:
     QList< QgsCurveV2* > mCurves;

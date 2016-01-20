@@ -498,12 +498,13 @@ class DoxygenParser():
             :param elem: XML element corresponding to a class
         """
         try:
-            # check for 'not available in python bindings' note in class docs
+            # check for classes with special python doc notes (probably 'not available' or renamed classes, either way
+            # they should be safe to ignore as obviously some consideration has been given to Python bindings)
             detailed_sec = elem.find('detaileddescription')
             for p in detailed_sec.getiterator('para'):
                 for s in p.getiterator('simplesect'):
                     for ps in s.getiterator('para'):
-                        if 'not available in python bindings' in ps.text.lower():
+                        if ps.text and 'python' in ps.text.lower():
                             return False
             return True
         except:
@@ -632,7 +633,7 @@ class DoxygenParser():
 
         # ignore certain obvious operators
         try:
-            if name.text in ('operator=', 'operator=='):
+            if name.text in ('operator=', 'operator==', 'operator!='):
                 return False
         except:
             pass
@@ -703,7 +704,7 @@ class DoxygenParser():
         try:
             definition = member_elem.find('definition').text
             name = member_elem.find('name').text
-            if definition == '{}::{}'.format(name, name):
+            if '{}::{}'.format(name, name) in definition:
                 return True
         except:
             pass
@@ -766,14 +767,34 @@ class DoxygenParser():
             :param member_elem: XML element for a class member
         """
 
+        # look for both Q_DECL_DEPRECATED and Doxygen deprecated tag
+        decl_deprecated = False
         type_elem = member_elem.find('type')
         try:
             if 'Q_DECL_DEPRECATED' in type_elem.text:
-                return True
+                decl_deprecated = True
         except:
             pass
 
-        return False
+        doxy_deprecated = False
+        try:
+            for p in member_elem.find('detaileddescription').getiterator('para'):
+                for s in p.getiterator('xrefsect'):
+                    if s.find('xreftitle') is not None and 'Deprecated' in s.find('xreftitle').text:
+                        doxy_deprecated = True
+                        break
+        except:
+            assert 0, member_elem.find('definition').text
+
+        if not decl_deprecated and not doxy_deprecated:
+            return False
+
+        # only functions for now, but in future this should also apply for enums and variables
+        if member_elem.get('kind') in ('function', 'variable'):
+            assert decl_deprecated, 'Error: Missing Q_DECL_DEPRECATED for {}'.format(member_elem.find('definition').text)
+            assert doxy_deprecated, 'Error: Missing Doxygen deprecated tag for {}'.format(member_elem.find('definition').text)
+
+        return True
 
     def memberIsDocumented(self, member_elem):
         """ Tests whether an member has documentation

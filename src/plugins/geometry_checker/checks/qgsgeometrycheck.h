@@ -62,7 +62,7 @@ class QgsGeometryCheck : public QObject
 
     QgsGeometryCheck( CheckType checkType, QgsFeaturePool* featurePool ) : mCheckType( checkType ), mFeaturePool( featurePool ) {}
     virtual ~QgsGeometryCheck() {}
-    virtual void collectErrors( QList<QgsGeometryCheckError*>& errors, QStringList& messages, QAtomicInt* progressCounter = 0, const QgsFeatureIds& ids = QgsFeatureIds() ) const = 0;
+    virtual void collectErrors( QList<QgsGeometryCheckError*>& errors, QStringList& messages, QAtomicInt* progressCounter = nullptr, const QgsFeatureIds& ids = QgsFeatureIds() ) const = 0;
     virtual void fixError( QgsGeometryCheckError* error, int method, int mergeAttributeIndex, Changes& changes ) const = 0;
     virtual const QStringList& getResolutionMethods() const = 0;
     virtual QString errorDescription() const = 0;
@@ -87,14 +87,14 @@ class QgsGeometryCheckError
     enum ValueType { ValueLength, ValueArea, ValueOther };
 
     QgsGeometryCheckError( const QgsGeometryCheck* check,
-                           const QgsFeatureId& featureId,
+                           QgsFeatureId featureId,
                            const QgsPointV2& errorLocation,
                            const QgsVertexId& vidx = QgsVertexId(),
                            const QVariant& value = QVariant(),
                            ValueType valueType = ValueOther );
     virtual ~QgsGeometryCheckError();
     const QgsGeometryCheck* check() const { return mCheck; }
-    const QgsFeatureId& featureId() const { return mFeatureId; }
+    QgsFeatureId featureId() const { return mFeatureId; }
     virtual QgsAbstractGeometryV2* geometry();
     virtual QgsRectangle affectedAreaBBox() { return geometry() ? geometry()->boundingBox() : QgsRectangle(); }
     virtual QString description() const { return mCheck->errorDescription(); }

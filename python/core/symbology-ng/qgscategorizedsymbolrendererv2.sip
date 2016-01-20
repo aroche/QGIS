@@ -29,6 +29,10 @@ class QgsRendererCategoryV2
     QString dump() const;
 
     void toSld( QDomDocument& doc, QDomElement &element, QgsStringMap props ) const;
+
+  protected:
+
+    void swap( QgsRendererCategoryV2 & other );
 };
 
 typedef QList<QgsRendererCategoryV2> QgsCategoryList;
@@ -65,6 +69,8 @@ class QgsCategorizedSymbolRendererV2 : QgsFeatureRendererV2
 
     //! returns bitwise OR-ed capabilities of the renderer
     virtual int capabilities();
+
+    virtual QString filter( const QgsFields& fields = QgsFields() );
 
     //! @note available in python as symbols2
     virtual QgsSymbolV2List symbols( QgsRenderContext& context ) /PyName=symbols2/;
@@ -153,6 +159,8 @@ class QgsCategorizedSymbolRendererV2 : QgsFeatureRendererV2
     // @note added in 2.5
     virtual bool legendSymbolItemChecked( const QString& key );
 
+    virtual void setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol /Transfer/ );
+
     //! item in symbology was checked
     // @note added in 2.5
     virtual void checkLegendSymbolItem( const QString& key, bool state = true );
@@ -168,6 +176,8 @@ class QgsCategorizedSymbolRendererV2 : QgsFeatureRendererV2
 
   protected:
     void rebuildHash();
+
+    QgsSymbolV2* skipRender();
 
     QgsSymbolV2* symbolForValue( const QVariant& value );
 

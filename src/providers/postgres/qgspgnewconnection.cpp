@@ -27,7 +27,7 @@
 
 QgsPgNewConnection::QgsPgNewConnection( QWidget *parent, const QString& connName, Qt::WindowFlags fl )
     : QDialog( parent, fl ), mOriginalConnName( connName )
-    , mAuthConfigSelect( 0 )
+    , mAuthConfigSelect( nullptr )
 {
   setupUi( this );
 
@@ -197,9 +197,7 @@ void QgsPgNewConnection::testConnection()
                        mAuthConfigSelect->configId() );
   }
 
-  QString conninfo = uri.connectionInfo();
-
-  QgsPostgresConn *conn = QgsPostgresConn::connectDb( conninfo, true );
+  QgsPostgresConn *conn = QgsPostgresConn::connectDb( uri.connectionInfo( false ), true );
 
   if ( conn )
   {

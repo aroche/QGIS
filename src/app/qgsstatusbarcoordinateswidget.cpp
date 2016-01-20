@@ -30,8 +30,8 @@
 
 QgsStatusBarCoordinatesWidget::QgsStatusBarCoordinatesWidget( QWidget *parent )
     : QWidget( parent )
-    , mDizzyTimer( 0 )
-    , mMapCanvas( 0 )
+    , mDizzyTimer( nullptr )
+    , mMapCanvas( nullptr )
     , mMousePrecisionDecimalPlaces( 0 )
 {
   // add a label to show current position
@@ -140,7 +140,7 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
 
   bool xOk = false;
   bool  yOk = false;
-  double x, y;
+  double x = 0., y = 0.;
   QString coordText = mLineEdit->text();
   coordText.replace( QRegExp( " {2,}" ), " " );
 

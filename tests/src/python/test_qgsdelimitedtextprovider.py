@@ -280,9 +280,13 @@ def runTest(file, requests, **params):
         failures.append(msg)
     wanted_data = wanted['data']
     for id in sorted(wanted_data.keys()):
+        print('getting wanted data')
         wrec = wanted_data[id]
+        print('getting received data')
         trec = data.get(id, {})
+        print('getting description')
         description = wrec['description']
+        print('getting difference')
         difference = recordDifference(wrec, trec)
         if not difference:
             print '    {0}: Passed'.format(description)
@@ -372,6 +376,12 @@ class TestQgsDelimitedTextProviderWKT(TestCase, ProviderTestCase):
 
 
 class TestQgsDelimitedTextProviderOther(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        """Run before all tests"""
+        # toggle full ctest output to debug flaky CI test
+        print('CTEST_FULL_OUTPUT')
 
     def test_001_provider_defined(self):
         registry = QgsProviderRegistry.instance()

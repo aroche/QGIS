@@ -17,7 +17,7 @@ class QgsLabelingWidget : public QWidget, private Ui::QgsLabelingWidget
 {
     Q_OBJECT
   public:
-    QgsLabelingWidget( QgsVectorLayer* layer, QgsMapCanvas* canvas, QWidget* parent = 0 );
+    QgsLabelingWidget( QgsVectorLayer* layer, QgsMapCanvas* canvas, QWidget* parent = nullptr );
 
   public slots:
     //! save config to layer
@@ -25,6 +25,9 @@ class QgsLabelingWidget : public QWidget, private Ui::QgsLabelingWidget
 
     //! Saves the labeling configuration and immediately updates the map canvas to reflect the changes
     void apply();
+
+    //! reload the settings shown in the dialog from the current layer
+    void adaptToLayer();
 
   protected slots:
     void labelModeChanged( int index );

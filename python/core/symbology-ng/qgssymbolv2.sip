@@ -19,27 +19,38 @@ class QgsSymbolV2
 
   public:
 
+    /**
+     * The unit of the output
+     */
     enum OutputUnit
     {
-      MM,
-      MapUnit,
-      Mixed, //mixed units in symbol layers
-      Pixel
+      MM = 0,     //!< The output shall be in millimeters
+      MapUnit,    //!< The output shall be in map unitx
+      Mixed,      //!< Mixed units in symbol layers
+      Pixel,      //!< The output shall be in pixels
+      Percentage,  //!< The ouput shall be a percentage of another measurement (eg canvas size, feature size)
     };
 
     typedef QList<QgsSymbolV2::OutputUnit> OutputUnitList;
 
+    /**
+     * Type of the symbol
+     */
     enum SymbolType
     {
-      Marker,
-      Line,
-      Fill
+      Marker, //!< Marker symbol
+      Line,   //!< Line symbol
+      Fill,   //!< Fill symbol
+      Hybrid  //!< Hybrid symbol
     };
 
+    /**
+     * Scale method
+     */
     enum ScaleMethod
     {
-      ScaleArea,
-      ScaleDiameter
+      ScaleArea,     //!< Calculate scale by the area
+      ScaleDiameter  //!< Calculate scale by the diameter
     };
 
     enum RenderHint
@@ -160,6 +171,11 @@ class QgsSymbolV2
      */
     bool clipFeaturesToExtent() const;
 
+    /**
+     * Return a list of attributes required to render this feature.
+     * This should include any attributes required by the symbology including
+     * the ones required by expressions.
+     */
     QSet<QString> usedAttributes() const;
 
     /** Returns whether the symbol utilises any data defined properties.
@@ -170,14 +186,54 @@ class QgsSymbolV2
     void setLayer( const QgsVectorLayer* layer );
     const QgsVectorLayer* layer() const;
 
+    /**
+     * Render a feature.
+     */
+    void renderFeature( const QgsFeature& feature, QgsRenderContext& context, int layer = -1, bool selected = false, bool drawVertexMarker = false, int currentVertexMarkerType = 0, int currentVertexMarkerSize = 0 );
+
+    /**
+     * Returns the symbol render context. Only valid between startRender and stopRender calls.
+     *
+     * @return The symbol render context
+     */
+    QgsSymbolV2RenderContext* symbolRenderContext();
+
   protected:
     QgsSymbolV2( SymbolType type, const QgsSymbolLayerV2List& layers /Transfer/ ); // can't be instantiated
 
+    /**
+      Creates a point in screen coordinates from a QgsPointV2 in map coordinates
+     */
+    static void _getPoint( QPointF& pt /Out/, QgsRenderContext& context, const QgsPointV2* point );
+    /**
+     * Creates a line string in screen coordinates from a wkb string in map
+     * coordinates
+     */
+    static const unsigned char* _getLineString( QPolygonF& pts, QgsRenderContext& context, const unsigned char* wkb, bool clipToExtent = true );
+    /**
+     * Creates a polygon in screen coordinates from a wkb string in map
+     * coordinates
+     */
+    static const unsigned char* _getPolygon( QPolygonF& pts, QList<QPolygonF>& holes, QgsRenderContext& context, const unsigned char* wkb, bool clipToExtent = true );
+
     QgsSymbolLayerV2List cloneLayers() const /Factory/;
+    /**
+     * Renders a context using a particular symbol layer without passing in a
+     * geometry. This is used as fallback, if the symbol being rendered is not
+     * compatible with the specified layer. In such a case, this method can be
+     * called and will call the layer's rendering method anyway but the
+     * geometry passed to the layer will be empty.
+     * This is required for layers that generate their own geometry from other
+     * information in the rendering context.
+     */
+    void renderUsingLayer( QgsSymbolLayerV2* layer, QgsSymbolV2RenderContext& context );
 
     //! check whether a symbol layer type can be used within the symbol
     //! (marker-marker, line-line, fill-fill/line)
     bool isSymbolLayerCompatible( SymbolType t );
+
+  private:
+    QgsSymbolV2( const QgsSymbolV2& );
 };
 
 ///////////////////////
@@ -234,6 +290,21 @@ class QgsSymbolV2RenderContext
 
     // workaround for sip 4.7. Don't use assignment - will fail with assertion error
     // QgsSymbolV2RenderContext& operator=( const QgsSymbolV2RenderContext& );
+
+    /**
+     * This scope is always available when a symbol of this type is being rendered.
+     *
+     * @return An expression scope for details about this symbol
+     */
+    QgsExpressionContextScope* expressionContextScope();
+    /**
+     * Set an expression scope for this symbol.
+     *
+     * Will take ownership.
+     *
+     * @param contextScope An expression scope for details about this symbol
+     */
+    void setExpressionContextScope( QgsExpressionContextScope* contextScope /Transfer/);
 };
 
 

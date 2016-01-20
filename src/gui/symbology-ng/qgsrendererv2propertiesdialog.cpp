@@ -25,7 +25,9 @@
 #include "qgspointdisplacementrendererwidget.h"
 #include "qgsinvertedpolygonrendererwidget.h"
 #include "qgsheatmaprendererwidget.h"
+#include "qgs25drendererwidget.h"
 
+#include "qgsorderbydialog.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include "qgsvectorlayer.h"
@@ -37,10 +39,10 @@ static bool _initRenderer( const QString& name, QgsRendererV2WidgetFunc f, const
 {
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QgsRendererV2AbstractMetadata* am = reg->rendererMetadata( name );
-  if ( am == NULL )
+  if ( !am )
     return false;
   QgsRendererV2Metadata* m = dynamic_cast<QgsRendererV2Metadata*>( am );
-  if ( m == NULL )
+  if ( !m )
     return false;
 
   m->setWidgetFunction( f );
@@ -70,15 +72,16 @@ static void _initRendererWidgetFunctions()
   _initRenderer( "pointDisplacement", QgsPointDisplacementRendererWidget::create );
   _initRenderer( "invertedPolygonRenderer", QgsInvertedPolygonRendererWidget::create );
   _initRenderer( "heatmapRenderer", QgsHeatmapRendererWidget::create );
+  _initRenderer( "25dRenderer", Qgs25DRendererWidget::create, "rendererSingleSymbol.png" );
   initialized = true;
 }
 
 QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* layer, QgsStyleV2* style, bool embedded )
     : mLayer( layer )
     , mStyle( style )
-    , mActiveWidget( NULL )
-    , mPaintEffect( 0 )
-    , mMapCanvas( 0 )
+    , mActiveWidget( nullptr )
+    , mPaintEffect( nullptr )
+    , mMapCanvas( nullptr )
 {
   setupUi( this );
 
@@ -109,13 +112,17 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
   connect( mLayerTransparencySpnBx, SIGNAL( valueChanged( int ) ), mLayerTransparencySlider, SLOT( setValue( int ) ) );
 
   //paint effect widget
-  if ( mLayer->rendererV2() && mLayer->rendererV2()->paintEffect() )
+  if ( mLayer->rendererV2() )
   {
-    mPaintEffect = mLayer->rendererV2()->paintEffect()->clone();
-    mEffectWidget->setPaintEffect( mPaintEffect );
+    if ( mLayer->rendererV2()->paintEffect() )
+    {
+      mPaintEffect = mLayer->rendererV2()->paintEffect()->clone();
+      mEffectWidget->setPaintEffect( mPaintEffect );
+    }
+
+    mOrderBy = mLayer->rendererV2()->orderBy();
   }
 
-  QPixmap pix;
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QStringList renderers = reg->renderersList();
   Q_FOREACH ( const QString& name, renderers )
@@ -128,21 +135,31 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
 
   // setup slot rendererChanged()
   connect( cboRenderers, SIGNAL( currentIndexChanged( int ) ), this, SLOT( rendererChanged() ) );
+  //setup order by
+  if ( mOrderBy.isEmpty() )
+  {
+    btnOrderBy->setEnabled( false );
+    checkboxEnableOrderBy->setChecked( false );
+    lineEditOrderBy->setEnabled( false );
+  }
+  else
+  {
+    checkboxEnableOrderBy->setChecked( true );
+  }
+  lineEditOrderBy->setReadOnly( true );
+  connect( checkboxEnableOrderBy, SIGNAL( toggled( bool ) ), btnOrderBy, SLOT( setEnabled( bool ) ) );
+  connect( checkboxEnableOrderBy, SIGNAL( toggled( bool ) ), lineEditOrderBy, SLOT( setEnabled( bool ) ) );
+  connect( btnOrderBy, SIGNAL( clicked( bool ) ), this, SLOT( showOrderByDialog() ) );
+  lineEditOrderBy->setText( mOrderBy.dump() );
 
   // set current renderer from layer
   QString rendererName = mLayer->rendererV2()->type();
-  for ( int i = 0; i < cboRenderers->count(); i++ )
-  {
-    if ( cboRenderers->itemData( i ).toString() == rendererName )
-    {
-      cboRenderers->setCurrentIndex( i );
-      return;
-    }
-  }
+
+  int rendererIdx = cboRenderers->findData( rendererName );
+  cboRenderers->setCurrentIndex( rendererIdx );
 
   // no renderer found... this mustn't happen
-  Q_ASSERT( false && "there must be a renderer!" );
-
+  Q_ASSERT( rendererIdx != -1 && "there must be a renderer!" );
 }
 
 QgsRendererV2PropertiesDialog::~QgsRendererV2PropertiesDialog()
@@ -171,7 +188,7 @@ void QgsRendererV2PropertiesDialog::rendererChanged()
 
   //Retrieve the previous renderer: from the old active widget if possible, otherwise from the layer
   QgsFeatureRendererV2* oldRenderer;
-  if ( mActiveWidget  && mActiveWidget->renderer() )
+  if ( mActiveWidget && mActiveWidget->renderer() )
   {
     oldRenderer = mActiveWidget->renderer()->clone();
   }
@@ -186,30 +203,33 @@ void QgsRendererV2PropertiesDialog::rendererChanged()
     stackedWidget->removeWidget( mActiveWidget );
 
     delete mActiveWidget;
-    mActiveWidget = NULL;
+    mActiveWidget = nullptr;
   }
 
-  QgsRendererV2Widget* w = NULL;
+  QgsRendererV2Widget* w = nullptr;
   QgsRendererV2AbstractMetadata* m = QgsRendererV2Registry::instance()->rendererMetadata( rendererName );
-  if ( m != NULL )
+  if ( m )
     w = m->createRendererWidget( mLayer, mStyle, oldRenderer );
   delete oldRenderer;
 
-  if ( w != NULL )
+  if ( w )
   {
     // instantiate the widget and set as active
     mActiveWidget = w;
     stackedWidget->addWidget( mActiveWidget );
     stackedWidget->setCurrentWidget( mActiveWidget );
-    if ( mMapCanvas && mActiveWidget->renderer() )
-      mActiveWidget->setMapCanvas( mMapCanvas );
+    if ( mActiveWidget->renderer() )
+    {
+      if ( mMapCanvas )
+        mActiveWidget->setMapCanvas( mMapCanvas );
+      changeOrderBy( mActiveWidget->renderer()->orderBy() );
+    }
   }
   else
   {
     // set default "no edit widget available" page
     stackedWidget->setCurrentWidget( pageNoWidget );
   }
-
 }
 
 void QgsRendererV2PropertiesDialog::apply()
@@ -223,6 +243,9 @@ void QgsRendererV2PropertiesDialog::apply()
   if ( renderer )
   {
     renderer->setPaintEffect( mPaintEffect->clone() );
+    // set the order by
+    renderer->setOrderBy( mOrderBy );
+
     mLayer->setRendererV2( renderer->clone() );
   }
 
@@ -238,6 +261,25 @@ void QgsRendererV2PropertiesDialog::onOK()
 {
   apply();
   accept();
+}
+
+void QgsRendererV2PropertiesDialog::showOrderByDialog()
+{
+  QgsOrderByDialog dlg( mLayer );
+
+  dlg.setOrderBy( mOrderBy );
+  if ( dlg.exec() )
+  {
+    mOrderBy = dlg.orderBy();
+    lineEditOrderBy->setText( mOrderBy.dump() );
+  }
+}
+
+void QgsRendererV2PropertiesDialog::changeOrderBy( const QgsFeatureRequest::OrderBy& orderBy )
+{
+  mOrderBy = orderBy;
+  lineEditOrderBy->setText( mOrderBy.dump() );
+  checkboxEnableOrderBy->setEnabled( orderBy.isEmpty() );
 }
 
 

@@ -89,7 +89,7 @@ class QgsMapSettings
       UseRenderingOptimization,        //!< Enable vector simplification and other rendering optimizations
       DrawSelection,              //!< Whether vector selections should be shown in the rendered map
       DrawSymbolBounds,           //!< Draw bounds of symbols (for debugging/testing)
-      // TODO: ignore scale-based visibility (overview)
+      RenderMapTile
     };
     typedef QFlags<QgsMapSettings::Flag> Flags;
 
@@ -203,6 +203,9 @@ class QgsMapSettings
 
     void writeXML( QDomNode& theNode, QDomDocument& theDoc );
 
+  protected:
+
+    void updateDerived();
 };
 
 QFlags<QgsMapSettings::Flag> operator|(QgsMapSettings::Flag f1, QFlags<QgsMapSettings::Flag> f2);

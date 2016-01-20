@@ -65,12 +65,12 @@ QgsWCSServer::QgsWCSServer()
     : QgsOWSServer(
       QString()
       , QMap<QString, QString>()
-      , 0
+      , nullptr
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-      , NULL
+      , nullptr
 #endif
     )
-    , mConfigParser( 0 )
+    , mConfigParser( nullptr )
 {
 }
 
@@ -251,15 +251,15 @@ QDomDocument QgsWCSServer::describeCoverage()
   //defining coverage name
   QString coveName = "";
   //read COVERAGE
-  QMap<QString, QString>::const_iterator cove_name_it = mParameters.find( "COVERAGE" );
-  if ( cove_name_it != mParameters.end() )
+  QMap<QString, QString>::const_iterator cove_name_it = mParameters.constFind( "COVERAGE" );
+  if ( cove_name_it != mParameters.constEnd() )
   {
     coveName = cove_name_it.value();
   }
   if ( coveName == "" )
   {
-    QMap<QString, QString>::const_iterator cove_name_it = mParameters.find( "IDENTIFIER" );
-    if ( cove_name_it != mParameters.end() )
+    QMap<QString, QString>::const_iterator cove_name_it = mParameters.constFind( "IDENTIFIER" );
+    if ( cove_name_it != mParameters.constEnd() )
     {
       coveName = cove_name_it.value();
     }
@@ -279,15 +279,15 @@ QByteArray* QgsWCSServer::getCoverage()
   //defining coverage name
   QString coveName = "";
   //read COVERAGE
-  QMap<QString, QString>::const_iterator cove_name_it = mParameters.find( "COVERAGE" );
-  if ( cove_name_it != mParameters.end() )
+  QMap<QString, QString>::const_iterator cove_name_it = mParameters.constFind( "COVERAGE" );
+  if ( cove_name_it != mParameters.constEnd() )
   {
     coveName = cove_name_it.value();
   }
   if ( coveName == "" )
   {
-    QMap<QString, QString>::const_iterator cove_name_it = mParameters.find( "IDENTIFIER" );
-    if ( cove_name_it != mParameters.end() )
+    QMap<QString, QString>::const_iterator cove_name_it = mParameters.constFind( "IDENTIFIER" );
+    if ( cove_name_it != mParameters.constEnd() )
     {
       coveName = cove_name_it.value();
     }
@@ -314,10 +314,13 @@ QByteArray* QgsWCSServer::getCoverage()
   QString crs = "";
 
   // read BBOX
-  QMap<QString, QString>::const_iterator bbIt = mParameters.find( "BBOX" );
-  if ( bbIt == mParameters.end() )
+  QMap<QString, QString>::const_iterator bbIt = mParameters.constFind( "BBOX" );
+  if ( bbIt == mParameters.constEnd() )
   {
-    minx = 0; miny = 0; maxx = 0; maxy = 0;
+    minx = 0;
+    miny = 0;
+    maxx = 0;
+    maxy = 0;
   }
   else
   {
@@ -434,13 +437,13 @@ QByteArray* QgsWCSServer::getCoverage()
       throw QgsMapServiceException( "RequestNotWellFormed", mErrors.join( ". " ) );
     }
     delete pipe;
-    QByteArray* ba = 0;
+    QByteArray* ba = nullptr;
     ba = new QByteArray();
     *ba = tempFile.readAll();
 
     return ba;
   }
-  return 0;
+  return nullptr;
 }
 
 QString QgsWCSServer::serviceUrl() const

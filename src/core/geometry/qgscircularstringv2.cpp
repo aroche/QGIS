@@ -36,6 +36,20 @@ QgsCircularStringV2::~QgsCircularStringV2()
 
 }
 
+bool QgsCircularStringV2::operator==( const QgsCurveV2& other ) const
+{
+  const QgsCircularStringV2* otherLine = dynamic_cast< const QgsCircularStringV2* >( &other );
+  if ( !otherLine )
+    return false;
+
+  return *otherLine == *this;
+}
+
+bool QgsCircularStringV2::operator!=( const QgsCurveV2& other ) const
+{
+  return !operator==( other );
+}
+
 QgsCircularStringV2 *QgsCircularStringV2::clone() const
 {
   return new QgsCircularStringV2( *this );
@@ -409,7 +423,11 @@ void QgsCircularStringV2::setPoints( const QList<QgsPointV2>& points )
 {
   if ( points.size() < 1 )
   {
-    mWkbType = QgsWKBTypes::Unknown; mX.clear(); mY.clear(); mZ.clear(); mM.clear();
+    mWkbType = QgsWKBTypes::Unknown;
+    mX.clear();
+    mY.clear();
+    mZ.clear();
+    mM.clear();
     return;
   }
 
@@ -619,8 +637,9 @@ void QgsCircularStringV2::transform( const QTransform& t )
   for ( int i = 0; i < nPoints; ++i )
   {
     qreal x, y;
-    t.map( mX[i], mY[i], &x, &y );
-    mX[i] = x; mY[i] = y;
+    t.map( mX.at( i ), mY.at( i ), &x, &y );
+    mX[i] = x;
+    mY[i] = y;
   }
 }
 
@@ -802,7 +821,8 @@ double QgsCircularStringV2::closestSegment( const QgsPointV2& pt, QgsPointV2& se
 
   segmentPt = minDistSegmentPoint;
   vertexAfter = minDistVertexAfter;
-  vertexAfter.part = 0; vertexAfter.ring = 0;
+  vertexAfter.part = 0;
+  vertexAfter.ring = 0;
   if ( leftOf )
   {
     *leftOf = minDistLeftOf;
@@ -933,12 +953,12 @@ double QgsCircularStringV2::closestPointOnArc( double x1, double y1, double x2, 
 
 void QgsCircularStringV2::insertVertexBetween( int after, int before, int pointOnCircle )
 {
-  double xAfter = mX[after];
-  double yAfter = mY[after];
-  double xBefore = mX[before];
-  double yBefore = mY[before];
-  double xOnCircle = mX[ pointOnCircle ];
-  double yOnCircle = mY[ pointOnCircle ];
+  double xAfter = mX.at( after );
+  double yAfter = mY.at( after );
+  double xBefore = mX.at( before );
+  double yBefore = mY.at( before );
+  double xOnCircle = mX.at( pointOnCircle );
+  double yOnCircle = mY.at( pointOnCircle );
 
   double radius, centerX, centerY;
   QgsGeometryUtils::circleCenterRadius( QgsPointV2( xAfter, yAfter ), QgsPointV2( xBefore, yBefore ), QgsPointV2( xOnCircle, yOnCircle ), radius, centerX, centerY );
@@ -1062,5 +1082,25 @@ bool QgsCircularStringV2::addMValue( double mValue )
   {
     mM << mValue;
   }
+  return true;
+}
+
+bool QgsCircularStringV2::dropZValue()
+{
+  if ( !QgsWKBTypes::hasZ( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropZ( mWkbType );
+  mZ.clear();
+  return true;
+}
+
+bool QgsCircularStringV2::dropMValue()
+{
+  if ( !QgsWKBTypes::hasM( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropM( mWkbType );
+  mM.clear();
   return true;
 }

@@ -61,7 +61,7 @@ void QgsMapToolChangeLabelProperties::canvasReleaseEvent( QgsMapMouseEvent* e )
       labeltext = mCurrentLabelPos.labelText;
     }
 
-    QgsLabelPropertyDialog d( mCurrentLabelPos.layerID, mCurrentLabelPos.featureId, mCurrentLabelPos.labelFont, labeltext, 0 );
+    QgsLabelPropertyDialog d( mCurrentLabelPos.layerID, mCurrentLabelPos.featureId, mCurrentLabelPos.labelFont, labeltext, nullptr );
 
     connect( &d, SIGNAL( applied() ), this, SLOT( dialogPropertiesApplied() ) );
     if ( d.exec() == QDialog::Accepted )
@@ -79,7 +79,7 @@ void QgsMapToolChangeLabelProperties::applyChanges( const QgsAttributeMap& chang
   if ( !vlayer )
     return;
 
-  if ( changes.size() > 0 )
+  if ( !changes.isEmpty() )
   {
     vlayer->beginEditCommand( tr( "Changed properties for label" ) + QString( " '%1'" ).arg( currentLabelText( 24 ) ) );
 

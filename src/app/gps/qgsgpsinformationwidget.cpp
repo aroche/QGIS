@@ -48,7 +48,7 @@
 #include <qwt_plot.h>
 #include <qwt_plot_grid.h>
 
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
 // QWT Polar plot add on
 #include <qwt_symbol.h>
 #include <qwt_polar_grid.h>
@@ -66,20 +66,20 @@
 
 QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWidget * parent, Qt::WindowFlags f )
     : QWidget( parent, f )
-    , mNmea( 0 )
+    , mNmea( nullptr )
     , mpCanvas( thepCanvas )
 {
   setupUi( this );
 
-  mpLastLayer = 0;
+  mpLastLayer = nullptr;
 
   mLastGpsPosition = QgsPoint( 0.0, 0.0 );
 
-  mpMapMarker = 0;
-  mpRubberBand = 0;
+  mpMapMarker = nullptr;
+  mpRubberBand = nullptr;
   populateDevices();
   QWidget * mpHistogramWidget = mStackedWidget->widget( 1 );
-#if (!WITH_QWTPOLAR)
+#ifndef WITH_QWTPOLAR
   mBtnSatellites->setVisible( false );
 #endif
   //
@@ -115,7 +115,7 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
   //
   // Set up the polar graph for satellite pos
   //
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
   QWidget * mpPolarWidget = mStackedWidget->widget( 2 );
   mpSatellitesWidget = new QwtPolarPlot( /*QwtText( tr( "Satellite View" ), QwtText::PlainText ),*/ mpPolarWidget );  // possible title for graph removed for now as it is too large in small windows
   mpSatellitesWidget->setAutoReplot( false );   // plot on demand (after all data has been handled)
@@ -237,7 +237,7 @@ QgsGPSInformationWidget::QgsGPSInformationWidget( QgsMapCanvas * thepCanvas, QWi
   setStatusIndicator( NoData );
 
   //SLM - added functionality
-  mLogFile = 0;
+  mLogFile = nullptr;
 
   connect( QgisApp::instance()->layerTreeView(), SIGNAL( currentLayerChanged( QgsMapLayer* ) ),
            this, SLOT( updateCloseFeatureButton( QgsMapLayer* ) ) );
@@ -256,7 +256,7 @@ QgsGPSInformationWidget::~QgsGPSInformationWidget()
   delete mpMapMarker;
   delete mpRubberBand;
 
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
   delete mpSatellitesGrid;
 #endif
 
@@ -429,7 +429,7 @@ void QgsGPSInformationWidget::connectGps()
 void QgsGPSInformationWidget::timedout()
 {
   mConnectButton->setChecked( false );
-  mNmea = NULL;
+  mNmea = nullptr;
   mGPSPlainTextEdit->appendPlainText( tr( "Timed out!" ) );
   showStatusBarMessage( tr( "Failed to connect to GPS device." ) );
 }
@@ -464,7 +464,7 @@ void QgsGPSInformationWidget::connected( QgsGPSConnection *conn )
     else  // error opening file
     {
       delete mLogFile;
-      mLogFile = 0;
+      mLogFile = nullptr;
 
       // need to indicate why - this just reports that an error occurred
       showStatusBarMessage( tr( "Error opening log file." ) );
@@ -479,16 +479,16 @@ void QgsGPSInformationWidget::disconnectGps()
     disconnect( mNmea, SIGNAL( nmeaSentenceReceived( const QString& ) ), this, SLOT( logNmeaSentence( const QString& ) ) );
     mLogFile->close();
     delete mLogFile;
-    mLogFile = 0;
+    mLogFile = nullptr;
   }
 
   QgsGPSConnectionRegistry::instance()->unregisterConnection( mNmea );
   delete mNmea;
-  mNmea = NULL;
+  mNmea = nullptr;
   if ( mpMapMarker )  // marker should not be shown on GPS disconnected - not current position
   {
     delete mpMapMarker;
-    mpMapMarker = NULL;
+    mpMapMarker = nullptr;
   }
   mGPSPlainTextEdit->appendPlainText( tr( "Disconnected..." ) );
   mConnectButton->setChecked( false );
@@ -541,7 +541,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
   {
     mpPlot->setAxisScale( QwtPlot::xBottom, 0, info.satellitesInView.size() );
   } //signal
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
   if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
   {
     while ( !mMarkerList.isEmpty() )
@@ -589,7 +589,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
       // Add a marker to the polar plot
       if ( currentInfo.id > 0 )       // don't show satellite if id=0 (no satellite indication)
       {
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
         QwtPolarMarker *mypMarker = new QwtPolarMarker();
 #if (QWT_POLAR_VERSION<0x010000)
         mypMarker->setPosition( QwtPolarPoint( currentInfo.azimuth, currentInfo.elevation ) );
@@ -605,7 +605,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
         {
           myColor = Qt::black; //strong signal
         }
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
 #if (QWT_POLAR_VERSION<0x010000)
         mypMarker->setSymbol( QwtSymbol( QwtSymbol::Ellipse,
                                          symbolBrush, QPen( myColor ), markerSize ) );
@@ -635,7 +635,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
 #endif
     mpPlot->replot();
   } //signal
-#if (WITH_QWTPOLAR)
+#ifdef WITH_QWTPOLAR
   if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
   {
     mpSatellitesWidget->replot();
@@ -736,7 +736,7 @@ void QgsGPSInformationWidget::displayGPSInformation( const QgsGPSInformation& in
     if ( mpMapMarker )
     {
       delete mpMapMarker;
-      mpMapMarker = 0;
+      mpMapMarker = nullptr;
     }
   } // show marker
 }
@@ -795,7 +795,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
   //lines: bail out if there are not at least two vertices
   if ( layerWKBType == QGis::WKBLineString  && mCaptureList.size() < 2 )
   {
-    QMessageBox::information( 0, tr( "Not enough vertices" ),
+    QMessageBox::information( nullptr, tr( "Not enough vertices" ),
                               tr( "Cannot close a line feature until it has at least two vertices." ) );
     return;
   }
@@ -803,7 +803,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
   //polygons: bail out if there are not at least three vertices
   if ( layerWKBType == QGis::WKBPolygon && mCaptureList.size() < 3 )
   {
-    QMessageBox::information( 0, tr( "Not enough vertices" ),
+    QMessageBox::information( nullptr, tr( "Not enough vertices" ),
                               tr( "Cannot close a polygon feature until it has at least three vertices." ) );
     return;
   }
@@ -818,7 +818,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
 
     int size = 0;
     char end = QgsApplication::endian();
-    unsigned char *wkb = NULL;
+    unsigned char *wkb = nullptr;
     int wkbtype = 0;
 
     QgsCoordinateTransform t( mWgs84CRS, vlayer->crs() );
@@ -834,7 +834,9 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
     memcpy( &wkb[5], &x, sizeof( double ) );
     memcpy( &wkb[5] + sizeof( double ), &y, sizeof( double ) );
 
-    f->setGeometryAndOwnership( &wkb[0], size );
+    QgsGeometry *g = new QgsGeometry();
+    g->fromWkb( &wkb[0], size );
+    f->setGeometry( g );
 
     QgsFeatureAction action( tr( "Feature added" ), *f, vlayer, -1, -1, this );
     if ( action.addFeature() )
@@ -878,7 +880,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
       memcpy( &wkb[1+sizeof( int )], &length, sizeof( int ) );
       int position = 1 + 2 * sizeof( int );
       double x, y;
-      for ( QList<QgsPoint>::iterator it = mCaptureList.begin(); it != mCaptureList.end(); ++it )
+      for ( QList<QgsPoint>::const_iterator it = mCaptureList.constBegin(); it != mCaptureList.constEnd(); ++it )
       {
         QgsPoint savePoint = *it;
         // transform the gps point into the layer crs
@@ -893,7 +895,10 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
         memcpy( &wkb[position], &y, sizeof( double ) );
         position += sizeof( double );
       }
-      f->setGeometryAndOwnership( &wkb[0], size );
+
+      QgsGeometry *g = new QgsGeometry();
+      g->fromWkb( &wkb[0], size );
+      f->setGeometry( g );
     }
     else if ( layerWKBType == QGis::WKBPolygon )
     {
@@ -934,7 +939,10 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
       position += sizeof( double );
 
       memcpy( &wkb[position], &y, sizeof( double ) );
-      f->setGeometryAndOwnership( &wkb[0], size );
+
+      QgsGeometry *g = new QgsGeometry();
+      g->fromWkb( &wkb[0], size );
+      f->setGeometry( g );
 
       int avoidIntersectionsReturn = f->geometry()->avoidIntersections();
       if ( avoidIntersectionsReturn == 1 )
@@ -944,14 +952,14 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
       else if ( avoidIntersectionsReturn == 2 )
       {
         //bail out...
-        QMessageBox::critical( 0, tr( "Error" ), tr( "The feature could not be added because removing the polygon intersections would change the geometry type" ) );
+        QMessageBox::critical( nullptr, tr( "Error" ), tr( "The feature could not be added because removing the polygon intersections would change the geometry type" ) );
         delete f;
         connectGpsSlot();
         return;
       }
       else if ( avoidIntersectionsReturn == 3 )
       {
-        QMessageBox::critical( 0, tr( "Error" ), tr( "An error was reported during intersection removal" ) );
+        QMessageBox::critical( nullptr, tr( "Error" ), tr( "An error was reported during intersection removal" ) );
         delete f;
         connectGpsSlot();
         return;
@@ -960,7 +968,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
     // Should never get here, as preconditions should have removed any that aren't handled
     else // layerWKBType == QGis::WKBPolygon  -  unknown type
     {
-      QMessageBox::critical( 0, tr( "Error" ), tr( "Cannot add feature. "
+      QMessageBox::critical( nullptr, tr( "Error" ), tr( "Cannot add feature. "
                              "Unknown WKB type. Choose a different layer and try again." ) );
       connectGpsSlot();
       delete f;
@@ -984,7 +992,7 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
         vlayer->startEditing();
       }
       delete mpRubberBand;
-      mpRubberBand = NULL;
+      mpRubberBand = nullptr;
 
       // delete the elements of mCaptureList
       mCaptureList.clear();
@@ -1038,7 +1046,7 @@ void QgsGPSInformationWidget::createRubberBand()
   {
     delete mpRubberBand;
   }
-  mpRubberBand = new QgsRubberBand( mpCanvas, false );
+  mpRubberBand = new QgsRubberBand( mpCanvas, QGis::Line );
   mpRubberBand->setColor( mTrackColor );
   mpRubberBand->setWidth( mSpinTrackWidth->value() );
   mpRubberBand->show();
@@ -1051,7 +1059,7 @@ void QgsGPSInformationWidget::on_mBtnLogFile_clicked()
   // Retrieve last used log file dir from persistent settings
   QSettings settings;
   QString settingPath( "/gps/lastLogFileDir" );
-  QString lastUsedDir = settings.value( settingPath, "." ).toString();
+  QString lastUsedDir = settings.value( settingPath, QDir::homePath() ).toString();
   QString saveFilePath = QFileDialog::getSaveFileName( this, tr( "Save GPS log file as" ), lastUsedDir, tr( "NMEA files" ) + " (*.nmea)" );
   if ( saveFilePath.isNull() ) //canceled
   {

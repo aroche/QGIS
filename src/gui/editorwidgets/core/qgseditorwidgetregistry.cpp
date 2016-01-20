@@ -24,23 +24,25 @@
 
 // Editors
 #include "qgsclassificationwidgetwrapperfactory.h"
-#include "qgsrangewidgetfactory.h"
-#include "qgsuniquevaluewidgetfactory.h"
-#include "qgsfilenamewidgetfactory.h"
-#include "qgsvaluemapwidgetfactory.h"
-#include "qgsenumerationwidgetfactory.h"
-#include "qgshiddenwidgetfactory.h"
 #include "qgscheckboxwidgetfactory.h"
-#include "qgstexteditwidgetfactory.h"
-#include "qgsvaluerelationwidgetfactory.h"
-#include "qgsuuidwidgetfactory.h"
+#include "qgscolorwidgetfactory.h"
+#include "qgsdatetimeeditfactory.h"
+#include "qgsenumerationwidgetfactory.h"
+#include "qgsexternalresourcewidgetfactory.h"
+#include "qgsfilenamewidgetfactory.h"
+#include "qgshiddenwidgetfactory.h"
 #include "qgsphotowidgetfactory.h"
+#include "qgsrangewidgetfactory.h"
+#include "qgsrelationreferencefactory.h"
+#include "qgstexteditwidgetfactory.h"
+#include "qgsuniquevaluewidgetfactory.h"
+#include "qgsuuidwidgetfactory.h"
+#include "qgsvaluemapwidgetfactory.h"
+#include "qgsvaluerelationwidgetfactory.h"
 #ifdef WITH_QTWEBKIT
 #include "qgswebviewwidgetfactory.h"
 #endif
-#include "qgscolorwidgetfactory.h"
-#include "qgsrelationreferencefactory.h"
-#include "qgsdatetimeeditfactory.h"
+
 
 QgsEditorWidgetRegistry* QgsEditorWidgetRegistry::instance()
 {
@@ -69,6 +71,7 @@ void QgsEditorWidgetRegistry::initEditors( QgsMapCanvas *mapCanvas, QgsMessageBa
   reg->registerWidget( "Color", new QgsColorWidgetFactory( tr( "Color" ) ) );
   reg->registerWidget( "RelationReference", new QgsRelationReferenceFactory( tr( "Relation Reference" ), mapCanvas, messageBar ) );
   reg->registerWidget( "DateTime", new QgsDateTimeEditFactory( tr( "Date/Time" ) ) );
+  reg->registerWidget( "ExternalResource", new QgsExternalResourceWidgetFactory( tr( "External Resource" ) ) );
 }
 
 QgsEditorWidgetRegistry::QgsEditorWidgetRegistry()
@@ -112,7 +115,7 @@ QgsEditorWidgetWrapper* QgsEditorWidgetRegistry::create( const QString& widgetId
     }
   }
 
-  return 0;
+  return nullptr;
 }
 
 QgsSearchWidgetWrapper* QgsEditorWidgetRegistry::createSearchWidget( const QString& widgetId, QgsVectorLayer* vl, int fieldIdx, const QgsEditorWidgetConfig& config, QWidget* parent, const QgsAttributeEditorContext &context )
@@ -131,7 +134,7 @@ QgsSearchWidgetWrapper* QgsEditorWidgetRegistry::createSearchWidget( const QStri
       return ww;
     }
   }
-  return 0;
+  return nullptr;
 }
 
 QgsEditorConfigWidget* QgsEditorWidgetRegistry::createConfigWidget( const QString& widgetId, QgsVectorLayer* vl, int fieldIdx, QWidget* parent )
@@ -140,7 +143,7 @@ QgsEditorConfigWidget* QgsEditorWidgetRegistry::createConfigWidget( const QStrin
   {
     return mWidgetFactories[widgetId]->configWidget( vl, fieldIdx, parent );
   }
-  return 0;
+  return nullptr;
 }
 
 QString QgsEditorWidgetRegistry::name( const QString& widgetId )
@@ -351,7 +354,7 @@ QString QgsEditorWidgetRegistry::findSuitableWrapper( QWidget* editor, const QSt
   QMap<const char*, QPair<int, QString> >::ConstIterator it;
 
   QString widgetid;
-  
+
   // Editor can be null
   if ( editor )
   {

@@ -45,22 +45,6 @@
 #include "qgsfield.h"
 #include "qgseditorwidgetregistry.h"
 
-class QgsAttributeTableDock : public QDockWidget
-{
-  public:
-    QgsAttributeTableDock( const QString & title, QWidget * parent = 0, Qt::WindowFlags flags = 0 )
-        : QDockWidget( title, parent, flags )
-    {
-      setObjectName( "AttributeTable" ); // set object name so the position can be saved
-    }
-
-    virtual void closeEvent( QCloseEvent * ev ) override
-    {
-      Q_UNUSED( ev );
-      deleteLater();
-    }
-};
-
 static QgsExpressionContext _getExpressionContext( const void* context )
 {
   QgsExpressionContext expContext;
@@ -80,10 +64,10 @@ static QgsExpressionContext _getExpressionContext( const void* context )
 
 QgsAttributeTableDialog::QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWidget *parent, Qt::WindowFlags flags )
     : QDialog( parent, flags )
-    , mDock( 0 )
+    , mDock( nullptr )
     , mLayer( theLayer )
-    , mRubberBand( 0 )
-    , mCurrentSearchWidgetWrapper( 0 )
+    , mRubberBand( nullptr )
+    , mCurrentSearchWidgetWrapper( nullptr )
 {
   setupUi( this );
 
@@ -117,7 +101,7 @@ QgsAttributeTableDialog::QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWid
     r.setFilterRect( extent );
 
     QgsGeometry *g = QgsGeometry::fromRect( extent );
-    mRubberBand = new QgsRubberBand( mc, true );
+    mRubberBand = new QgsRubberBand( mc, QGis::Polygon );
     mRubberBand->setToGeometry( g, theLayer );
     delete g;
 
@@ -242,7 +226,7 @@ QgsAttributeTableDialog::QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWid
 
   mUpdateExpressionText->registerGetExpressionContextCallback( &_getExpressionContext, mLayer );
 
-  mFieldModel = new QgsFieldModel();
+  mFieldModel = new QgsFieldModel( this );
   mFieldModel->setLayer( mLayer );
   mFieldCombo->setModel( mFieldModel );
   connect( mRunFieldCalc, SIGNAL( clicked() ), this, SLOT( updateFieldFromExpression() ) );
@@ -252,6 +236,9 @@ QgsAttributeTableDialog::QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWid
   connect( mUpdateExpressionText, SIGNAL( fieldChanged( QString, bool ) ), this, SLOT( updateButtonStatus( QString, bool ) ) );
   mUpdateExpressionText->setLayer( mLayer );
   mUpdateExpressionText->setLeftHandButtonStyle( true );
+
+  mMainView->setView( QgsDualView::AttributeTable );
+
   editingToggled();
 }
 
@@ -291,7 +278,7 @@ void QgsAttributeTableDialog::closeEvent( QCloseEvent* event )
 {
   QDialog::closeEvent( event );
 
-  if ( mDock == NULL )
+  if ( !mDock )
   {
     QSettings settings;
     settings.setValue( "/Windows/BetterAttributeTable/geometry", saveGeometry() );
@@ -428,7 +415,7 @@ void QgsAttributeTableDialog::runFieldCalculation( QgsVectorLayer* layer, const 
 
   if ( !calculationSuccess )
   {
-    QMessageBox::critical( 0, tr( "Error" ), tr( "An error occured while evaluating the calculation string:\n%1" ).arg( error ) );
+    QMessageBox::critical( nullptr, tr( "Error" ), tr( "An error occured while evaluating the calculation string:\n%1" ).arg( error ) );
     mLayer->destroyEditCommand();
     return;
   }
@@ -440,7 +427,7 @@ void QgsAttributeTableDialog::replaceSearchWidget( QWidget* oldw, QWidget* neww 
 {
   mFilterLayout->removeWidget( oldw );
   oldw->setVisible( false );
-  mFilterLayout->addWidget( neww, 0, 0, 0 );
+  mFilterLayout->addWidget( neww, 0, 0, nullptr );
   neww->setVisible( true );
 }
 
@@ -450,7 +437,7 @@ void QgsAttributeTableDialog::filterColumnChanged( QObject* filterAction )
   mFilterButton->setPopupMode( QToolButton::InstantPopup );
   // replace the search line edit with a search widget that is suited to the selected field
   // delete previous widget
-  if ( mCurrentSearchWidgetWrapper != 0 )
+  if ( mCurrentSearchWidgetWrapper )
   {
     mCurrentSearchWidgetWrapper->widget()->setVisible( false );
     delete mCurrentSearchWidgetWrapper;
@@ -507,7 +494,7 @@ void QgsAttributeTableDialog::filterShowAll()
   mFilterButton->setDefaultAction( mActionShowAllFilter );
   mFilterButton->setPopupMode( QToolButton::InstantPopup );
   mFilterQuery->setVisible( false );
-  if ( mCurrentSearchWidgetWrapper != 0 )
+  if ( mCurrentSearchWidgetWrapper )
   {
     mCurrentSearchWidgetWrapper->widget()->setVisible( false );
   }
@@ -763,7 +750,7 @@ void QgsAttributeTableDialog::filterQueryChanged( const QString& query )
 void QgsAttributeTableDialog::filterQueryAccepted()
 {
   if (( mFilterQuery->isVisible() && mFilterQuery->text().isEmpty() ) ||
-      ( mCurrentSearchWidgetWrapper != 0 && mCurrentSearchWidgetWrapper->widget()->isVisible()
+      ( mCurrentSearchWidgetWrapper && mCurrentSearchWidgetWrapper->widget()->isVisible()
         && mCurrentSearchWidgetWrapper->expression().isEmpty() ) )
   {
     filterShowAll();
@@ -779,14 +766,14 @@ void QgsAttributeTableDialog::openConditionalStyles()
 
 void QgsAttributeTableDialog::setFilterExpression( const QString& filterString )
 {
-  if ( mCurrentSearchWidgetWrapper == 0 || !mCurrentSearchWidgetWrapper->applyDirectly() )
+  if ( !mCurrentSearchWidgetWrapper || !mCurrentSearchWidgetWrapper->applyDirectly() )
   {
     mFilterQuery->setText( filterString );
     mFilterButton->setDefaultAction( mActionAdvancedFilter );
     mFilterButton->setPopupMode( QToolButton::MenuButtonPopup );
     mFilterQuery->setVisible( true );
     mApplyFilterButton->setVisible( true );
-    if ( mCurrentSearchWidgetWrapper != 0 )
+    if ( mCurrentSearchWidgetWrapper )
     {
       // replace search widget widget with the normal filter query line edit
       replaceSearchWidget( mCurrentSearchWidgetWrapper->widget(), mFilterQuery );
@@ -856,4 +843,21 @@ void QgsAttributeTableDialog::setFilterExpression( const QString& filterString )
     return;
   }
   mMainView->setFilterMode( QgsAttributeTableFilterModel::ShowFilteredList );
+}
+
+
+//
+// QgsAttributeTableDock
+//
+
+QgsAttributeTableDock::QgsAttributeTableDock( const QString& title, QWidget* parent, Qt::WindowFlags flags )
+    : QDockWidget( title, parent, flags )
+{
+  setObjectName( "AttributeTable" ); // set object name so the position can be saved
+}
+
+void QgsAttributeTableDock::closeEvent( QCloseEvent* ev )
+{
+  Q_UNUSED( ev );
+  deleteLater();
 }

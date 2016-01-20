@@ -30,15 +30,14 @@
 #include "qgsvectorlayer.h" //QgsFeatureIds
 #include "qgsfieldmodel.h"
 #include "qgssearchwidgetwrapper.h"
+#include <QDockWidget>
 
 class QDialogButtonBox;
 class QPushButton;
 class QLineEdit;
 class QComboBox;
 class QMenu;
-class QDockWidget;
 class QSignalMapper;
-
 class QgsAttributeTableModel;
 class QgsAttributeTableFilterModel;
 class QgsRubberBand;
@@ -54,7 +53,7 @@ class APP_EXPORT QgsAttributeTableDialog : public QDialog, private Ui::QgsAttrib
      * @param parent parent object
      * @param flags window flags
      */
-    QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWidget *parent = 0, Qt::WindowFlags flags = Qt::Window );
+    QgsAttributeTableDialog( QgsVectorLayer *theLayer, QWidget *parent = nullptr, Qt::WindowFlags flags = Qt::Window );
     ~QgsAttributeTableDialog();
 
     /**
@@ -221,5 +220,17 @@ class APP_EXPORT QgsAttributeTableDialog : public QDialog, private Ui::QgsAttrib
     QgsRubberBand* mRubberBand;
     QgsSearchWidgetWrapper* mCurrentSearchWidgetWrapper;
 };
+
+
+class QgsAttributeTableDock : public QDockWidget
+{
+    Q_OBJECT
+
+  public:
+    QgsAttributeTableDock( const QString & title, QWidget * parent = nullptr, Qt::WindowFlags flags = nullptr );
+
+    virtual void closeEvent( QCloseEvent * ev ) override;
+};
+
 
 #endif

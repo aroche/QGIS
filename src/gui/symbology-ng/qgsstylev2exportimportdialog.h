@@ -44,7 +44,7 @@ class GUI_EXPORT QgsStyleV2ExportImportDialog : public QDialog, private Ui::QgsS
 
     // constructor
     // mode argument must be 0 for saving and 1 for loading
-    QgsStyleV2ExportImportDialog( QgsStyleV2* style, QWidget *parent = NULL, Mode mode = Export );
+    QgsStyleV2ExportImportDialog( QgsStyleV2* style, QWidget *parent = nullptr, Mode mode = Export );
     ~QgsStyleV2ExportImportDialog();
     /**
      * @brief selectSymbols select symbols by name
@@ -100,6 +100,7 @@ class GUI_EXPORT QgsStyleV2ExportImportDialog : public QDialog, private Ui::QgsS
     void fileReadyRead();
     void updateProgress( qint64, qint64 );
     void downloadCanceled();
+    void selectionChanged( const QItemSelection & selected, const QItemSelection & deselected );
 
   private:
     void downloadStyleXML( const QUrl& url );

@@ -116,7 +116,6 @@ class CORE_EXPORT QgsGraduatedSymbolRendererV2 : public QgsFeatureRendererV2
   public:
 
     QgsGraduatedSymbolRendererV2( const QString& attrName = QString(), const QgsRangeList& ranges = QgsRangeList() );
-    QgsGraduatedSymbolRendererV2( const QgsGraduatedSymbolRendererV2 & other );
 
     virtual ~QgsGraduatedSymbolRendererV2();
 
@@ -276,7 +275,7 @@ class CORE_EXPORT QgsGraduatedSymbolRendererV2 : public QgsFeatureRendererV2
       * @param ramp color ramp. Ownership is transferred to the renderer
       * @param inverted set to true to invert ramp colors
       */
-    void updateColorRamp( QgsVectorColorRampV2* ramp = 0, bool inverted = false );
+    void updateColorRamp( QgsVectorColorRampV2* ramp = nullptr, bool inverted = false );
 
     /** Update all the symbols but leave breaks and colors. */
     void updateSymbols( QgsSymbolV2* sym );
@@ -325,6 +324,8 @@ class CORE_EXPORT QgsGraduatedSymbolRendererV2 : public QgsFeatureRendererV2
     //! @note added in 2.6
     virtual void checkLegendSymbolItem( const QString& key, bool state = true ) override;
 
+    virtual void setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol ) override;
+
     //! If supported by the renderer, return classification attribute for the use in legend
     //! @note added in 2.6
     virtual QString legendClassificationAttribute() const override { return classAttribute(); }
@@ -357,6 +358,7 @@ class CORE_EXPORT QgsGraduatedSymbolRendererV2 : public QgsFeatureRendererV2
 
     QgsSymbolV2* symbolForValue( double value );
 
+    //! @note not available in Python bindings
     static const char * graduatedMethodStr( GraduatedMethod method );
 
 };

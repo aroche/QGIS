@@ -26,6 +26,9 @@
 #include "qgsvectorlayer.h"
 #include "ui_qgsfieldspropertiesbase.h"
 
+class DesignerTree;
+class DragList;
+
 class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPropertiesBase
 {
     Q_OBJECT
@@ -71,52 +74,6 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     };
 
     /**
-     * This class overrides mime type handling to be able to work with
-     * the drag and drop attribute editor.
-     *
-     * The mime type is application/x-qgsattributetablefield
-     */
-
-    class DragList : public QTableWidget
-    {
-      public:
-        explicit DragList( QWidget* parent = 0 )
-            : QTableWidget( parent )
-        {}
-
-        // QTreeWidget interface
-      protected:
-        virtual QStringList mimeTypes() const override;
-
-        virtual QMimeData* mimeData( const QList<QTableWidgetItem*> items ) const override;
-    };
-
-
-    /**
-     * Graphical representation for the attribute editor drag and drop editor
-     */
-    class DesignerTree : public QTreeWidget
-    {
-      public:
-        explicit DesignerTree( QWidget* parent = 0 )
-            : QTreeWidget( parent )
-        {}
-        QTreeWidgetItem* addItem( QTreeWidgetItem* parent, DesignerTreeItemData data );
-        QTreeWidgetItem* addContainer( QTreeWidgetItem* parent, const QString& title );
-
-      protected:
-        virtual void dragMoveEvent( QDragMoveEvent *event ) override;
-        virtual void dropEvent( QDropEvent *event ) override;
-        virtual bool dropMimeData( QTreeWidgetItem * parent, int index, const QMimeData * data, Qt::DropAction action ) override;
-        /* Qt::DropActions supportedDropActions() const;*/
-
-        // QTreeWidget interface
-      protected:
-        virtual QStringList mimeTypes() const override;
-        virtual QMimeData* mimeData( const QList<QTreeWidgetItem*> items ) const override;
-    };
-
-    /**
      * Holds the configuration for a field
      */
     class FieldConfig
@@ -134,7 +91,7 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     };
 
   public:
-    QgsFieldsProperties( QgsVectorLayer *layer, QWidget* parent = 0 );
+    QgsFieldsProperties( QgsVectorLayer *layer, QWidget* parent = nullptr );
 
     ~QgsFieldsProperties();
 
@@ -163,11 +120,16 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     /**
      * @brief setEditFormInit set the private ui fields
      * @param editForm
-     * @param editFormInit
-     * @param editFormInitCode
-     * @param editFormInitUseCode
+     * @param initFunction
+     * @param initCode
+     * @param initFilePath
+     * @param codeSource
      */
-    void setEditFormInit( const QString &editForm, const QString &editFormInit, const QString &editFormInitCode, const bool editFormInitUseCode );
+    void setEditFormInit( const QString &editForm,
+                          const QString &initFunction,
+                          const QString &initCode,
+                          const QString &initFilePath,
+                          const QgsEditFormConfig::PythonInitCodeSource &codeSource );
 
   signals:
     void toggleEditing();
@@ -177,9 +139,10 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
     void on_mDeleteAttributeButton_clicked();
     void on_mCalculateFieldButton_clicked();
     void onAttributeSelectionChanged();
+    void on_pbtnSelectInitFilePath_clicked();
     void on_pbnSelectEditForm_clicked();
     void on_mEditorLayoutComboBox_currentIndexChanged( int index );
-    void on_leEditFormInitUseCode_toggled( bool checked );
+    void on_mInitCodeSourceComboBox_currentIndexChanged( int codeSource );
     void attributeAdded( int idx );
     void attributeDeleted( int idx );
     void attributeTypeDialog();
@@ -202,6 +165,8 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
 
     FieldConfig configForRow( int row );
     void setConfigForRow( int row, const FieldConfig& cfg );
+
+    QList<QgsRelation> mRelations;
 
     QgsVectorLayer* mLayer;
     DesignerTree* mDesignerTree;
@@ -235,6 +200,7 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
       RelLayerCol,
       RelFieldCol,
       RelIdCol,
+      RelNmCol,
       RelColCount
     };
 
@@ -246,7 +212,58 @@ class APP_EXPORT QgsFieldsProperties : public QWidget, private Ui_QgsFieldsPrope
 QDataStream& operator<< ( QDataStream& stream, const QgsFieldsProperties::DesignerTreeItemData& data );
 QDataStream& operator>> ( QDataStream& stream, QgsFieldsProperties::DesignerTreeItemData& data );
 
+
+/**
+ * This class overrides mime type handling to be able to work with
+ * the drag and drop attribute editor.
+ *
+ * The mime type is application/x-qgsattributetablefield
+ */
+
+class DragList : public QTableWidget
+{
+    Q_OBJECT
+
+  public:
+    explicit DragList( QWidget* parent = nullptr )
+        : QTableWidget( parent )
+    {}
+
+    // QTreeWidget interface
+  protected:
+    virtual QStringList mimeTypes() const override;
+
+    virtual QMimeData* mimeData( const QList<QTableWidgetItem*> items ) const override;
+};
+
+/**
+ * Graphical representation for the attribute editor drag and drop editor
+ */
+class DesignerTree : public QTreeWidget
+{
+    Q_OBJECT
+
+  public:
+    explicit DesignerTree( QWidget* parent = nullptr )
+        : QTreeWidget( parent )
+    {}
+    QTreeWidgetItem* addItem( QTreeWidgetItem* parent, QgsFieldsProperties::DesignerTreeItemData data );
+    QTreeWidgetItem* addContainer( QTreeWidgetItem* parent, const QString& title );
+
+  protected:
+    virtual void dragMoveEvent( QDragMoveEvent *event ) override;
+    virtual void dropEvent( QDropEvent *event ) override;
+    virtual bool dropMimeData( QTreeWidgetItem * parent, int index, const QMimeData * data, Qt::DropAction action ) override;
+    /* Qt::DropActions supportedDropActions() const;*/
+
+    // QTreeWidget interface
+  protected:
+    virtual QStringList mimeTypes() const override;
+    virtual QMimeData* mimeData( const QList<QTreeWidgetItem*> items ) const override;
+};
+
 Q_DECLARE_METATYPE( QgsFieldsProperties::FieldConfig )
 Q_DECLARE_METATYPE( QgsFieldsProperties::DesignerTreeItemData )
 
 #endif // QGSFIELDSPROPERTIES_H
+

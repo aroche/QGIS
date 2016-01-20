@@ -17,7 +17,7 @@
      <x>0</x>
      <y>0</y>
      <width>1050</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <property name="toolTip">
@@ -152,6 +152,7 @@
      <addaction name="mActionAddWcsLayer"/>
      <addaction name="mActionAddWfsLayer"/>
      <addaction name="mActionAddDelimitedText"/>
+     <addaction name="mActionAddVirtualLayer"/>
     </widget>
     <addaction name="mNewLayerMenu"/>
     <addaction name="mAddLayerMenu"/>
@@ -341,6 +342,7 @@
    <addaction name="mActionAddWcsLayer"/>
    <addaction name="mActionAddWfsLayer"/>
    <addaction name="mActionAddDelimitedText"/>
+   <addaction name="mActionAddVirtualLayer"/>
   </widget>
   <widget class="QToolBar" name="mDigitizeToolBar">
    <property name="windowTitle">
@@ -379,6 +381,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="mActionEnableTracing"/>
    <addaction name="mActionUndo"/>
    <addaction name="mActionRedo"/>
    <addaction name="mActionRotateFeature"/>
@@ -2196,9 +2199,21 @@ Acts on currently active editable layer</string>
     <string>Add Delimited Text Layer</string>
    </property>
   </action>
+  <action name="mActionAddVirtualLayer">
+   <property name="icon">
+    <iconset resource="../../images/images.qrc">
+     <normaloff>:/images/themes/default/mActionAddVirtualLayer.svg</normaloff>:/images/themes/default/mActionAddVirtualLayer.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add Virtual Layer...</string>
+   </property>
+   <property name="toolTip">
+    <string>Add Virtual Layer</string>
+   </property>
+  </action>
   <action name="mActionPasteAsNewVector">
    <property name="text">
-    <string>New Vector Layer</string>
+    <string>New Vector Layer...</string>
    </property>
    <property name="toolTip">
     <string>Paste features in clipboard into a new OGR vector layer.</string>
@@ -2206,10 +2221,10 @@ Acts on currently active editable layer</string>
   </action>
   <action name="mActionPasteAsNewMemoryVector">
    <property name="text">
-    <string>New Memory Vector Layer</string>
+    <string>New Temporary Scratch Layer...</string>
    </property>
    <property name="toolTip">
-    <string>Paste features in clipboard into a new memory vector layer.</string>
+    <string>Paste features in clipboard into a new temporary scratch layer.</string>
    </property>
   </action>
   <action name="mActionDxfExport">
@@ -2382,6 +2397,21 @@ Acts on currently active editable layer</string>
   <action name="mActionReportaBug">
    <property name="text">
     <string>Report an issue</string>
+   </property>
+  </action>
+  <action name="mActionEnableTracing">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../images/images.qrc">
+     <normaloff>:/images/themes/default/mActionTracing.png</normaloff>:/images/themes/default/mActionTracing.png</iconset>
+   </property>
+   <property name="text">
+    <string>Enable Tracing</string>
+   </property>
+   <property name="shortcut">
+    <string>T</string>
    </property>
   </action>
  </widget>

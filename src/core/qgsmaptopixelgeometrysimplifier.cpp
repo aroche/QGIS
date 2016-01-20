@@ -34,14 +34,14 @@ QgsMapToPixelSimplifier::~QgsMapToPixelSimplifier()
 //! Returns the squared 2D-distance of the vector defined by the two points specified
 float QgsMapToPixelSimplifier::calculateLengthSquared2D( double x1, double y1, double x2, double y2 )
 {
-  float vx = ( float )( x2 - x1 );
-  float vy = ( float )( y2 - y1 );
+  float vx = static_cast< float >( x2 - x1 );
+  float vy = static_cast< float >( y2 - y1 );
 
   return vx*vx + vy*vy;
 }
 
 //! Returns the BBOX of the specified WKB-point stream
-inline static QgsRectangle calculateBoundingBox( QGis::WkbType wkbType, const unsigned char* wkb, size_t numPoints )
+inline static QgsRectangle calculateBoundingBox( QGis::WkbType wkbType, const unsigned char* wkb, int numPoints )
 {
   double x, y;
   QgsRectangle r;
@@ -50,10 +50,12 @@ inline static QgsRectangle calculateBoundingBox( QGis::WkbType wkbType, const un
   int sizeOfDoubleX = sizeof( double );
   int sizeOfDoubleY = ( QGis::wkbDimensions( wkbType ) - 1 ) * sizeof( double );
 
-  for ( size_t i = 0; i < numPoints; ++i )
+  for ( int i = 0; i < numPoints; ++i )
   {
-    memcpy( &x, wkb, sizeof( double ) ); wkb += sizeOfDoubleX;
-    memcpy( &y, wkb, sizeof( double ) ); wkb += sizeOfDoubleY;
+    memcpy( &x, wkb, sizeof( double ) );
+    wkb += sizeOfDoubleX;
+    memcpy( &y, wkb, sizeof( double ) );
+    wkb += sizeOfDoubleY;
     r.combineExtentWith( x, y );
   }
 
@@ -63,9 +65,9 @@ inline static QgsRectangle calculateBoundingBox( QGis::WkbType wkbType, const un
 //! Generalize the WKB-geometry using the BBOX of the original geometry
 static bool generalizeWkbGeometryByBoundingBox(
   QGis::WkbType wkbType,
-  const unsigned char* sourceWkb, size_t sourceWkbSize,
-  unsigned char* targetWkb, size_t& targetWkbSize,
-  const QgsRectangle& envelope, bool writeHeader )
+  const unsigned char *sourceWkb, int sourceWkbSize,
+  unsigned char *targetWkb, int &targetWkbSize,
+  const QgsRectangle &envelope, bool writeHeader )
 {
   Q_UNUSED( sourceWkb );
   unsigned char* wkb2 = targetWkb;
@@ -75,7 +77,7 @@ static bool generalizeWkbGeometryByBoundingBox(
   int sizeOfDoubleY = sizeof( double ) * ( QGis::wkbDimensions( wkbType ) - 1 );
 
   // If the geometry is already minimal skip the generalization
-  size_t minimumSize = geometryType == QGis::WKBLineString ? 4 + 2 * ( sizeOfDoubleX + sizeOfDoubleY ) : 8 + 5 * ( sizeOfDoubleX + sizeOfDoubleY );
+  int minimumSize = geometryType == QGis::WKBLineString ? 4 + 2 * ( sizeOfDoubleX + sizeOfDoubleY ) : 8 + 5 * ( sizeOfDoubleX + sizeOfDoubleY );
 
   if ( writeHeader )
     minimumSize += 5;
@@ -116,11 +118,15 @@ static bool generalizeWkbGeometryByBoundingBox(
     memcpy( targetWkb, &numPoints, 4 ); // numPoints;
     targetWkb += 4;
 
-    memcpy( targetWkb, &x1, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y1, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x1, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y1, sizeof( double ) );
+    targetWkb += sizeof( double );
 
-    memcpy( targetWkb, &x2, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y2, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x2, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y2, sizeof( double ) );
+    targetWkb += sizeof( double );
   }
   else
   {
@@ -128,20 +134,30 @@ static bool generalizeWkbGeometryByBoundingBox(
     memcpy( targetWkb, &numPoints, 4 ); // numPoints;
     targetWkb += 4;
 
-    memcpy( targetWkb, &x1, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y1, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x1, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y1, sizeof( double ) );
+    targetWkb += sizeof( double );
 
-    memcpy( targetWkb, &x2, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y1, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x2, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y1, sizeof( double ) );
+    targetWkb += sizeof( double );
 
-    memcpy( targetWkb, &x2, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y2, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x2, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y2, sizeof( double ) );
+    targetWkb += sizeof( double );
 
-    memcpy( targetWkb, &x1, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y2, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x1, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y2, sizeof( double ) );
+    targetWkb += sizeof( double );
 
-    memcpy( targetWkb, &x1, sizeof( double ) ); targetWkb += sizeof( double );
-    memcpy( targetWkb, &y1, sizeof( double ) ); targetWkb += sizeof( double );
+    memcpy( targetWkb, &x1, sizeof( double ) );
+    targetWkb += sizeof( double );
+    memcpy( targetWkb, &y1, sizeof( double ) );
+    targetWkb += sizeof( double );
   }
   targetWkbSize += targetWkb - wkb2;
 
@@ -151,9 +167,9 @@ static bool generalizeWkbGeometryByBoundingBox(
 //! Simplify the WKB-geometry using the specified tolerance
 bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
   int simplifyFlags, QGis::WkbType wkbType,
-  const unsigned char* sourceWkb, size_t sourceWkbSize,
-  unsigned char* targetWkb, size_t& targetWkbSize,
-  const QgsRectangle& envelope, double map2pixelTol,
+  const unsigned char *sourceWkb, int sourceWkbSize,
+  unsigned char *targetWkb, int &targetWkbSize,
+  const QgsRectangle &envelope, double map2pixelTol,
   bool writeHeader, bool isaLinearRing )
 {
   bool isGeneralizable = true;
@@ -162,7 +178,7 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
   // Save initial WKB settings to use when the simplification creates invalid geometries
   const unsigned char* sourcePrevWkb = sourceWkb;
   unsigned char* targetPrevWkb = targetWkb;
-  size_t targetWkbPrevSize = targetWkbSize;
+  int targetWkbPrevSize = targetWkbSize;
 
   // Can replace the geometry by its BBOX ?
   if (( simplifyFlags & QgsMapToPixelSimplifier::SimplifyEnvelope ) &&
@@ -185,7 +201,7 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
 
     int geometryType;
     memcpy( &geometryType, sourceWkb, 4 );
-    int flatType = QGis::flatType(( QGis::WkbType )geometryType );
+    int flatType = QGis::flatType( static_cast< QGis::WkbType >( geometryType ) );
     memcpy( targetWkb, &flatType, 4 ); // type
     sourceWkb += 4;
     targetWkb += 4;
@@ -218,7 +234,7 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
     targetWkb += 4;
     targetWkbSize += 4;
 
-    double* ptr = ( double* )targetWkb;
+    double* ptr = reinterpret_cast< double* >( targetWkb );
     map2pixelTol *= map2pixelTol; //-> Use mappixelTol for 'LengthSquare' calculations.
 
     bool isLongSegment;
@@ -239,14 +255,16 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
       memcpy( &x2, finalWkbX, sizeof( double ) );
       memcpy( &y2, finalWkbY, sizeof( double ) );
 
-      isaLinearRing = ( x1 == x2 ) && ( y1 == y2 );
+      isaLinearRing = qgsDoubleNear( x1, x2 ) && qgsDoubleNear( y1, y2 );
     }
 
     // Process each vertex...
     for ( int i = 0; i < numPoints; ++i )
     {
-      memcpy( &x, sourceWkb, sizeof( double ) ); sourceWkb += sizeOfDoubleX;
-      memcpy( &y, sourceWkb, sizeof( double ) ); sourceWkb += sizeOfDoubleY;
+      memcpy( &x, sourceWkb, sizeof( double ) );
+      sourceWkb += sizeOfDoubleX;
+      memcpy( &y, sourceWkb, sizeof( double ) );
+      sourceWkb += sizeOfDoubleY;
 
       isLongSegment = false;
 
@@ -255,8 +273,12 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
            ( isLongSegment = ( calculateLengthSquared2D( x, y, lastX, lastY ) > map2pixelTol ) ) ||
            ( !isaLinearRing && ( i == 1 || i >= numPoints - 2 ) ) )
       {
-        memcpy( ptr, &x, sizeof( double ) ); lastX = x; ptr++;
-        memcpy( ptr, &y, sizeof( double ) ); lastY = y; ptr++;
+        memcpy( ptr, &x, sizeof( double ) );
+        lastX = x;
+        ptr++;
+        memcpy( ptr, &y, sizeof( double ) );
+        lastY = y;
+        ptr++;
         numTargetPoints++;
 
         hasLongSegments |= isLongSegment;
@@ -274,7 +296,7 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
         // approximate the geometry's shape by its bounding box
         // (rect for linear ring / one segment for line string)
         unsigned char* targetTempWkb = targetWkb;
-        size_t targetWkbTempSize = targetWkbSize;
+        int targetWkbTempSize = targetWkbSize;
 
         sourceWkb = sourcePrevWkb;
         targetWkb = targetPrevWkb;
@@ -299,10 +321,12 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
       // make sure we keep the linear ring closed
       memcpy( &x, targetWkb + 0, sizeof( double ) );
       memcpy( &y, targetWkb + sizeof( double ), sizeof( double ) );
-      if ( lastX != x || lastY != y )
+      if ( !qgsDoubleNear( lastX, x ) || !qgsDoubleNear( lastY, y ) )
       {
-        memcpy( ptr, &x, sizeof( double ) ); ptr++;
-        memcpy( ptr, &y, sizeof( double ) ); ptr++;
+        memcpy( ptr, &x, sizeof( double ) );
+        ptr++;
+        memcpy( ptr, &y, sizeof( double ) );
+        ptr++;
         numTargetPoints++;
       }
     }
@@ -328,8 +352,8 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
       memcpy( &numPoints_i, sourceWkb, 4 );
       QgsRectangle envelope_i = numRings == 1 ? envelope : calculateBoundingBox( wkbType, sourceWkb + 4, numPoints_i );
 
-      size_t sourceWkbSize_i = 4 + numPoints_i * QGis::wkbDimensions( wkbType ) * sizeof( double );
-      size_t targetWkbSize_i = 0;
+      int sourceWkbSize_i = 4 + numPoints_i * QGis::wkbDimensions( wkbType ) * sizeof( double );
+      int targetWkbSize_i = 0;
 
       result |= simplifyWkbGeometry( simplifyFlags, wkbType, sourceWkb, sourceWkbSize_i, targetWkb, targetWkbSize_i, envelope_i, map2pixelTol, false, true );
       sourceWkb += sourceWkbSize_i;
@@ -351,8 +375,8 @@ bool QgsMapToPixelSimplifier::simplifyWkbGeometry(
 
     for ( int i = 0; i < numGeoms; ++i )
     {
-      size_t sourceWkbSize_i = 0;
-      size_t targetWkbSize_i = 0;
+      int sourceWkbSize_i = 0;
+      int targetWkbSize_i = 0;
 
       // ... calculate the wkb-size of the current child complex geometry
       if ( flatType == QGis::WKBMultiLineString )
@@ -405,8 +429,8 @@ QgsGeometry* QgsMapToPixelSimplifier::simplify( QgsGeometry* geometry ) const
 {
   QgsGeometry* g = new QgsGeometry();
 
-  size_t wkbSize = geometry->wkbSize();
-  unsigned char* wkb = ( unsigned char* )malloc( wkbSize );
+  int wkbSize = geometry->wkbSize();
+  unsigned char* wkb = reinterpret_cast< unsigned char* >( malloc( wkbSize ) );
   memcpy( wkb, geometry->asWkb(), wkbSize );
   g->fromWkb( wkb, wkbSize );
   simplifyGeometry( g, mSimplifyFlags, mTolerance );
@@ -417,7 +441,7 @@ QgsGeometry* QgsMapToPixelSimplifier::simplify( QgsGeometry* geometry ) const
 //! Simplifies the geometry (Removing duplicated points) when is applied the specified map2pixel context
 bool QgsMapToPixelSimplifier::simplifyGeometry( QgsGeometry* geometry, int simplifyFlags, double tolerance )
 {
-  size_t finalWkbSize = 0;
+  int finalWkbSize = 0;
 
   // Check whether the geometry can be simplified using the map2pixel context
   QGis::GeometryType geometryType = geometry->type();
@@ -428,7 +452,7 @@ bool QgsMapToPixelSimplifier::simplifyGeometry( QgsGeometry* geometry, int simpl
   QGis::WkbType wkbType = geometry->wkbType();
 
   const unsigned char* wkb = geometry->asWkb();
-  size_t wkbSize = geometry->wkbSize();
+  int wkbSize = geometry->wkbSize();
 
   unsigned char* targetWkb = new unsigned char[wkbSize];
   memcpy( targetWkb, wkb, wkbSize );

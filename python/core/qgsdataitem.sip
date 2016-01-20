@@ -47,6 +47,8 @@ class QgsDataItem : QObject
     sipType = sipType_QgsZipItem;
   else if (qobject_cast<QgsDataCollectionItem*>(sipCpp))
     sipType = sipType_QgsDataCollectionItem;
+  else if (qobject_cast<QgsProjectItem*>(sipCpp))
+    sipType = sipType_QgsProjectItem;
   else
     sipType = 0;
 %End
@@ -57,7 +59,8 @@ class QgsDataItem : QObject
       Directory,
       Layer,
       Error,
-      Favourites
+      Favourites,
+      Project //! Represents a QGIS project
     };
 
     /** Create new data item. */
@@ -89,7 +92,7 @@ class QgsDataItem : QObject
     virtual void setState( State state );
 
     //! @deprecated in 2.8, use state()
-    bool isPopulated();
+    bool isPopulated() /Deprecated/;
 
     // Insert new child using alphabetical order based on mName, emits necessary signal to model before and after, sets parent and connects signals
     // refresh - refresh populated item, emit signals to model
@@ -261,6 +264,12 @@ class QgsLayerItem : QgsDataItem
      *  @note Added in 2.8
      */
     QStringList supportedFormats();
+
+    /** Returns comments of the layer
+     * @note added in 2.12
+     */
+    virtual QString comments() const;
+
   public:
     static const QIcon &iconPoint();
     static const QIcon &iconLine();
@@ -308,6 +317,14 @@ class QgsDirectoryItem : QgsDataCollectionItem
     };
 
     QgsDirectoryItem( QgsDataItem* parent, const QString& name, const QString& path );
+
+    /** Constructor.
+     * @param parent
+     * @param name directory name
+     * @param dirPath path to directory in file system
+     * @param path item path in the tree, it may be dirPath or dirPath with some prefix, e.g. favourites: */
+    QgsDirectoryItem( QgsDataItem* parent, const QString& name, const QString& dirPath, const QString& path );
+
     ~QgsDirectoryItem();
 
     virtual void setState( State state );
@@ -322,6 +339,38 @@ class QgsDirectoryItem : QgsDataCollectionItem
     /* static QVector<QgsDataProvider*> mProviders; */
     //! @note not available via python bindings
     // static QVector<QLibrary*> mLibraries;
+
+    /** Check if the given path is hidden from the browser model */
+    static bool hiddenPath( QString path );
+
+  public slots:
+    virtual void childrenCreated();
+    void directoryChanged();
+
+  protected:
+    void init();
+
+};
+
+/**
+ Data item that can be used to represent QGIS projects.
+ */
+class QgsProjectItem : QgsDataItem
+{
+%TypeHeaderCode
+#include <qgsdataitem.h>
+%End
+  public:
+
+    /**
+     * @brief A data item holding a reference to a QGIS project file.
+     * @param parent The parent data item.
+     * @param name The name of the of the project. Displayed to the user.
+     * @param path The full path to the project.
+     */
+    QgsProjectItem( QgsDataItem* parent, const QString& name, const QString& path );
+    ~QgsProjectItem();
+
 };
 
 /**

@@ -148,7 +148,7 @@ void QgsLabelPropertyDialog::init( const QString& layerId, int featureId, const 
   QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* >::const_iterator it = layerSettings.dataDefinedProperties.constBegin();
   for ( ; it != layerSettings.dataDefinedProperties.constEnd(); ++it )
   {
-    mDataDefinedProperties.insert( it.key(), it.value() ? new QgsDataDefined( *it.value() ) : 0 );
+    mDataDefinedProperties.insert( it.key(), it.value() ? new QgsDataDefined( *it.value() ) : nullptr );
   }
 
   //set widget values from data defined results
@@ -216,7 +216,7 @@ void QgsLabelPropertyDialog::setDataDefinedValues( const QgsPalLayerSettings &la
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::atlasScope( nullptr )
   << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() )
   << QgsExpressionContextUtils::layerScope( vlayer );
   context.setFeature( mCurLabelFeat );
@@ -657,7 +657,7 @@ void QgsLabelPropertyDialog::on_mLabelTextLineEdit_textChanged( const QString& t
 
 void QgsLabelPropertyDialog::insertChangedValue( QgsPalLayerSettings::DataDefinedProperties p, const QVariant& value )
 {
-  QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* >::const_iterator ddIt = mDataDefinedProperties.find( p );
+  QMap< QgsPalLayerSettings::DataDefinedProperties, QgsDataDefined* >::const_iterator ddIt = mDataDefinedProperties.constFind( p );
   if ( ddIt != mDataDefinedProperties.constEnd() )
   {
     QgsDataDefined* dd = ddIt.value();

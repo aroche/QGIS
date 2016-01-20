@@ -4,12 +4,16 @@
         <file>flags/af.png</file>
         <file>flags/ar.png</file>
         <file>flags/bg.png</file>
+        <file>flags/cy.png</file>
         <file>flags/de.png</file>
+        <file>flags/en_GB.png</file>
         <file>flags/en_US.png</file>
         <file>flags/es.png</file>
         <file>flags/fa.png</file>
         <file>flags/fi.png</file>
         <file>flags/fr.png</file>
+        <file>flags/ga.png</file>
+        <file>flags/gd.png</file>
         <file>flags/he.png</file>
         <file>flags/hu.png</file>
         <file>flags/id.png</file>
@@ -21,6 +25,7 @@
         <file>flags/lt.png</file>
         <file>flags/lv.png</file>
         <file>flags/mn.png</file>
+        <file>flags/mt.png</file>
         <file>flags/nl.png</file>
         <file>flags/pt_BR.png</file>
         <file>flags/pt_PT.png</file>
@@ -92,6 +97,8 @@
         <file>themes/default/gpsicons/polarchart.svg</file>
         <file>themes/default/grass_location.png</file>
         <file>themes/default/grass_mapset.png</file>
+        <file>themes/default/grass_mapset_open.png</file>
+        <file>themes/default/grass_mapset_search.png</file>
         <file>themes/default/histogram.png</file>
         <file>themes/default/join_bevel.png</file>
         <file>themes/default/join_miter.png</file>
@@ -126,6 +133,7 @@
         <file>themes/default/mActionAddWfsLayer.svg</file>
         <file>themes/default/mActionAddWmsLayer.svg</file>
         <file>themes/default/mActionAddDelimitedTextLayer.svg</file>
+        <file>themes/default/mActionAddVirtualLayer.svg</file>
         <file>themes/default/mActionAlignBottom.png</file>
         <file>themes/default/mActionAlignHCenter.png</file>
         <file>themes/default/mActionAlignLeft.png</file>
@@ -346,6 +354,12 @@
         <file>themes/default/mIconExpressionPreview.svg</file>
         <file>themes/default/mIconExpressionSelect.svg</file>
         <file>themes/default/mIconFavourites.png</file>
+        <file>themes/default/mIconFieldDate.svg</file>
+        <file>themes/default/mIconFieldDateTime.svg</file>
+        <file>themes/default/mIconFieldFloat.svg</file>
+        <file>themes/default/mIconFieldInteger.svg</file>
+        <file>themes/default/mIconFieldText.svg</file>
+        <file>themes/default/mIconFieldTime.svg</file>
         <file>themes/default/mIconFirst.png</file>
         <file>themes/default/mIconGeometryLayer.png</file>
         <file>themes/default/mIconInfo.png</file>
@@ -519,6 +533,9 @@
         <file>themes/default/mActionCircularStringRadius.png</file>
         <file>themes/default/mActionCircularStringRadius.svg</file>
         <file>flags/zh.png</file>
+        <file>icons/qgis-icon-16x16_xmas.png</file>
+        <file>icons/qgis-icon-60x60_xmas.png</file>
+        <file>themes/default/mActionTracing.png</file>
     </qresource>
     <qresource prefix="/images/tips">
         <file alias="symbol_levels.png">qgis_tips/symbol_levels.png</file>

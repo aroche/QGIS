@@ -12,7 +12,7 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsRectangle, QgsFeatureRequest, QgsGeometry, NULL
+from qgis.core import QgsRectangle, QgsFeatureRequest, QgsFeature, QgsGeometry, NULL
 
 
 class ProviderTestCase(object):
@@ -60,14 +60,17 @@ class ProviderTestCase(object):
         self.assert_query(provider, 'cnt - 1 = 99', [1])
         self.assert_query(provider, 'cnt + 1 = 101', [1])
         self.assert_query(provider, 'cnt = 1100 % 1000', [1])
+        self.assert_query(provider, '"name" || \' \' || "name" = \'Orange Orange\'', [1])
         self.assert_query(provider, '"name" || \' \' || "cnt" = \'Orange 100\'', [1])
+        self.assert_query(provider, '\'x\' || "name" IS NOT NULL', [1, 2, 3, 4])
+        self.assert_query(provider, '\'x\' || "name" IS NULL', [5])
         self.assert_query(provider, 'cnt = 10 ^ 2', [1])
         self.assert_query(provider, '"name" ~ \'[OP]ra[gne]+\'', [1])
         self.assert_query(provider, '"name"="name2"', [2, 4])  # mix of matched and non-matched case sensitive names
         self.assert_query(provider, 'true', [1, 2, 3, 4, 5])
         self.assert_query(provider, 'false', [])
 
-        #Three value logic
+        # Three value logic
         self.assert_query(provider, 'false and false', [])
         self.assert_query(provider, 'false and true', [])
         self.assert_query(provider, 'false and NULL', [])
@@ -90,7 +93,7 @@ class ProviderTestCase(object):
         self.assert_query(provider, 'not false', [1, 2, 3, 4, 5])
         self.assert_query(provider, 'not null', [])
 
-        #not
+        # not
         self.assert_query(provider, 'not name = \'Apple\'', [1, 3, 4])
         self.assert_query(provider, 'not name IS NULL', [1, 2, 3, 4])
         self.assert_query(provider, 'not name = \'Apple\' or name = \'Apple\'', [1, 2, 3, 4])
@@ -98,6 +101,10 @@ class ProviderTestCase(object):
         self.assert_query(provider, 'not name = \'Apple\' and pk = 4', [4])
         self.assert_query(provider, 'not name = \'Apple\' and not pk = 4', [1, 3])
         self.assert_query(provider, 'not pk IN (1, 2, 4, 8)', [3, 5])
+
+        # type conversion - QGIS expressions do not mind that we are comparing a string
+        # against numeric literals
+        self.assert_query(provider, 'num_char IN (2, 4, 5)', [2, 4, 5])
 
     def testGetFeaturesUncompiled(self):
         try:
@@ -113,6 +120,99 @@ class ProviderTestCase(object):
         except AttributeError:
             print 'Provider does not support compiling'
 
+    def testOrderBy(self):
+        request = QgsFeatureRequest().addOrderBy('cnt')
+        values = [f['cnt'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [-200, 100, 200, 300, 400])
+
+        request = QgsFeatureRequest().addOrderBy('cnt', False)
+        values = [f['cnt'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [400, 300, 200, 100, -200])
+
+        request = QgsFeatureRequest().addOrderBy('name')
+        values = [f['name'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, ['Apple', 'Honey', 'Orange', 'Pear', NULL])
+
+        request = QgsFeatureRequest().addOrderBy('name', True, True)
+        values = [f['name'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [NULL, 'Apple', 'Honey', 'Orange', 'Pear'])
+
+        request = QgsFeatureRequest().addOrderBy('name', False)
+        values = [f['name'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [NULL, 'Pear', 'Orange', 'Honey', 'Apple'])
+
+        request = QgsFeatureRequest().addOrderBy('name', False, False)
+        values = [f['name'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, ['Pear', 'Orange', 'Honey', 'Apple', NULL])
+
+        # Case sensitivity
+        request = QgsFeatureRequest().addOrderBy('name2')
+        values = [f['name2'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, ['Apple', 'Honey', 'NuLl', 'oranGe', 'PEaR'])
+
+        # Combination with LIMIT
+        request = QgsFeatureRequest().addOrderBy('pk', False).setLimit(2)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [5, 4])
+
+        # A slightly more complex expression
+        request = QgsFeatureRequest().addOrderBy('pk*2', False)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [5, 4, 3, 2, 1])
+
+        # Type dependent expression
+        request = QgsFeatureRequest().addOrderBy('num_char*2', False)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [5, 4, 3, 2, 1])
+
+        # Order by guaranteed to fail
+        request = QgsFeatureRequest().addOrderBy('not a valid expression*', False)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(set(values), set([5, 4, 3, 2, 1]))
+
+        # Multiple order bys and boolean
+        request = QgsFeatureRequest().addOrderBy('pk > 2').addOrderBy('pk', False)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [2, 1, 5, 4, 3])
+
+        # Multiple order bys, one bad, and a limit
+        request = QgsFeatureRequest().addOrderBy('pk', False).addOrderBy('not a valid expression*', False).setLimit(2)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [5, 4])
+
+        # Bad expression first
+        request = QgsFeatureRequest().addOrderBy('not a valid expression*', False).addOrderBy('pk', False).setLimit(2)
+        values = [f['pk'] for f in self.provider.getFeatures(request)]
+        self.assertEquals(values, [5, 4])
+
+        # Combination with subset of attributes
+        request = QgsFeatureRequest().addOrderBy('num_char', False).setSubsetOfAttributes(['pk'], self.vl.fields())
+        values = [f['pk'] for f in self.vl.getFeatures(request)]
+        self.assertEquals(values, [5, 4, 3, 2, 1])
+
+    def testGetFeaturesFidTests(self):
+        fids = [f.id() for f in self.provider.getFeatures()]
+        assert len(fids) == 5, 'Expected 5 features, got {} instead'.format(len(fids))
+        for id in fids:
+            result = [f.id() for f in self.provider.getFeatures(QgsFeatureRequest().setFilterFid(id))]
+            expected = [id]
+            assert result == expected, 'Expected {} and got {} when testing for feature ID filter'.format(expected, result)
+
+    def testGetFeaturesFidsTests(self):
+        fids = [f.id() for f in self.provider.getFeatures()]
+
+        result = set([f.id() for f in self.provider.getFeatures(QgsFeatureRequest().setFilterFids([fids[0], fids[2]]))])
+        expected = set([fids[0], fids[2]])
+        assert result == expected, 'Expected {} and got {} when testing for feature IDs filter'.format(expected, result)
+
+        result = set([f.id() for f in self.provider.getFeatures(QgsFeatureRequest().setFilterFids([fids[1], fids[3], fids[4]]))])
+        expected = set([fids[1], fids[3], fids[4]])
+        assert result == expected, 'Expected {} and got {} when testing for feature IDs filter'.format(expected, result)
+
+        result = set([f.id() for f in self.provider.getFeatures(QgsFeatureRequest().setFilterFids([]))])
+        expected = set([])
+        assert result == expected, 'Expected {} and got {} when testing for feature IDs filter'.format(expected, result)
+
     def testGetFeaturesFilterRectTests(self):
         extent = QgsRectangle(-70, 67, -60, 80)
         features = [f['pk'] for f in self.provider.getFeatures(QgsFeatureRequest().setFilterRect(extent))]
@@ -121,29 +221,66 @@ class ProviderTestCase(object):
     def testRectAndExpression(self):
         extent = QgsRectangle(-70, 67, -60, 80)
         result = set([f['pk'] for f in self.provider.getFeatures(
-            QgsFeatureRequest()
-                .setFilterExpression('"cnt">200')
-                .setFilterRect(extent))])
+            QgsFeatureRequest().setFilterExpression('"cnt">200').setFilterRect(extent))])
         expected = [4]
         assert set(expected) == result, 'Expected {} and got {} when testing for combination of filterRect and expression'.format(set(expected), result)
 
+    def testGetFeaturesLimit(self):
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2))
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features, got {} instead'.format(len(features))
+        # fetch one feature
+        feature = QgsFeature()
+        assert not it.nextFeature(feature), 'Expected no feature after limit, got one'
+        it.rewind()
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features after rewind, got {} instead'.format(len(features))
+        it.rewind()
+        assert it.nextFeature(feature), 'Expected feature after rewind, got none'
+        it.rewind()
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features after rewind, got {} instead'.format(len(features))
+        # test with expression, both with and without compilation
+        try:
+            self.disableCompiler()
+        except AttributeError:
+            pass
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        try:
+            self.enableCompiler()
+        except AttributeError:
+            pass
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        # limit to more features than exist
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(3).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        # limit to less features than possible
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(1).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert 1 in features or 5 in features, 'Expected either 1 or 5 for expression and feature limit, Got {} instead'.format(features)
+
     def testMinValue(self):
-        assert self.provider.minimumValue(1) == -200
-        assert self.provider.minimumValue(2) == 'Apple'
+        self.assertEqual(self.provider.minimumValue(1), -200)
+        self.assertEqual(self.provider.minimumValue(2), 'Apple')
 
     def testMaxValue(self):
-        assert self.provider.maximumValue(1) == 400
-        assert self.provider.maximumValue(2) == 'Pear'
+        self.assertEqual(self.provider.maximumValue(1), 400)
+        self.assertEqual(self.provider.maximumValue(2), 'Pear')
 
     def testExtent(self):
         reference = QgsGeometry.fromRect(
             QgsRectangle(-71.123, 66.33, -65.32, 78.3))
         provider_extent = QgsGeometry.fromRect(self.provider.extent())
 
-        assert QgsGeometry.compare(provider_extent.asPolygon(), reference.asPolygon(), 0.000001)
+        assert QgsGeometry.compare(provider_extent.asPolygon(), reference.asPolygon(), 0.00001), 'Expected {}, got {}'.format(reference.exportToWkt(), provider_extent.exportToWkt())
 
     def testUnique(self):
-        assert set(self.provider.uniqueValues(1)) == set([-200, 100, 200, 300, 400])
+        self.assertEqual(set(self.provider.uniqueValues(1)), set([-200, 100, 200, 300, 400]))
         assert set([u'Apple', u'Honey', u'Orange', u'Pear', NULL]) == set(self.provider.uniqueValues(2)), 'Got {}'.format(set(self.provider.uniqueValues(2)))
 
     def testFeatureCount(self):

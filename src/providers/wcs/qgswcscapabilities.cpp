@@ -19,7 +19,6 @@
  ***************************************************************************/
 #include <typeinfo>
 
-#define WCS_THRESHOLD 200  // time to wait for an answer without emitting dataChanged()
 #include "qgslogger.h"
 #include "qgswcscapabilities.h"
 #include "qgsowsconnection.h"
@@ -65,7 +64,7 @@
 
 QgsWcsCapabilities::QgsWcsCapabilities( QgsDataSourceURI const &theUri )
     : mUri( theUri )
-    , mCapabilitiesReply( NULL )
+    , mCapabilitiesReply( nullptr )
     , mCoverageCount( 0 )
     , mCacheLoadControl( QNetworkRequest::PreferNetwork )
 {
@@ -78,7 +77,7 @@ QgsWcsCapabilities::QgsWcsCapabilities( QgsDataSourceURI const &theUri )
 
 QgsWcsCapabilities::QgsWcsCapabilities()
     : mCapabilities()
-    , mCapabilitiesReply( NULL )
+    , mCapabilitiesReply( nullptr )
     , mCoverageCount( 0 )
     , mCacheLoadControl( QNetworkRequest::PreferNetwork )
 {
@@ -416,7 +415,7 @@ void QgsWcsCapabilities::capabilitiesReplyFinished()
   }
 
   mCapabilitiesReply->deleteLater();
-  mCapabilitiesReply = 0;
+  mCapabilitiesReply = nullptr;
 }
 
 void QgsWcsCapabilities::capabilitiesReplyProgress( qint64 bytesReceived, qint64 bytesTotal )
@@ -557,7 +556,7 @@ QList<QDomElement> QgsWcsCapabilities::domElements( const QDomElement &element, 
   QList<QDomElement> list;
 
   QStringList names = path.split( '.' );
-  if ( names.size() == 0 ) return list;
+  if ( names.isEmpty() ) return list;
   QString name = names.value( 0 );
   names.removeFirst();
 
@@ -570,7 +569,7 @@ QList<QDomElement> QgsWcsCapabilities::domElements( const QDomElement &element, 
       QString tagName = stripNS( el.tagName() );
       if ( tagName == name )
       {
-        if ( names.size() == 0 )
+        if ( names.isEmpty() )
         {
           list.append( el );
         }
@@ -601,7 +600,7 @@ QStringList QgsWcsCapabilities::domElementsTexts( const QDomElement &element, co
 QDomElement QgsWcsCapabilities::domElement( const QDomElement &element, const QString & path )
 {
   QStringList names = path.split( '.' );
-  if ( names.size() == 0 ) return QDomElement();
+  if ( names.isEmpty() ) return QDomElement();
 
   QDomElement el = firstChild( element, names.value( 0 ) );
   if ( names.size() == 1 || el.isNull() )
@@ -1027,7 +1026,7 @@ bool QgsWcsCapabilities::parseDescribeCoverageDom11( QByteArray const &xml, QgsW
 
   QStringList formats = domElementsTexts( docElem, "CoverageDescription.SupportedFormat" );
   // There could be formats from GetCapabilities
-  if ( formats.size() > 0 )
+  if ( !formats.isEmpty() )
   {
     coverage->supportedFormat = formats;
   }
@@ -1039,7 +1038,7 @@ bool QgsWcsCapabilities::parseDescribeCoverageDom11( QByteArray const &xml, QgsW
   {
     authids.insert( crsUrnToAuthId( crs ) );
   }
-  if ( authids.size() > 0 )
+  if ( !authids.isEmpty() )
   {
     coverage->supportedCrs = authids.toList();
   }
@@ -1231,7 +1230,7 @@ QgsWcsCoverageSummary* QgsWcsCapabilities::coverageSummary( QString const & theI
       }
     }
   }
-  return 0;
+  return nullptr;
 }
 
 QList<QgsWcsCoverageSummary> QgsWcsCapabilities::coverages()

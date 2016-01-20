@@ -41,7 +41,7 @@ static QgsExpressionContext _getExpressionContext( const void* context )
   QgsExpressionContext expContext;
   expContext << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::atlasScope( nullptr )
   << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() );
 
   const QgsVectorLayer* layer = ( const QgsVectorLayer* ) context;
@@ -246,7 +246,7 @@ QgsDiagramProperties::QgsDiagramProperties( QgsVectorLayer* layer, QWidget* pare
 
     //assume single category or linearly interpolated diagram renderer for now
     QList<QgsDiagramSettings> settingList = dr->diagramSettings();
-    if ( settingList.size() > 0 )
+    if ( !settingList.isEmpty() )
     {
       mEnableDiagramsCheckBox->setChecked( settingList.at( 0 ).enabled );
       mDiagramTypeFrame->setEnabled( mEnableDiagramsCheckBox->isChecked() );
@@ -368,6 +368,7 @@ QgsDiagramProperties::QgsDiagramProperties( QgsVectorLayer* layer, QWidget* pare
     {
       mDiagramDistanceSpinBox->setValue( dls->dist );
       mPrioritySlider->setValue( dls->priority );
+      mZIndexSpinBox->setValue( dls->zIndex );
       mDataDefinedXComboBox->setCurrentIndex( mDataDefinedXComboBox->findData( dls->xPosColumn ) );
       mDataDefinedYComboBox->setCurrentIndex( mDataDefinedYComboBox->findData( dls->yPosColumn ) );
       if ( dls->xPosColumn != -1 || dls->yPosColumn != -1 )
@@ -497,7 +498,7 @@ void QgsDiagramProperties::addAttribute( QTreeWidgetItem * item )
   newItem->setText( 0, item->text( 0 ) );
   newItem->setText( 2, guessLegendText( item->text( 0 ) ) );
   newItem->setData( 0, Qt::UserRole, item->data( 0, Qt::UserRole ) );
-  newItem->setFlags( newItem->flags() & ~Qt::ItemIsDropEnabled );
+  newItem->setFlags(( newItem->flags() | Qt::ItemIsEditable ) & ~Qt::ItemIsDropEnabled );
 
   //set initial color for diagram category
   int red = 1 + ( int )( 255.0 * qrand() / ( RAND_MAX + 1.0 ) );
@@ -584,7 +585,7 @@ void QgsDiagramProperties::on_mDiagramAttributesTreeWidget_itemDoubleClicked( QT
 {
   if ( column == 1 ) //change color
   {
-    QColor newColor = QgsColorDialogV2::getColor( item->background( 1 ).color(), 0 );
+    QColor newColor = QgsColorDialogV2::getColor( item->background( 1 ).color(), nullptr );
     if ( newColor.isValid() )
     {
       item->setBackground( 1, QBrush( newColor ) );
@@ -602,7 +603,7 @@ void QgsDiagramProperties::apply()
 {
   bool diagramsEnabled = mEnableDiagramsCheckBox->isChecked();
 
-  QgsDiagram* diagram = 0;
+  QgsDiagram* diagram = nullptr;
   int index = mDiagramTypeComboBox->currentIndex();
   QString diagramType = mDiagramTypeComboBox->itemData( index ).toString();
 
@@ -763,6 +764,7 @@ void QgsDiagramProperties::apply()
   QgsDiagramLayerSettings dls;
   dls.dist = mDiagramDistanceSpinBox->value();
   dls.priority = mPrioritySlider->value();
+  dls.zIndex = mZIndexSpinBox->value();
   dls.showAll = mShowAllCheckBox->isChecked();
   if ( mDataDefinedPositionGroupBox->isChecked() )
   {
@@ -800,7 +802,7 @@ void QgsDiagramProperties::showAddAttributeExpressionDialog()
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::atlasScope( nullptr )
   << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() )
   << QgsExpressionContextUtils::layerScope( mLayer );
 

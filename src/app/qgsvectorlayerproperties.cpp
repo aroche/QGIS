@@ -77,14 +77,14 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
     , layer( lyr )
     , mMetadataFilled( false )
     , mOriginalSubsetSQL( lyr->subsetString() )
-    , mSaveAsMenu( 0 )
-    , mLoadStyleMenu( 0 )
-    , mRendererDialog( 0 )
-    , labelingDialog( 0 )
-    , labelDialog( 0 )
-    , actionDialog( 0 )
-    , diagramPropertiesDialog( 0 )
-    , mFieldsPropertiesDialog( 0 )
+    , mSaveAsMenu( nullptr )
+    , mLoadStyleMenu( nullptr )
+    , mRendererDialog( nullptr )
+    , labelingDialog( nullptr )
+    , labelDialog( nullptr )
+    , actionDialog( nullptr )
+    , diagramPropertiesDialog( nullptr )
+    , mFieldsPropertiesDialog( nullptr )
 {
   setupUi( this );
   // QgsOptionsDialogBase handles saving/restoring of geometry, splitter and current tab states,
@@ -147,8 +147,8 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   }
   else
   {
-    labelingDialog = 0;
-    labelDialog = 0;
+    labelingDialog = nullptr;
+    labelDialog = nullptr;
     mOptsPage_Labels->setEnabled( false ); // disable labeling item
     mOptsPage_LabelsOld->setEnabled( false ); // disable labeling (deprecated) item
   }
@@ -249,6 +249,11 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   diagLayout->addWidget( diagramPropertiesDialog );
   mDiagramFrame->setLayout( diagLayout );
 
+  // WMS Name as layer short name
+  mLayerShortNameLineEdit->setText( layer->shortName() );
+  // WMS Name validator
+  QValidator *shortNameValidator = new QRegExpValidator( QgsApplication::shortNameRegExp(), this );
+  mLayerShortNameLineEdit->setValidator( shortNameValidator );
 
   //layer title and abstract
   mLayerTitleLineEdit->setText( layer->title() );
@@ -349,7 +354,7 @@ void QgsVectorLayerProperties::insertExpression()
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::atlasScope( nullptr )
   << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() )
   << QgsExpressionContextUtils::layerScope( layer );
 
@@ -430,16 +435,24 @@ void QgsVectorLayerProperties::syncToLayer( void )
   mSimplifyDrawingGroupBox->setChecked( simplifyMethod.simplifyHints() != QgsVectorSimplifyMethod::NoSimplification );
   mSimplifyDrawingSpinBox->setValue( simplifyMethod.threshold() );
 
+  QString remark = QString( " (%1)" ).arg( tr( "Not supported" ) );
   if ( !( layer->dataProvider()->capabilities() & QgsVectorDataProvider::SimplifyGeometries ) )
   {
     mSimplifyDrawingAtProvider->setChecked( false );
     mSimplifyDrawingAtProvider->setEnabled( false );
-    mSimplifyDrawingAtProvider->setText( QString( "%1 (%2)" ).arg( mSimplifyDrawingAtProvider->text(), tr( "Not supported" ) ) );
+    if ( !mSimplifyDrawingAtProvider->text().endsWith( remark ) )
+      mSimplifyDrawingAtProvider->setText( mSimplifyDrawingAtProvider->text().append( remark ) );
   }
   else
   {
     mSimplifyDrawingAtProvider->setChecked( !simplifyMethod.forceLocalOptimization() );
     mSimplifyDrawingAtProvider->setEnabled( mSimplifyDrawingGroupBox->isChecked() );
+    if ( mSimplifyDrawingAtProvider->text().endsWith( remark ) )
+    {
+      QString newText = mSimplifyDrawingAtProvider->text();
+      newText.chop( remark.size() );
+      mSimplifyDrawingAtProvider->setText( newText );
+    }
   }
 
   // disable simplification for point layers, now it is not implemented
@@ -460,6 +473,9 @@ void QgsVectorLayerProperties::syncToLayer( void )
   updateSymbologyPage();
 
   actionDialog->init();
+
+  if ( labelingDialog )
+    labelingDialog->adaptToLayer();
 
   // reset fields in label dialog
   layer->label()->setFields( layer->fields() );
@@ -500,7 +516,7 @@ void QgsVectorLayerProperties::syncToLayer( void )
         disconnect( labelDialog, SIGNAL( labelSourceSet() ), this, SLOT( setLabelCheckBox() ) );
       }
       delete mOptsPage_LabelsOld;
-      mOptsPage_LabelsOld = 0;
+      mOptsPage_LabelsOld = nullptr;
     }
   }
 
@@ -588,6 +604,7 @@ void QgsVectorLayerProperties::apply()
   diagramPropertiesDialog->apply();
 
   //layer title and abstract
+  layer->setShortName( mLayerShortNameLineEdit->text() );
   layer->setTitle( mLayerTitleLineEdit->text() );
   layer->setAbstract( mLayerAbstractTextEdit->toPlainText() );
   layer->setKeywordList( mLayerKeywordListLineEdit->text() );
@@ -730,10 +747,9 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
 
     switch ( askToUser.exec() )
     {
-      case( 0 ):
+      case 0:
         return;
-        break;
-      case( 2 ):
+      case 2:
         msg = layer->loadNamedStyle( layer->styleURI(), defaultLoadedFlag );
         if ( !defaultLoadedFlag )
         {
@@ -751,7 +767,6 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
         }
 
         return;
-        break;
       default:
         break;
     }
@@ -787,10 +802,9 @@ void QgsVectorLayerProperties::saveDefaultStyle_clicked()
 
     switch ( askToUser.exec() )
     {
-      case( 0 ):
+      case 0:
         return;
-        break;
-      case( 2 ):
+      case 2:
         layer->saveStyleToDatabase( "", "", true, "", errorMsg );
         if ( errorMsg.isNull() )
         {
@@ -814,7 +828,7 @@ void QgsVectorLayerProperties::saveDefaultStyle_clicked()
 void QgsVectorLayerProperties::loadStyle_clicked()
 {
   QSettings myQSettings;  // where we keep last used filter in persistent state
-  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", "." ).toString();
+  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", QDir::homePath() ).toString();
 
   QString myFileName = QFileDialog::getOpenFileName( this, tr( "Load layer properties from style file" ), myLastUsedDir,
                        tr( "QGIS Layer Style File" ) + " (*.qml);;" + tr( "SLD File" ) + " (*.sld)" );
@@ -843,7 +857,7 @@ void QgsVectorLayerProperties::loadStyle_clicked()
   else
   {
     //let the user know what went wrong
-    QMessageBox::information( this, tr( "Load Style" ), myMessage );
+    QMessageBox::warning( this, tr( "Load Style" ), myMessage );
   }
 
   QFileInfo myFI( myFileName );
@@ -869,13 +883,13 @@ void QgsVectorLayerProperties::saveStyleAsMenuTriggered( QAction *action )
   if ( index < 0 )
     return;
 
-  saveStyleAs(( StyleType ) index );
+  saveStyleAs( static_cast< StyleType >( index ) );
 }
 
 void QgsVectorLayerProperties::saveStyleAs( StyleType styleType )
 {
   QSettings myQSettings;  // where we keep last used filter in persistent state
-  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", "." ).toString();
+  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", QDir::homePath() ).toString();
 
   QString format, extension;
   if ( styleType == DB )
@@ -1049,6 +1063,7 @@ void QgsVectorLayerProperties::showListOfStylesFromDatabase()
       QMessageBox::warning( this, tr( "Error occured retrieving styles from database" ), errorMsg );
       return;
     }
+    Q_NOWARN_DEPRECATED_PUSH
     if ( layer->applyNamedStyle( qmlStyle, errorMsg ) )
     {
       syncToLayer();
@@ -1059,7 +1074,7 @@ void QgsVectorLayerProperties::showListOfStylesFromDatabase()
                             tr( "The retrieved style is not a valid named style. Error message: %1" )
                             .arg( errorMsg ) );
     }
-
+    Q_NOWARN_DEPRECATED_POP
   }
 }
 
@@ -1241,7 +1256,7 @@ void QgsVectorLayerProperties::updateSymbologyPage()
 
   //find out the type of renderer in the vectorlayer, create a dialog with these settings and add it to the form
   delete mRendererDialog;
-  mRendererDialog = 0;
+  mRendererDialog = nullptr;
 
   if ( layer->rendererV2() )
   {
@@ -1317,5 +1332,5 @@ void QgsVectorLayerProperties::updateVariableEditor()
 void QgsVectorLayerProperties::updateFieldsPropertiesDialog()
 {
   QgsEditFormConfig* cfg = layer->editFormConfig();
-  mFieldsPropertiesDialog->setEditFormInit( cfg->uiForm(), cfg->initFunction(), cfg->initCode(), cfg->useInitCode() );
+  mFieldsPropertiesDialog->setEditFormInit( cfg->uiForm(), cfg->initFunction(), cfg->initCode(), cfg->initFilePath(), cfg->initCodeSource() );
 }

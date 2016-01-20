@@ -50,8 +50,13 @@ class CORE_EXPORT QgsSymbolLayerV2
 
     virtual ~QgsSymbolLayerV2();
 
-    // not necessarily supported by all symbol layers...
+    /**
+     * The fill color.
+     */
     virtual QColor color() const { return mColor; }
+    /**
+     * The fill color.
+     */
     virtual void setColor( const QColor& color ) { mColor = color; }
 
     /** Set outline color. Supported by marker and fill layers.
@@ -70,11 +75,18 @@ class CORE_EXPORT QgsSymbolLayerV2
      * @note added in 2.1 */
     virtual QColor fillColor() const { return QColor(); }
 
+    /**
+     * Returns a string that represents this layer type. Used for serialization.
+     * Should match with the string used to register this symbol layer in the registry.
+     */
     virtual QString layerType() const = 0;
 
     virtual void startRender( QgsSymbolV2RenderContext& context ) = 0;
     virtual void stopRender( QgsSymbolV2RenderContext& context ) = 0;
 
+    /**
+     * Shall be reimplemented by subclasses to create a deep copy of the instance.
+     */
     virtual QgsSymbolLayerV2* clone() const = 0;
 
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap& props ) const
@@ -82,15 +94,23 @@ class CORE_EXPORT QgsSymbolLayerV2
 
     virtual QString ogrFeatureStyle( double mmScaleFactor, double mapUnitScaleFactor ) const { Q_UNUSED( mmScaleFactor ); Q_UNUSED( mapUnitScaleFactor ); return QString(); }
 
+    /**
+     * Should be reimplemented by subclasses to return a string map that
+     * contains the configuration information for the symbol layer. This
+     * is used to serialize a symbol layer perstistently.
+     */
     virtual QgsStringMap properties() const = 0;
 
     virtual void drawPreviewIcon( QgsSymbolV2RenderContext& context, QSize size ) = 0;
 
-    virtual QgsSymbolV2* subSymbol() { return NULL; }
-    // set layer's subsymbol. takes ownership of the passed symbol
+    virtual QgsSymbolV2* subSymbol() { return nullptr; }
+    //! set layer's subsymbol. takes ownership of the passed symbol
     virtual bool setSubSymbol( QgsSymbolV2* symbol ) { delete symbol; return false; }
 
     QgsSymbolV2::SymbolType type() const { return mType; }
+
+    //! Returns if the layer can be used below the specified symbol
+    virtual bool isCompatibleWithSymbol( QgsSymbolV2* symbol ) const;
 
     void setLocked( bool locked ) { mLocked = locked; }
     bool isLocked() const { return mLocked; }
@@ -101,11 +121,11 @@ class CORE_EXPORT QgsSymbolLayerV2
       be affected by data defined symbology rules.*/
     virtual double estimateMaxBleed() const { return 0; }
 
-    virtual void setOutputUnit( QgsSymbolV2::OutputUnit unit ) { Q_UNUSED( unit ); } //= 0;
-    virtual QgsSymbolV2::OutputUnit outputUnit() const { return QgsSymbolV2::Mixed; } //= 0;
+    virtual void setOutputUnit( QgsSymbolV2::OutputUnit unit ) { Q_UNUSED( unit ); }
+    virtual QgsSymbolV2::OutputUnit outputUnit() const { return QgsSymbolV2::Mixed; }
 
-    virtual void setMapUnitScale( const QgsMapUnitScale& scale ) { Q_UNUSED( scale ); } //= 0;
-    virtual QgsMapUnitScale mapUnitScale() const { return QgsMapUnitScale(); } //= 0;
+    virtual void setMapUnitScale( const QgsMapUnitScale& scale ) { Q_UNUSED( scale ); }
+    virtual QgsMapUnitScale mapUnitScale() const { return QgsMapUnitScale(); }
 
     // used only with rending with symbol levels is turned on (0 = first pass, 1 = second, ...)
     void setRenderingPass( int renderingPass ) { mRenderingPass = renderingPass; }
@@ -198,8 +218,9 @@ class CORE_EXPORT QgsSymbolLayerV2
      * @see hasDataDefinedProperty
      * @see getDataDefinedProperty
      * @note added in QGIS 2.9
+     * @deprecated use variant which takes QgsSymbolV2RenderContext instead
      */
-    Q_DECL_DEPRECATED virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsFeature* feature, const QVariant& defaultVal = QVariant(), bool *ok = 0 ) const;
+    Q_DECL_DEPRECATED virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsFeature* feature, const QVariant& defaultVal = QVariant(), bool *ok = nullptr ) const;
 
     /** Evaluates the matching data defined property and returns the calculated
      * value. Prior to evaluation the data defined property must be prepared
@@ -214,7 +235,7 @@ class CORE_EXPORT QgsSymbolLayerV2
      * @see getDataDefinedProperty
      * @note added in QGIS 2.12
      */
-    virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsSymbolV2RenderContext& context, const QVariant& defaultVal = QVariant(), bool *ok = 0 ) const;
+    virtual QVariant evaluateDataDefinedProperty( const QString& property, const QgsSymbolV2RenderContext& context, const QVariant& defaultVal = QVariant(), bool *ok = nullptr ) const;
 
     virtual bool writeDxf( QgsDxfExport& e,
                            double mmMapUnitScaleFactor,
@@ -268,6 +289,7 @@ class CORE_EXPORT QgsSymbolLayerV2
      * be called prior to evaluating data defined properties.
      * @param fields associated layer fields
      * @param scale map scale
+     * @deprecated use variant which takes QgsSymbolV2RenderContext instead
      */
     Q_DECL_DEPRECATED virtual void prepareExpressions( const QgsFields* fields, double scale = -1.0 );
 

@@ -64,6 +64,7 @@ class QgsFeatureRendererV2
     /** To be overridden
      * @param feature feature
      * @return returns pointer to symbol or 0 if symbol was not found
+     * @deprecated use symbolForFeature( QgsFeature& feature, QgsRenderContext& context ) instead
      */
     virtual QgsSymbolV2* symbolForFeature( QgsFeature& feature ) /Deprecated/;
 
@@ -83,6 +84,7 @@ class QgsFeatureRendererV2
      * symbol which can be used as an identifier for renderer's rule - the former may return a temporary replacement
      * of a symbol for use in rendering.
      * @note added in 2.6
+     * @deprecated use originalSymbolForFeature( QgsFeature& feature, QgsRenderContext& context ) instead
      */
     virtual QgsSymbolV2* originalSymbolForFeature( QgsFeature& feature ) /Deprecated/;
 
@@ -103,7 +105,18 @@ class QgsFeatureRendererV2
 
     virtual void stopRender( QgsRenderContext& context ) = 0;
 
-    virtual QString filter();
+    /**
+     * If a renderer does not require all the features this method may be overridden
+     * and return an expression used as where clause.
+     * This will be called once after {@link startRender()} and before the first call
+     * to {@link renderFeature()}.
+     * By default this returns a null string and all features will be requested.
+     * You do not need to specify the extent in here, this is taken care of separately and
+     * will be combined with a filter returned from this method.
+     *
+     * @return An expression used as where clause
+     */
+    virtual QString filter( const QgsFields& fields = QgsFields() );
 
     virtual QList<QString> usedAttributes() = 0;
 
@@ -128,7 +141,9 @@ class QgsFeatureRendererV2
     //! returns bitwise OR-ed capabilities of the renderer
     virtual int capabilities();
 
-    //! for symbol levels
+    /** For symbol levels
+     * @deprecated use symbols( QgsRenderContext& context ) instead
+     */
     virtual QgsSymbolV2List symbols() /Deprecated/;
 
     /** Returns list of symbols used by the renderer.
@@ -185,6 +200,13 @@ class QgsFeatureRendererV2
     //! @note added in 2.5
     virtual void checkLegendSymbolItem( const QString& key, bool state = true );
 
+    /** Sets the symbol to be used for a legend symbol item.
+     * @param key rule key for legend symbol
+     * @param symbol new symbol for legend item. Ownership is transferred to renderer.
+     * @note added in QGIS 2.14
+     */
+    virtual void setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol /Transfer/ );
+
     //! return a list of item text / symbol
     //! @note not available in python bindings
     // virtual QgsLegendSymbolList legendSymbolItems( double scaleDenominator = -1, const QString& rule = "" );
@@ -206,9 +228,11 @@ class QgsFeatureRendererV2
     //! sets rotation field of renderer (if supported by the renderer)
     virtual void setRotationField( const QString& fieldName ) /Deprecated/;
 
-    //! return whether the renderer will render a feature or not.
-    //! Must be called between startRender() and stopRender() calls.
-    //! Default implementation uses symbolForFeature().
+    /** Returns whether the renderer will render a feature or not.
+     * Must be called between startRender() and stopRender() calls.
+     * Default implementation uses symbolForFeature().
+     * @deprecated use willRenderFeature( QgsFeature& feat, QgsRenderContext& context ) instead
+     */
     virtual bool willRenderFeature( QgsFeature& feat ) /Deprecated/;
 
     /** Returns whether the renderer will render a feature or not.
@@ -220,9 +244,11 @@ class QgsFeatureRendererV2
     //TODO - QGIS 3.0 change PyName to willRenderFeature when deprecated method is removed
     virtual bool willRenderFeature( QgsFeature& feat, QgsRenderContext& context ) /PyName=willRenderFeature2/;
 
-    //! return list of symbols used for rendering the feature.
-    //! For renderers that do not support MoreSymbolsPerFeature it is more efficient
-    //! to use symbolForFeature()
+    /** Returns list of symbols used for rendering the feature.
+     * For renderers that do not support MoreSymbolsPerFeature it is more efficient
+     * to use symbolForFeature()
+     * @deprecated use symbolsForFeature( QgsFeature& feat, QgsRenderContext& context ) instead
+     */
     virtual QgsSymbolV2List symbolsForFeature( QgsFeature& feat ) /Deprecated/;
 
     /** Returns list of symbols used for rendering the feature.
@@ -234,9 +260,11 @@ class QgsFeatureRendererV2
     //TODO - QGIS 3.0 change PyName to symbolsForFeature when deprecated method is removed
     virtual QgsSymbolV2List symbolsForFeature( QgsFeature& feat, QgsRenderContext& context ) /PyName=symbolsForFeature2/;
 
-    //! Equivalent of originalSymbolsForFeature() call
-    //! extended to support renderers that may use more symbols per feature - similar to symbolsForFeature()
-    //! @note added in 2.6
+    /** Equivalent of originalSymbolsForFeature() call
+     * extended to support renderers that may use more symbols per feature - similar to symbolsForFeature()
+     * @note added in 2.6
+     * @deprecated use originalSymbolsForFeature( QgsFeature& feat, QgsRenderContext& context ) instead
+     */
     virtual QgsSymbolV2List originalSymbolsForFeature( QgsFeature& feat ) /Deprecated/;
 
      /** Equivalent of originalSymbolsForFeature() call
@@ -284,6 +312,18 @@ class QgsFeatureRendererV2
      */
     void setForceRasterRender( bool forceRaster );
 
+    /**
+     * Get the order in which features shall be processed by this renderer.
+     * @note added in QGIS 2.14
+     */
+    QgsFeatureRequest::OrderBy orderBy() const;
+
+    /**
+     * Define the order in which features shall be processed by this renderer.
+     * @note added in QGIS 2.14
+     */
+    void setOrderBy( const QgsFeatureRequest::OrderBy& orderBy );
+
   protected:
     QgsFeatureRendererV2( const QString& type );
 
@@ -307,10 +347,30 @@ class QgsFeatureRendererV2
 
     void setScaleMethodToSymbol( QgsSymbolV2* symbol, int scaleMethod );
 
+    /**
+     * Clones generic renderer data to another renderer.
+     * Currently clones
+     *  * Order By
+     *  * Paint Effect
+     *
+     * @param destRenderer destination renderer for copied effect
+     */
+    void copyRendererData( QgsFeatureRendererV2 *destRenderer ) const;
+
     /** Copies paint effect of this renderer to another renderer
      * @param destRenderer destination renderer for copied effect
      */
     void copyPaintEffect( QgsFeatureRendererV2 *destRenderer ) const;
+
+    /** @note this function is used to convert old sizeScale expresssions to symbol
+     * level DataDefined size
+     */
+    static void convertSymbolSizeScale( QgsSymbolV2 * symbol, QgsSymbolV2::ScaleMethod method, const QString & field );
+
+    /** @note this function is used to convert old rotations expresssions to symbol
+     * level DataDefined angle
+     */
+    static void convertSymbolRotation( QgsSymbolV2 * symbol, const QString & field );
 
   private:
     QgsFeatureRendererV2( const QgsFeatureRendererV2 & );

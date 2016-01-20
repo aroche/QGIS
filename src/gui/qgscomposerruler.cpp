@@ -12,10 +12,10 @@ const unsigned int COUNT_VALID_MAGNITUDES = 5;
 const int QgsComposerRuler::validScaleMultiples[] = {1, 2, 5};
 const int QgsComposerRuler::validScaleMagnitudes[] = {1, 10, 100, 1000, 10000};
 
-QgsComposerRuler::QgsComposerRuler( QgsComposerRuler::Direction d ) : QWidget( 0 ),
+QgsComposerRuler::QgsComposerRuler( QgsComposerRuler::Direction d ) : QWidget( nullptr ),
     mDirection( d ),
-    mComposition( 0 ),
-    mLineSnapItem( 0 ),
+    mComposition( nullptr ),
+    mLineSnapItem( nullptr ),
     mScaleMinPixelsWidth( 0 )
 {
   setMouseTracking( true );
@@ -408,7 +408,7 @@ void QgsComposerRuler::mouseReleaseEvent( QMouseEvent* event )
     mComposition->removeSnapLine( mLineSnapItem );
     mSnappedItems.clear();
   }
-  mLineSnapItem = 0;
+  mLineSnapItem = nullptr;
 }
 
 void QgsComposerRuler::mousePressEvent( QMouseEvent* event )
@@ -461,8 +461,8 @@ void QgsComposerRuler::setSnapLinePosition( const QPointF& pos )
   }
 
   //move snapped items together with the snap line
-  QList< QPair< QgsComposerItem*, QgsComposerItem::ItemPositionMode > >::iterator itemIt = mSnappedItems.begin();
-  for ( ; itemIt != mSnappedItems.end(); ++itemIt )
+  QList< QPair< QgsComposerItem*, QgsComposerItem::ItemPositionMode > >::const_iterator itemIt = mSnappedItems.constBegin();
+  for ( ; itemIt != mSnappedItems.constEnd(); ++itemIt )
   {
     if ( mDirection == Horizontal )
     {

@@ -41,37 +41,35 @@ bool orderByLessThan( const QgsRelationReferenceWidget::ValueRelationItem& p1
   {
     case QVariant::String:
       return p1.first.toString() < p2.first.toString();
-      break;
 
     case QVariant::Double:
       return p1.first.toDouble() < p2.first.toDouble();
-      break;
 
     default:
       return p1.first.toInt() < p2.first.toInt();
-      break;
   }
 }
 
 QgsRelationReferenceWidget::QgsRelationReferenceWidget( QWidget* parent )
     : QWidget( parent )
     , mEditorContext( QgsAttributeEditorContext() )
-    , mCanvas( NULL )
-    , mMessageBar( NULL )
+    , mCanvas( nullptr )
+    , mMessageBar( nullptr )
     , mForeignKey( QVariant() )
     , mReferencedFieldIdx( -1 )
+    , mReferencingFieldIdx( -1 )
     , mAllowNull( true )
-    , mHighlight( NULL )
-    , mMapTool( NULL )
-    , mMessageBarItem( NULL )
+    , mHighlight( nullptr )
+    , mMapTool( nullptr )
+    , mMessageBarItem( nullptr )
     , mRelationName( "" )
-    , mReferencedAttributeForm( NULL )
-    , mReferencedLayer( NULL )
-    , mReferencingLayer( NULL )
-    , mMasterModel( 0 )
-    , mFilterModel( 0 )
-    , mFeatureListModel( 0 )
-    , mWindowWidget( NULL )
+    , mReferencedAttributeForm( nullptr )
+    , mReferencedLayer( nullptr )
+    , mReferencingLayer( nullptr )
+    , mMasterModel( nullptr )
+    , mFilterModel( nullptr )
+    , mFeatureListModel( nullptr )
+    , mWindowWidget( nullptr )
     , mShown( false )
     , mIsEditable( true )
     , mEmbedForm( false )
@@ -443,7 +441,7 @@ void QgsRelationReferenceWidget::init()
 
     QgsVectorLayerCache* layerCache = new QgsVectorLayerCache( mReferencedLayer, 100000, this );
 
-    if ( mFilterFields.size() )
+    if ( !mFilterFields.isEmpty() )
     {
       Q_FOREACH ( const QString& fieldName, mFilterFields )
       {
@@ -516,7 +514,7 @@ void QgsRelationReferenceWidget::init()
     if ( mOrderByValue )
     {
       const QStringList referencedColumns = QgsExpression( mReferencedLayer->displayExpression() ).referencedColumns();
-      if ( referencedColumns.size() > 0 )
+      if ( !referencedColumns.isEmpty() )
       {
         int sortIdx = mReferencedLayer->fieldNameIndex( referencedColumns.first() );
         mFilterModel->sort( sortIdx );
@@ -533,7 +531,7 @@ void QgsRelationReferenceWidget::init()
       {
         QVariant v = mFeature.attribute( mFilterFields[i] );
         QString f = v.isNull() ? nullValue.toString() : v.toString();
-        mFilterComboBoxes[i]->setCurrentIndex( mFilterComboBoxes[i]->findText( f ) );
+        mFilterComboBoxes.at( i )->setCurrentIndex( mFilterComboBoxes.at( i )->findText( f ) );
       }
     }
 
@@ -644,7 +642,7 @@ void QgsRelationReferenceWidget::deleteHighlight()
     mHighlight->hide();
     delete mHighlight;
   }
-  mHighlight = NULL;
+  mHighlight = nullptr;
 }
 
 void QgsRelationReferenceWidget::mapIdentification()
@@ -755,7 +753,7 @@ void QgsRelationReferenceWidget::mapToolDeactivated()
   {
     mMessageBar->popWidget( mMessageBarItem );
   }
-  mMessageBarItem = NULL;
+  mMessageBarItem = nullptr;
 }
 
 void QgsRelationReferenceWidget::filterChanged()
@@ -771,18 +769,15 @@ void QgsRelationReferenceWidget::filterChanged()
 
   if ( mChainFilters )
   {
-    QComboBox* ccb = 0;
+    QComboBox* ccb = nullptr;
     Q_FOREACH ( QComboBox* cb, mFilterComboBoxes )
     {
-      if ( ccb == 0 )
+      if ( !ccb )
       {
-        if ( cb != scb )
-          continue;
-        else
-        {
+        if ( cb == scb )
           ccb = cb;
-          continue;
-        }
+
+        continue;
       }
 
       if ( ccb->currentIndex() == 0 )

@@ -17,6 +17,7 @@ class QgsExpression
     const QgsExpression::Node* rootNode() const;
 
     //! Get the expression ready for evaluation - find out column indexes.
+    //! @deprecated use prepare( const QgsExpressionContext *context ) instead
     bool prepare( const QgsFields &fields ) /Deprecated/;
 
     /** Get the expression ready for evaluation - find out column indexes.
@@ -40,20 +41,24 @@ class QgsExpression
 
     //! Evaluate the feature and return the result
     //! @note prepare() should be called before calling this method
+    //! @deprecated use evaluate( const QgsExpressionContext* context ) instead
     QVariant evaluate( const QgsFeature* f ) /Deprecated/;
 
     //! Evaluate the feature and return the result
     //! @note prepare() should be called before calling this method
     //! @note available in python bindings as evaluatePrepared
+    //! @deprecated use evaluate( const QgsExpressionContext* context ) instead
     QVariant evaluate( const QgsFeature& f ) /PyName=evaluatePrepared,Deprecated/;
 
     //! Evaluate the feature and return the result
     //! @note this method does not expect that prepare() has been called on this instance
+    //! @deprecated use evaluate( const QgsExpressionContext* context ) instead
     QVariant evaluate( const QgsFeature* f, const QgsFields& fields ) /Deprecated/;
 
     //! Evaluate the feature and return the result
     //! @note this method does not expect that prepare() has been called on this instance
     //! @note not available in python bindings
+    //! @deprecated use evaluate( const QgsExpressionContext* context ) instead
     // inline QVariant evaluate( const QgsFeature& f, const QgsFields& fields ) { return evaluate( &f, fields ); }
 
     /** Evaluate the feature and return the result.
@@ -77,8 +82,10 @@ class QgsExpression
     void setEvalErrorString( const QString& str );
 
     //! Set the number for $rownum special column
+    //! @deprecated use QgsExpressionContext to set row number instead
     void setCurrentRowNumber( int rowNumber ) /Deprecated/;
     //! Return the number used for $rownum special column
+    //! @deprecated use QgsExpressionContext to retrieve row number instead
     int currentRowNumber() /Deprecated/;
 
     /** Assign a special column
@@ -102,6 +109,7 @@ class QgsExpression
      */
     bool isField() const;
 
+    //! @deprecated use QgsExpressionContext variant instead
     static bool isValid( const QString& text, const QgsFields& fields, QString &errorMessage ) /Deprecated/;
 
     /** Tests whether a string is a valid expression.
@@ -117,10 +125,15 @@ class QgsExpression
 
     double scale();
 
-    //! Alias for dump()
-    const QString expression() const;
+    //! Return the original, unmodified expression string.
+    //! If there was none supplied because it was constructed by sole
+    //! API calls, dump() will be used to create one instead.
+    QString expression() const;
 
-    //! Return the expression string that represents this QgsExpression.
+    //! Return an expression string, constructed from the internal
+    //! abstract syntax tree. This does not contain any nice whitespace
+    //! formatting or comments. In general it is preferrable to use
+    //! expression() instead.
     QString dump() const;
 
     //! Return calculator used for distance and area calculations
@@ -143,6 +156,7 @@ class QgsExpression
        @param substitutionMap
        @param distanceArea optional QgsDistanceArea. If specified, the QgsDistanceArea is used for distance
        and area conversion
+       @deprecated use QgsExpressionContext variant instead
     */
     static QString replaceExpressionText( const QString &action, const QgsFeature *feat,
                                           QgsVectorLayer *layer,
@@ -289,6 +303,7 @@ class QgsExpression
         /** The help text for the function. */
         const QString helptext();
 
+        //! @deprecated Use QgsExpressionContext variant instead
         virtual QVariant func( const QVariantList& values, const QgsFeature* f, QgsExpression* parent ) /Deprecated/;
 
         /** Returns result of evaluating the function.
@@ -340,10 +355,36 @@ class QgsExpression
      */
     static QList<QgsExpression::Function *> specialColumns();
 
-    //! return quoted column reference (in double quotes)
+    /** Returns a quoted column reference (in double quotes)
+     * @see quotedString()
+     * @see quotedValue()
+     */
     static QString quotedColumnRef( QString name );
-    //! return quoted string (in single quotes)
+
+    /** Returns a quoted version of a string (in single quotes)
+     * @see quotedValue()
+     * @see quotedColumnRef()
+     */
     static QString quotedString( QString text );
+
+    /** Returns a string representation of a literal value, including appropriate
+     * quotations where required.
+     * @param value value to convert to a string representation
+     * @note added in QGIS 2.14
+     * @see quotedString()
+     * @see quotedColumnRef()
+     */
+    static QString quotedValue( const QVariant& value );
+
+    /** Returns a string representation of a literal value, including appropriate
+     * quotations where required.
+     * @param value value to convert to a string representation
+     * @param type value type
+     * @note added in QGIS 2.14
+     * @see quotedString()
+     * @see quotedColumnRef()
+     */
+    static QString quotedValue( const QVariant& value, QVariant::Type type );
 
     //////
 
@@ -379,6 +420,7 @@ class QgsExpression
         virtual QgsExpression::NodeType nodeType() const = 0;
         // abstract virtual eval function
         // errors are reported to the parent
+        //! @deprecated Use QgsExpressionContext variant instead
         virtual QVariant eval( QgsExpression* parent, const QgsFeature* f ) /Deprecated/;
 
         /** Evaluation function for nodes. Errors are reported to the parent.
@@ -388,6 +430,7 @@ class QgsExpression
 
         // abstract virtual preparation function
         // errors are reported to the parent
+        //! @deprecated Use QgsExpressionContext variant instead
         virtual bool prepare( QgsExpression* parent, const QgsFields &fields ) /Deprecated/;
 
         /** Preparation function for nodes. Errors are reported to the parent.
@@ -397,6 +440,15 @@ class QgsExpression
 
         virtual QString dump() const = 0;
 
+        /**
+         * Generate a clone of this node.
+         * Make sure that the clone does not contain any information which is
+         * generated in prepare and context related.
+         * Ownership is transferred to the caller.
+         *
+         * @return a deep copy of this node.
+         */
+        virtual QgsExpression::Node* clone() const = 0;
         virtual QStringList referencedColumns() const = 0;
         virtual bool needsGeometry() const = 0;
 
@@ -413,6 +465,8 @@ class QgsExpression
         void append( QgsExpression::Node* node /Transfer/ );
         int count();
         const QList<QgsExpression::Node*>& list();
+        /** Creates a deep copy of this list. Ownership is transferred to the caller */
+        QgsExpression::NodeList* clone() const;
 
         virtual QString dump() const;
 
@@ -456,6 +510,7 @@ class QgsExpression
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
     };
 
     class NodeBinaryOperator : QgsExpression::Node
@@ -476,9 +531,17 @@ class QgsExpression
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
 
         int precedence() const;
         bool leftAssociative() const;
+
+      protected:
+
+        bool compare( double diff );
+        int computeInt( int x, int y );
+        double computeDouble( double x, double y );
+        QDateTime computeDateTimeFromInterval( const QDateTime& d, QgsExpression::Interval *i );
     };
 
     class NodeInOperator : QgsExpression::Node
@@ -499,6 +562,7 @@ class QgsExpression
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
     };
 
     class NodeFunction : QgsExpression::Node
@@ -519,6 +583,7 @@ class QgsExpression
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
     };
 
     class NodeLiteral : QgsExpression::Node
@@ -532,6 +597,7 @@ class QgsExpression
         virtual bool prepare( QgsExpression* parent, const QgsExpressionContext* context );
 	    virtual QVariant eval( QgsExpression* parent, const QgsExpressionContext* context );
         virtual QString dump() const;
+        virtual QgsExpression::Node* clone() const;
 
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
@@ -554,6 +620,7 @@ class QgsExpression
         virtual bool needsGeometry() const;
 
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
     };
 
     class WhenThen
@@ -581,6 +648,7 @@ class QgsExpression
         virtual QStringList referencedColumns() const;
         virtual bool needsGeometry() const;
         virtual void accept( QgsExpression::Visitor& v ) const;
+        virtual QgsExpression::Node* clone() const;
     };
 
     //////
@@ -623,8 +691,4 @@ class QgsExpression
 
   protected:
     void initGeomCalculator();
-
-  private:
-    QgsExpression( const QgsExpression& );
-    QgsExpression & operator=( const QgsExpression& );
 };

@@ -236,7 +236,7 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
      * \param visibleExtent Visible extent for providers supporting contextual legends, in layer CRS
      * \note visibleExtent parameter added in 2.8 (no available in python bindings)
      */
-    virtual QImage getLegendGraphic( double scale = 0, bool forceRefresh = false, const QgsRectangle * visibleExtent = 0 )
+    virtual QImage getLegendGraphic( double scale = 0, bool forceRefresh = false, const QgsRectangle * visibleExtent = nullptr )
     {
       Q_UNUSED( scale );
       Q_UNUSED( forceRefresh );
@@ -260,7 +260,7 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
     virtual QgsImageFetcher* getLegendGraphicFetcher( const QgsMapSettings* mapSettings )
     {
       Q_UNUSED( mapSettings );
-      return 0;
+      return nullptr;
     }
 
     /** \brief Create pyramid overviews */
@@ -269,8 +269,10 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
                                    QgsRaster::RasterPyramidsFormat theFormat = QgsRaster::PyramidsGTiff,
                                    const QStringList & theConfigOptions = QStringList() )
     {
-      Q_UNUSED( thePyramidList ); Q_UNUSED( theResamplingMethod );
-      Q_UNUSED( theFormat ); Q_UNUSED( theConfigOptions );
+      Q_UNUSED( thePyramidList );
+      Q_UNUSED( theResamplingMethod );
+      Q_UNUSED( theFormat );
+      Q_UNUSED( theConfigOptions );
       return "FAILED_NOT_SUPPORTED";
     }
 
@@ -413,6 +415,10 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
     void progress( int theType, double theProgress, const QString& theMessage );
     void progressUpdate( int theProgress );
 
+    /** Emit a message to be displayed on status bar, usually used by network providers (WMS,WCS)
+        @note added in 2.14 */
+    void statusChanged( const QString& );
+
   protected:
     /** Read block of data
      * @note not available in python bindings */
@@ -430,6 +436,7 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
     /** Copy member variables from other raster data provider. Useful for implementation of clone() method in subclasses */
     void copyBaseSettings( const QgsRasterDataProvider& other );
 
+    //! @note not available in Python bindings
     static QStringList cStringList2Q_( char ** stringList );
 
     static QString makeTableCell( const QString & value );
@@ -460,7 +467,6 @@ class CORE_EXPORT QgsRasterDataProvider : public QgsDataProvider, public QgsRast
 
     QgsRectangle mExtent;
 
-    static void initPyramidResamplingDefs();
     static QStringList mPyramidResamplingListGdal;
     static QgsStringMap mPyramidResamplingMapGdal;
 

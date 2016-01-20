@@ -87,8 +87,16 @@ QVariant QgsVectorDataProvider::defaultValue( int fieldId )
   return QVariant();
 }
 
-bool QgsVectorDataProvider::changeGeometryValues( QgsGeometryMap &geometry_map )
+bool QgsVectorDataProvider::changeGeometryValues( const QgsGeometryMap &geometry_map )
 {
+  Q_UNUSED( geometry_map );
+  return false;
+}
+
+bool QgsVectorDataProvider::changeFeatures( const QgsChangedAttributesMap &attr_map,
+    const QgsGeometryMap &geometry_map )
+{
+  Q_UNUSED( attr_map );
   Q_UNUSED( geometry_map );
   return false;
 }
@@ -206,8 +214,13 @@ QString QgsVectorDataProvider::capabilitiesString() const
     QgsDebugMsg( "Capability: Simplify Geometries before fetch the feature ensuring that the result is a valid geometry" );
   }
 
-  return abilitiesList.join( ", " );
+  if ( abilities & QgsVectorDataProvider::ChangeFeatures )
+  {
+    abilitiesList += tr( "Change Geometries and Attributes at once" );
+    QgsDebugMsg( "Capability: change attributes and geometries at once" );
+  }
 
+  return abilitiesList.join( ", " );
 }
 
 
@@ -544,7 +557,13 @@ QStringList QgsVectorDataProvider::errors()
 
 void QgsVectorDataProvider::pushError( const QString& msg )
 {
+  QgsDebugMsg( msg );
   mErrors << msg;
+}
+
+QSet<QString> QgsVectorDataProvider::layerDependencies() const
+{
+  return QSet<QString>();
 }
 
 QStringList QgsVectorDataProvider::smEncodings;

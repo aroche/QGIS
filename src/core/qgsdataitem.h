@@ -84,7 +84,8 @@ class CORE_EXPORT QgsDataItem : public QObject
       Directory,
       Layer,
       Error,
-      Favourites
+      Favourites,
+      Project //! Represents a QGIS project
     };
 
     /** Create new data item. */
@@ -116,7 +117,7 @@ class CORE_EXPORT QgsDataItem : public QObject
     virtual void setState( State state );
 
     //! @deprecated in 2.8, use state()
-    bool isPopulated() { return state() == Populated; }
+    Q_DECL_DEPRECATED bool isPopulated() { return state() == Populated; }
 
     // Insert new child using alphabetical order based on mName, emits necessary signal to model before and after, sets parent and connects signals
     // refresh - refresh populated item, emit signals to model
@@ -131,7 +132,7 @@ class CORE_EXPORT QgsDataItem : public QObject
 
     virtual bool equal( const QgsDataItem *other );
 
-    virtual QWidget *paramWidget() { return 0; }
+    virtual QWidget *paramWidget() { return nullptr; }
 
     // list of actions provided by this item - usually used for popup menu on right-click
     virtual QList<QAction*> actions() { return QList<QAction*>(); }
@@ -409,6 +410,9 @@ class CORE_EXPORT QgsDirectoryItem : public QgsDataCollectionItem
     //! @note deprecated since 2.10 - use QgsDataItemProviderRegistry
     Q_DECL_DEPRECATED static QVector<QLibrary*> mLibraries;
 
+    /** Check if the given path is hidden from the browser model */
+    static bool hiddenPath( QString path );
+
   public slots:
     virtual void childrenCreated() override;
     void directoryChanged();
@@ -420,6 +424,25 @@ class CORE_EXPORT QgsDirectoryItem : public QgsDataCollectionItem
   private:
     QFileSystemWatcher * mFileSystemWatcher;
     bool mRefreshLater;
+};
+
+/**
+ Data item that can be used to represent QGIS projects.
+ */
+class CORE_EXPORT QgsProjectItem : public QgsDataItem
+{
+    Q_OBJECT
+  public:
+
+    /**
+     * @brief A data item holding a reference to a QGIS project file.
+     * @param parent The parent data item.
+     * @param name The name of the of the project. Displayed to the user.
+     * @param path The full path to the project.
+     */
+    QgsProjectItem( QgsDataItem* parent, const QString& name, const QString& path );
+    ~QgsProjectItem();
+
 };
 
 /**
@@ -443,7 +466,7 @@ class CORE_EXPORT QgsDirectoryParamWidget : public QTreeWidget
     Q_OBJECT
 
   public:
-    QgsDirectoryParamWidget( const QString& path, QWidget* parent = NULL );
+    QgsDirectoryParamWidget( const QString& path, QWidget* parent = nullptr );
 
   protected:
     void mousePressEvent( QMouseEvent* event ) override;

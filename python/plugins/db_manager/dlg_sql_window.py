@@ -54,7 +54,9 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
         QWidget.__init__(self, parent)
         self.iface = iface
         self.db = db
-        self.allowMultiColumnPk = isinstance(db, PGDatabase) # at the moment only PostGIS allows a primary key to span multiple columns, spatialite doesn't
+        self.filter = ""
+        self.allowMultiColumnPk = isinstance(db, PGDatabase) # at the moment only PostgreSQL allows a primary key to span multiple columns, spatialite doesn't
+        self.aliasSubQuery = isinstance(db, PGDatabase)	# only PostgreSQL requires subqueries to be aliases
         self.setupUi(self)
         self.setWindowTitle(
             u"%s - %s [%s]" % (self.windowTitle(), db.connection().connectionName(), db.connection().typeNameString()))
@@ -78,6 +80,7 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
         copyAction.triggered.connect(self.copySelectedResults)
 
         self.btnExecute.clicked.connect(self.executeSql)
+        self.btnSetFilter.clicked.connect(self.setFilter)
         self.btnClear.clicked.connect(self.clearSql)
 
         self.presetStore.clicked.connect(self.storePreset)
@@ -167,6 +170,7 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
     def clearSql(self):
         self.editSql.clear()
         self.editSql.setFocus()
+        self.filter = ""
 
     def executeSql(self):
 
@@ -206,7 +210,7 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
         self.update()
         QApplication.restoreOverrideCursor()
 
-    def loadSqlLayer(self):
+    def _getSqlLayer(self, _filter):
         hasUniqueField = self.uniqueColumnCheck.checkState() == Qt.Checked
         if hasUniqueField:
             if self.allowMultiColumnPk:
@@ -229,13 +233,11 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
 
         query = self._getSqlQuery()
         if query == "":
-            return
+            return None
 
         # remove a trailing ';' from query if present
         if query.strip().endswith(';'):
             query = query.strip()[:-1]
-
-        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
 
         from qgis.core import QgsMapLayer, QgsMapLayerRegistry
 
@@ -257,11 +259,23 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
 
         # create the layer
         layer = self.db.toSqlLayer(query, geomFieldName, uniqueFieldName, newLayerName, layerType,
-                                   self.avoidSelectById.isChecked())
+                                   self.avoidSelectById.isChecked(), _filter)
         if layer.isValid():
-            QgsMapLayerRegistry.instance().addMapLayers([layer], True)
+            return layer
+        else:
+            return None
 
-        QApplication.restoreOverrideCursor()
+    def loadSqlLayer(self):
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        try:
+            layer = self._getSqlLayer(self.filter)
+            if layer == None:
+                return
+
+            from qgis.core import QgsMapLayerRegistry
+            QgsMapLayerRegistry.instance().addMapLayers([layer], True)
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def fillColumnCombos(self):
         query = self._getSqlQuery()
@@ -269,15 +283,6 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
             return
 
         QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
-
-        # get a new alias
-        aliasIndex = 0
-        while True:
-            alias = "_%s__%d" % ("subQuery", aliasIndex)
-            escaped = re.compile('\\b("?)' + re.escape(alias) + '\\1\\b')
-            if not escaped.search(query):
-                break
-            aliasIndex += 1
 
         # remove a trailing ';' from query if present
         if query.strip().endswith(';'):
@@ -287,7 +292,19 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
         cols = []
         quotedCols = []
         connector = self.db.connector
-        sql = u"SELECT * FROM (%s\n) AS %s WHERE 0=1" % (unicode(query), connector.quoteId(alias))
+        if self.aliasSubQuery:
+            # get a new alias
+            aliasIndex = 0
+            while True:
+                alias = "_subQuery__%d" % aliasIndex
+                escaped = re.compile('\\b("?)' + re.escape(alias) + '\\1\\b')
+                if not escaped.search(query):
+                    break
+                aliasIndex += 1
+
+            sql = u"SELECT * FROM (%s\n) AS %s LIMIT 0" % (unicode(query), connector.quoteId(alias))
+        else:
+            sql = u"SELECT * FROM (%s\n) WHERE 1=0" % unicode(query)
 
         c = None
         try:
@@ -443,3 +460,15 @@ class DlgSqlWindow(QWidget, Ui_Dialog):
         label = ", ".join(checkedItems)
         if text != label:
             self.uniqueCombo.setEditText(label)
+
+    def setFilter(self):
+        from qgis.gui import QgsQueryBuilder
+        layer = self._getSqlLayer("")
+        if not layer:
+            return
+
+        dlg = QgsQueryBuilder(layer)
+        dlg.setSql(self.filter)
+        if dlg.exec_():
+            self.filter = dlg.sql()
+        layer.deleteLater()

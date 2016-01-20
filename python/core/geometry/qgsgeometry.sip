@@ -14,13 +14,6 @@ typedef QVector< QVector<QgsPoint> > QgsMultiPolyline;
 /** A collection of QgsPolygons that share a common collection of attributes */
 typedef QVector< QVector< QVector<QgsPoint> > > QgsMultiPolygon;
 
-%If (WS_MACX)
-typedef unsigned long size_t;
-%End
-%If (WS_X11 || WS_WIN)
-typedef unsigned int size_t;
-%End
-
 /** \ingroup core
  * A geometry is the spatial representation of a feature. Since QGIS 2.10, QgsGeometry acts as a generic container
  * for geometry objects. QgsGeometry is implicitly shared, so making copies of geometries is inexpensive. The geometry
@@ -98,7 +91,7 @@ class QgsGeometry
       Set the geometry, feeding in the buffer containing OGC Well-Known Binary and the buffer's length.
       This class will take ownership of the buffer.
      */
-    void fromWkb( unsigned char * wkb /Array/, size_t length /ArraySize/ );
+    void fromWkb( unsigned char * wkb /Array/, int length /ArraySize/ );
 %MethodCode
   // create copy of Python's string and pass it to fromWkb()
   unsigned char * copy = new unsigned char[a1];
@@ -120,7 +113,7 @@ class QgsGeometry
      * Returns the size of the WKB in asWkb().
      * @see asWkb
      */
-    size_t wkbSize() const;
+    int wkbSize() const;
 
     /** Returns a geos geometry. QgsGeometry retains ownership of the geometry, so the returned object should not be deleted.
         @param precision The precision of the grid to which to snap the geometry vertices. If 0, no snapping is performed.
@@ -167,7 +160,7 @@ class QgsGeometry
      */
     double length() const;
 
-    /** Returns the minimum distanace between this geometry and another geometry, using GEOS
+    /** Returns the minimum distance between this geometry and another geometry, using GEOS
      * @param geom geometry to find minimum distance to
      */
     double distance( const QgsGeometry& geom ) const;
@@ -246,6 +239,18 @@ class QgsGeometry
      *  ring and item (first number is index 0))
      */
     double sqrDistToVertexAt( QgsPoint& point /In/, int atVertex ) const;
+
+    /** Returns the nearest point on this geometry to another geometry.
+     * @note added in QGIS 2.14
+     * @see shortestLine()
+     */
+    QgsGeometry nearestPoint( const QgsGeometry& other ) const;
+
+    /** Returns the shortest line joining this geometry to another geometry.
+     * @note added in QGIS 2.14
+     * @see nearestPoint()
+     */
+    QgsGeometry shortestLine( const QgsGeometry& other ) const;
 
     /**
      * Searches for the closest vertex in this geometry to the given point.
@@ -440,8 +445,11 @@ class QgsGeometry
     /** Returns a geometry representing the points making up this geometry that do not make up other. */
     QgsGeometry* difference( const QgsGeometry* geometry ) const /Factory/;
 
-    /** Returns a Geometry representing the points making up this Geometry that do not make up other. */
+    /** Returns a Geometry representing the points making up this geometry that do not make up other. */
     QgsGeometry* symDifference( const QgsGeometry* geometry ) const /Factory/;
+
+    /** Returns an extruded version of this geometry. */
+    QgsGeometry extrude( double x, double y );
 
     /** Exports the geometry to WKT
      *  @note precision parameter added in 2.4

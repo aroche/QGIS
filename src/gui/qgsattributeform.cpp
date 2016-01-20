@@ -25,7 +25,9 @@
 #include "qgsvectordataprovider.h"
 
 #include <QDir>
+#include <QTextStream>
 #include <QFileInfo>
+#include <QFile>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -35,6 +37,7 @@
 #include <QScrollArea>
 #include <QTabWidget>
 #include <QUiLoader>
+#include <QMessageBox>
 
 int QgsAttributeForm::sFormCounter = 0;
 
@@ -42,7 +45,7 @@ QgsAttributeForm::QgsAttributeForm( QgsVectorLayer* vl, const QgsFeature &featur
     : QWidget( parent )
     , mLayer( vl )
     , mContext( context )
-    , mButtonBox( 0 )
+    , mButtonBox( nullptr )
     , mFormNr( sFormCounter++ )
     , mIsSaving( false )
     , mIsAddDialog( false )
@@ -384,7 +387,7 @@ void QgsAttributeForm::init()
   QApplication::setOverrideCursor( QCursor( Qt::WaitCursor ) );
 
   // Cleanup of any previously shown widget, we start from scratch
-  QWidget* formWidget = 0;
+  QWidget* formWidget = nullptr;
 
   bool buttonBoxVisible = true;
   // Cleanup button box but preserve visibility
@@ -392,7 +395,7 @@ void QgsAttributeForm::init()
   {
     buttonBoxVisible = mButtonBox->isVisible();
     delete mButtonBox;
-    mButtonBox = 0;
+    mButtonBox = nullptr;
   }
 
   qDeleteAll( mWidgets );
@@ -501,7 +504,7 @@ void QgsAttributeForm::init()
 
       // This will also create the widget
       QWidget *l = new QLabel( fieldName );
-      QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, idx, widgetConfig, 0, this, mContext );
+      QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, idx, widgetConfig, nullptr, this, mContext );
       QWidget *w = eww ? eww->widget() : new QLabel( QString( "<p style=\"color: red; font-style: italic;\">Failed to create widget with type '%1'</p>" ).arg( widgetType ) );
 
       if ( w )
@@ -524,13 +527,15 @@ void QgsAttributeForm::init()
 
     Q_FOREACH ( const QgsRelation& rel, QgsProject::instance()->relationManager()->referencedRelations( mLayer ) )
     {
-      QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, rel, 0, this );
+      QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, rel, nullptr, this );
+      QgsEditorWidgetConfig cfg = mLayer->editFormConfig()->widgetConfig( rel.id() );
+      rww->setConfig( cfg );
       rww->setContext( mContext );
       gridLayout->addWidget( rww->widget(), row++, 0, 1, 2 );
       mWidgets.append( rww );
     }
 
-    if ( QgsProject::instance()->relationManager()->referencedRelations( mLayer ).size() == 0 )
+    if ( QgsProject::instance()->relationManager()->referencedRelations( mLayer ).isEmpty() )
     {
       QSpacerItem *spacerItem = new QSpacerItem( 20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding );
       gridLayout->addItem( spacerItem, row++, 0 );
@@ -574,71 +579,113 @@ void QgsAttributeForm::initPython()
 {
   cleanPython();
 
-  // Init Python
-  if ( !mLayer->editFormConfig()->initFunction().isEmpty() )
+  // Init Python, if init function is not empty and the combo indicates
+  // the source for the function code
+  if ( !mLayer->editFormConfig()->initFunction().isEmpty()
+       && mLayer->editFormConfig()->initCodeSource() != QgsEditFormConfig::CodeSourceNone )
   {
-    QString module = mLayer->editFormConfig()->initFunction();
 
-    int pos = module.lastIndexOf( '.' );
+    QString initFunction = mLayer->editFormConfig()->initFunction();
+    QString initFilePath = mLayer->editFormConfig()->initFilePath();
+    QString initCode;
 
-    if ( pos >= 0 ) // It's a module
+    switch ( mLayer->editFormConfig()->initCodeSource() )
     {
-      QgsPythonRunner::run( QString( "import %1" ).arg( module.left( pos ) ) );
-      /* Reload the module if the DEBUGMODE switch has been set in the module.
-      If set to False you have to reload QGIS to reset it to True due to Python
-      module caching */
-      QString reload = QString( "if hasattr(%1,'DEBUGMODE') and %1.DEBUGMODE:"
-                                " reload(%1)" ).arg( module.left( pos ) );
+      case QgsEditFormConfig::CodeSourceFile:
+        if ( ! initFilePath.isEmpty() )
+        {
+          QFile inputFile( initFilePath );
 
-      QgsPythonRunner::run( reload );
-    }
-    else if ( mLayer->editFormConfig()->useInitCode() )  // Must be supplied code
-    {
-      QgsPythonRunner::run( mLayer->editFormConfig()->initCode() );
-    }
-    else
-    {
-      QgsDebugMsg( "No dot in editFormInit and no custom python code provided! There is nothing to run." );
+          if ( inputFile.open( QFile::ReadOnly ) )
+          {
+            // Read it into a string
+            QTextStream inf( &inputFile );
+            initCode = inf.readAll();
+            inputFile.close();
+          }
+          else // The file couldn't be opened
+          {
+            QgsLogger::warning( QString( "The external python file path %1 could not be opened!" ).arg( initFilePath ) );
+          }
+        }
+        else
+        {
+          QgsLogger::warning( QString( "The external python file path is empty!" ) );
+        }
+        break;
+
+      case QgsEditFormConfig::CodeSourceDialog:
+        initCode = mLayer->editFormConfig()->initCode();
+        if ( initCode.isEmpty() )
+        {
+          QgsLogger::warning( QString( "The python code provided in the dialog is empty!" ) );
+        }
+        break;
+
+      case QgsEditFormConfig::CodeSourceEnvironment:
+      case QgsEditFormConfig::CodeSourceNone:
+      default:
+        // Nothing to do: the function code should be already in the environment
+        break;
     }
 
+    // If we have a function code, run it
+    if ( ! initCode.isEmpty() )
+    {
+      QgsPythonRunner::run( initCode );
+    }
 
     QgsPythonRunner::run( "import inspect" );
     QString numArgs;
-    QgsPythonRunner::eval( QString( "len(inspect.getargspec(%1)[0])" ).arg( module ), numArgs );
 
-    static int sFormId = 0;
-    mPyFormVarName = QString( "_qgis_featureform_%1_%2" ).arg( mFormNr ).arg( sFormId++ );
-
-    QString form = QString( "%1 = sip.wrapinstance( %2, qgis.gui.QgsAttributeForm )" )
-                   .arg( mPyFormVarName )
-                   .arg(( unsigned long ) this );
-
-    QgsPythonRunner::run( form );
-
-    QgsDebugMsg( QString( "running featureForm init: %1" ).arg( mPyFormVarName ) );
-
-    // Legacy
-    if ( numArgs == "3" )
+    // Check for eval result
+    if ( QgsPythonRunner::eval( QString( "len(inspect.getargspec(%1)[0])" ).arg( initFunction ), numArgs ) )
     {
-      addInterface( new QgsAttributeFormLegacyInterface( module, mPyFormVarName, this ) );
+      static int sFormId = 0;
+      mPyFormVarName = QString( "_qgis_featureform_%1_%2" ).arg( mFormNr ).arg( sFormId++ );
+
+      QString form = QString( "%1 = sip.wrapinstance( %2, qgis.gui.QgsAttributeForm )" )
+                     .arg( mPyFormVarName )
+                     .arg(( unsigned long ) this );
+
+      QgsPythonRunner::run( form );
+
+      QgsDebugMsg( QString( "running featureForm init: %1" ).arg( mPyFormVarName ) );
+
+      // Legacy
+      if ( numArgs == "3" )
+      {
+        addInterface( new QgsAttributeFormLegacyInterface( initFunction, mPyFormVarName, this ) );
+      }
+      else
+      {
+        // If we get here, it means that the function doesn't accept three arguments
+        QMessageBox msgBox;
+        msgBox.setText( tr( "The python init function (<code>%1</code>) does not accept three arguments as expected!<br>Please check the function name in the  <b>Fields</b> tab of the layer properties." ).arg( initFunction ) );
+        msgBox.exec();
+#if 0
+        QString expr = QString( "%1(%2)" )
+                       .arg( mLayer->editFormInit() )
+                       .arg( mPyFormVarName );
+        QgsAttributeFormInterface* iface = QgsPythonRunner::evalToSipObject<QgsAttributeFormInterface*>( expr, "QgsAttributeFormInterface" );
+        if ( iface )
+          addInterface( iface );
+#endif
+      }
     }
     else
     {
-#if 0
-      QString expr = QString( "%1(%2)" )
-                     .arg( mLayer->editFormInit() )
-                     .arg( mPyFormVarName );
-      QgsAttributeFormInterface* iface = QgsPythonRunner::evalToSipObject<QgsAttributeFormInterface*>( expr, "QgsAttributeFormInterface" );
-      if ( iface )
-        addInterface( iface );
-#endif
+      // If we get here, it means that inspect couldn't find the function
+      QMessageBox msgBox;
+      msgBox.setText( tr( "The python init function (<code>%1</code>) could not be found!<br>Please check the function name in the <b>Fields</b> tab of the layer properties." ).arg( initFunction ) );
+      msgBox.exec();
     }
   }
 }
 
 QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement *widgetDef, QWidget *parent, QgsVectorLayer *vl, QgsAttributeEditorContext &context, QString &labelText, bool &labelOnTop )
 {
-  QWidget *newWidget = 0;
+  QWidget *newWidget = nullptr;
 
   switch ( widgetDef->type() )
   {
@@ -654,7 +701,7 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
         const QString widgetType = mLayer->editFormConfig()->widgetType( fldIdx );
         const QgsEditorWidgetConfig widgetConfig = mLayer->editFormConfig()->widgetConfig( fldIdx );
 
-        QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, fldIdx, widgetConfig, 0, this, mContext );
+        QgsEditorWidgetWrapper* eww = QgsEditorWidgetRegistry::instance()->create( widgetType, mLayer, fldIdx, widgetConfig, nullptr, this, mContext );
         newWidget = eww->widget();
         addWidgetWrapper( eww );
 
@@ -671,7 +718,9 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
     {
       const QgsAttributeEditorRelation* relDef = dynamic_cast<const QgsAttributeEditorRelation*>( widgetDef );
 
-      QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, relDef->relation(), 0, this );
+      QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, relDef->relation(), nullptr, this );
+      QgsEditorWidgetConfig cfg = mLayer->editFormConfig()->widgetConfig( relDef->relation().id() );
+      rww->setConfig( cfg );
       rww->setContext( context );
       newWidget = rww->widget();
       mWidgets.append( rww );
@@ -744,7 +793,7 @@ QWidget* QgsAttributeForm::createWidgetFromDef( const QgsAttributeEditorElement 
       }
       QWidget* spacer = new QWidget();
       spacer->setSizePolicy( QSizePolicy::Minimum, QSizePolicy::Preferred );
-      gbLayout->addWidget( spacer, index, 0 );
+      // gbLayout->addWidget( spacer, index, 0 );
 
       labelText = QString::null;
       labelOnTop = true;
@@ -794,7 +843,7 @@ void QgsAttributeForm::createWrappers()
       if ( relation.isValid() )
       {
         QgsRelationWidgetWrapper* rww = new QgsRelationWidgetWrapper( mLayer, relation, myWidget, this );
-        rww->setConfig( QgsEditorWidgetConfig() );
+        rww->setConfig( mLayer->editFormConfig()->widgetConfig( relation.id() ) );
         rww->setContext( mContext );
         rww->widget(); // Will initialize the widget
         mWidgets.append( rww );

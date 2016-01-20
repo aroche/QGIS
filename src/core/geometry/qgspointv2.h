@@ -130,16 +130,25 @@ class CORE_EXPORT QgsPointV2: public QgsAbstractGeometryV2
     void setY( double y ) { mY = y; mBoundingBox = QgsRectangle(); }
 
     /** Sets the point's z-coordinate.
+     * @note calling this will have no effect if the point does not contain a z-dimension. Use addZValue() to
+     * add a z value and force the point to have a z dimension.
      * @see z()
      * @see rz()
      */
     void setZ( double z ) { mZ = z; }
 
     /** Sets the point's m-value.
+     * @note calling this will have no effect if the point does not contain a m-dimension. Use addMValue() to
+     * add a m value and force the point to have an m dimension.
      * @see m()
      * @see rm()
      */
     void setM( double m ) { mM = m; }
+
+    /** Returns the point as a QPointF.
+     * @note added in QGIS 2.14
+     */
+    QPointF toQPointF() const;
 
     //implementation of inherited methods
     virtual QString geometryType() const override { return "Point"; }
@@ -180,6 +189,9 @@ class CORE_EXPORT QgsPointV2: public QgsAbstractGeometryV2
 
     virtual bool addZValue( double zValue = 0 ) override;
     virtual bool addMValue( double mValue = 0 ) override;
+    virtual bool dropZValue() override;
+    virtual bool dropMValue() override;
+    bool convertTo( QgsWKBTypes::Type type ) override;
 
   private:
     double mX;

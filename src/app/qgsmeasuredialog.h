@@ -33,7 +33,7 @@ class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
   public:
 
     //! Constructor
-    QgsMeasureDialog( QgsMeasureTool* tool, Qt::WindowFlags f = 0 );
+    QgsMeasureDialog( QgsMeasureTool* tool, Qt::WindowFlags f = nullptr );
 
     //! Save position
     void saveWindowLocation( void );
@@ -67,6 +67,9 @@ class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
 
   private slots:
     void unitsChanged( const QString &units );
+
+    //! Open configuration tab
+    void openConfigTab();
 
   private:
 

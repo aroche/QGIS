@@ -85,7 +85,9 @@ bool QgsVectorLayerJoinBuffer::addJoin( const QgsVectorJoinInfo& joinInfo )
   // but then QgsProject makes sure to call createJoinCaches() which will do the connection.
   // Unique connection makes sure we do not respond to one layer's update more times (in case of multiple join)
   if ( QgsVectorLayer* vl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( joinInfo.joinLayerId ) ) )
+  {
     connect( vl, SIGNAL( updatedFields() ), this, SLOT( joinedLayerUpdatedFields() ), Qt::UniqueConnection );
+  }
 
   emit joinedFieldsChanged();
   return true;
@@ -111,7 +113,7 @@ void QgsVectorLayerJoinBuffer::removeJoin( const QString& joinLayerId )
 void QgsVectorLayerJoinBuffer::cacheJoinLayer( QgsVectorJoinInfo& joinInfo )
 {
   //memory cache not required or already done
-  if ( !joinInfo.memoryCache || joinInfo.cachedAttributes.size() > 0 )
+  if ( !joinInfo.memoryCache || !joinInfo.cachedAttributes.isEmpty() )
   {
     return;
   }
@@ -369,14 +371,14 @@ int QgsVectorLayerJoinBuffer::joinedFieldsOffset( const QgsVectorJoinInfo* info,
 const QgsVectorJoinInfo* QgsVectorLayerJoinBuffer::joinForFieldIndex( int index, const QgsFields& fields, int& sourceFieldIndex ) const
 {
   if ( fields.fieldOrigin( index ) != QgsFields::OriginJoin )
-    return 0;
+    return nullptr;
 
   int originIndex = fields.fieldOriginIndex( index );
   int sourceJoinIndex = originIndex / 1000;
   sourceFieldIndex = originIndex % 1000;
 
   if ( sourceJoinIndex < 0 || sourceJoinIndex >= mVectorJoins.count() )
-    return 0;
+    return nullptr;
 
   return &( mVectorJoins[sourceJoinIndex] );
 }

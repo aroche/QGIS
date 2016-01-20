@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgsconditionalstyle.cpp
+    ---------------------
+    begin                : August 2015
+    copyright            : (C) 2015 by Nathan Woodrow
+    email                : woodrow dot nathan at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #include <QPainter>
 
 #include "qgsconditionalstyle.h"
@@ -104,14 +118,14 @@ bool QgsConditionalLayerStyles::readXml( const QDomNode &node )
 
 QgsConditionalStyle::QgsConditionalStyle()
     : mValid( false )
-    , mSymbol( 0 )
+    , mSymbol( nullptr )
     , mBackColor( QColor( 0, 0, 0, 0 ) )
     , mTextColor( QColor( 0, 0, 0, 0 ) )
 {}
 
 QgsConditionalStyle::QgsConditionalStyle( const QString& rule )
     : mValid( false )
-    , mSymbol( 0 )
+    , mSymbol( nullptr )
     , mBackColor( QColor( 0, 0, 0, 0 ) )
     , mTextColor( QColor( 0, 0, 0, 0 ) )
 {

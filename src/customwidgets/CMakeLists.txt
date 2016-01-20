@@ -31,8 +31,10 @@ SET (QGIS_CUSTOMWIDGETS_SRCS
   qgsdoublespinboxplugin.cpp
   qgsexpressionbuilderwidgetplugin.cpp
   qgsextentgroupboxplugin.cpp
+  qgsexternalresourcewidgetplugin.cpp
   qgsfieldcomboboxplugin.cpp
   qgsfieldexpressionwidgetplugin.cpp
+  qgsfilewidgetplugin.cpp
   qgsfilterlineeditplugin.cpp
   qgsmaplayercomboboxplugin.cpp
   qgsprojectionselectionwidgetplugin.cpp
@@ -53,8 +55,10 @@ SET (QGIS_CUSTOMWIDGETS_MOC_HDRS
   qgsdoublespinboxplugin.h
   qgsexpressionbuilderwidgetplugin.h
   qgsextentgroupboxplugin.h
+  qgsexternalresourcewidgetplugin.h
   qgsfieldcomboboxplugin.h
   qgsfieldexpressionwidgetplugin.h
+  qgsfilewidgetplugin.h
   qgsfilterlineeditplugin.h
   qgsmaplayercomboboxplugin.h
   qgsprojectionselectionwidgetplugin.h
@@ -81,8 +85,10 @@ SET(QGIS_CUSTOMWIDGETS_HDRS
   qgsdoublespinboxplugin.h
   qgsexpressionbuilderwidgetplugin.h
   qgsextentgroupboxplugin.h
+  qgsexternalresourcewidgetplugin.h
   qgsfieldcomboboxplugin.h
   qgsfieldexpressionwidgetplugin.h
+  qgsfilewidgetplugin.h
   qgsfilterlineeditplugin.h
   qgsmaplayercomboboxplugin.h
   qgsprojectionselectionwidgetplugin.h

@@ -56,7 +56,7 @@ class CORE_EXPORT QgsSqlExpressionCompiler
      * @param fields fields from provider
      * @param flags flags which control how expression is compiled
      */
-    explicit QgsSqlExpressionCompiler( const QgsFields& fields, const Flags& flags = ( Flags )0 );
+    explicit QgsSqlExpressionCompiler( const QgsFields& fields, const Flags& flags = Flags() );
     virtual ~QgsSqlExpressionCompiler();
 
     /** Compiles an expression and returns the result of the compilation.
@@ -78,9 +78,11 @@ class CORE_EXPORT QgsSqlExpressionCompiler
 
     /** Returns a quoted attribute value, in the format expected by the provider.
      * Derived classes should override this if special handling of attribute values is required.
+     * @param value value to quote
+     * @param ok wil be set to true if value can be compiled
      * @see quotedIdentifier()
      */
-    virtual QString quotedValue( const QVariant& value );
+    virtual QString quotedValue( const QVariant& value, bool &ok );
 
     /** Compiles an expression node and returns the result of the compilation.
      * @param node expression node to compile

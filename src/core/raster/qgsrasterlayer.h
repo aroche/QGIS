@@ -275,7 +275,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer
     /** \brief This is an overloaded version of the draw() function that is called by both draw() and thumbnailAsPixmap */
     void draw( QPainter * theQPainter,
                QgsRasterViewPort * myRasterViewPort,
-               const QgsMapToPixel* theQgsMapToPixel = 0 );
+               const QgsMapToPixel* theQgsMapToPixel = nullptr );
 
     /** Returns a list with classification items (Text and color) */
     QgsLegendColorList legendSymbologyItems() const;
@@ -311,7 +311,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer
     void setDefaultContrastEnhancement();
 
     /** \brief Overloaded version of the above function for convenience when restoring from xml
-     * @note Deprecated since QGIS 2.10. Use setRendererForDrawingStyle() or directly setRenderer()
+     * @deprecated Deprecated since QGIS 2.10. Use setRendererForDrawingStyle() or directly setRenderer()
      */
     Q_DECL_DEPRECATED void setDrawingStyle( const QString & theDrawingStyleQString );
 
@@ -322,7 +322,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer
     virtual QStringList subLayers() const override;
 
     /** \brief Draws a preview of the rasterlayer into a pixmap
-    @note - use previewAsImage() for rendering with QGIS>=2.4 */
+    @deprecated use previewAsImage() for rendering with QGIS>=2.4 */
     Q_DECL_DEPRECATED QPixmap previewAsPixmap( const QSize& size, const QColor& bgColor = Qt::white );
 
     /** \brief Draws a preview of the rasterlayer into a QImage

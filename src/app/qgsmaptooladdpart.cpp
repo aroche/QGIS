@@ -131,7 +131,7 @@ void QgsMapToolAddPart::cadCanvasReleaseEvent( QgsMapMouseEvent * e )
       bool hasCurvedSegments = captureCurve()->hasCurvedSegments();
       bool providerSupportsCurvedSegments = vlayer->dataProvider()->capabilities() & QgsVectorDataProvider::CircularGeometries;
 
-      QgsCurveV2* curveToAdd = 0;
+      QgsCurveV2* curveToAdd = nullptr;
       if ( hasCurvedSegments && providerSupportsCurvedSegments )
       {
         curveToAdd = captureCurve()->clone();
@@ -159,7 +159,7 @@ void QgsMapToolAddPart::cadCanvasReleaseEvent( QgsMapMouseEvent * e )
           return;
         }
 
-        errorCode = vlayer->addPart( dynamic_cast<QgsCurveV2*>( cpGeom->exteriorRing()->clone() ) );
+        errorCode = vlayer->addPart( cpGeom->exteriorRing()->clone() );
         delete geom;
       }
       else

@@ -58,6 +58,7 @@ class CORE_EXPORT QgsRenderContext
       UseRenderingOptimization = 0x08, //!< Enable vector simplification and other rendering optimizations
       DrawSelection      = 0x10,  //!< Whether vector selections should be shown in the rendered map
       DrawSymbolBounds   = 0x20,  //!< Draw bounds of symbols (for debugging/testing)
+      RenderMapTile = 0x40, //!< Draw map such that there are no problems between adjacent tiles
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
@@ -118,7 +119,8 @@ class CORE_EXPORT QgsRenderContext
 
     QgsLabelingEngineInterface* labelingEngine() const { return mLabelingEngine; }
 
-    //! Get access to new labeling engine (may be NULL)
+    //! Get access to new labeling engine (may be nullptr)
+    //! @note not available in Python bindings
     QgsLabelingEngineV2* labelingEngineV2() const { return mLabelingEngine2; }
 
     QColor selectionColor() const { return mSelectionColor; }
@@ -150,6 +152,7 @@ class CORE_EXPORT QgsRenderContext
 
     void setLabelingEngine( QgsLabelingEngineInterface* iface ) { mLabelingEngine = iface; }
     //! Assign new labeling engine
+    //! @note not available in Python bindings
     void setLabelingEngineV2( QgsLabelingEngineV2* engine2 ) { mLabelingEngine2 = engine2; }
     void setSelectionColor( const QColor& color ) { mSelectionColor = color; }
 
@@ -238,10 +241,10 @@ class CORE_EXPORT QgsRenderContext
     /** Map scale*/
     double mRendererScale;
 
-    /** Labeling engine (can be NULL)*/
+    /** Labeling engine (can be nullptr)*/
     QgsLabelingEngineInterface* mLabelingEngine;
 
-    /** Newer labeling engine implementation (can be NULL) */
+    /** Newer labeling engine implementation (can be nullptr) */
     QgsLabelingEngineV2* mLabelingEngine2;
 
     /** Color used for features that are marked as selected */

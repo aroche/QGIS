@@ -8,6 +8,9 @@ class QgsCircularStringV2: public QgsCurveV2
     QgsCircularStringV2();
     ~QgsCircularStringV2();
 
+    virtual bool operator==( const QgsCurveV2& other ) const;
+    virtual bool operator!=( const QgsCurveV2& other ) const;
+
     virtual QString geometryType() const;
     virtual int dimension() const;
     virtual QgsCircularStringV2* clone() const;
@@ -64,6 +67,9 @@ class QgsCircularStringV2: public QgsCurveV2
 
     virtual bool addZValue( double zValue = 0 );
     virtual bool addMValue( double mValue = 0 );
+
+    virtual bool dropZValue();
+    virtual bool dropMValue();
 
   private:
     void segmentize( const QgsPointV2& p1, const QgsPointV2& p2, const QgsPointV2& p3, QList<QgsPointV2>& points ) const;

@@ -1,3 +1,17 @@
+/***************************************************************************
+    qgsmaphittest.h
+    ---------------------
+    begin                : September 2014
+    copyright            : (C) 2014 by Martin Dobias
+    email                : wonder dot sk at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 #ifndef QGSMAPHITTEST_H
 #define QGSMAPHITTEST_H
 
@@ -43,7 +57,10 @@ class CORE_EXPORT QgsMapHitTest
 
   protected:
 
+    //! @note not available in Python bindings
     typedef QSet<QString> SymbolV2Set;
+
+    //! @note not available in Python bindings
     typedef QMap<QgsVectorLayer*, SymbolV2Set> HitTest;
 
     /** Runs test for visible symbols within a layer
@@ -51,6 +68,7 @@ class CORE_EXPORT QgsMapHitTest
      * @param usedSymbols set for storage of visible symbols
      * @param context render context
      * @note added in QGIS 2.12
+     * @note not available in Python bindings
      */
     void runHitTestLayer( QgsVectorLayer* vl, SymbolV2Set& usedSymbols, QgsRenderContext& context );
 

@@ -33,10 +33,10 @@
 #include <fcgi_stdio.h>
 
 
-QgsHttpRequestHandler::QgsHttpRequestHandler( const bool captureOutput /*= FALSE*/ )
+QgsHttpRequestHandler::QgsHttpRequestHandler( const bool captureOutput )
     : QgsRequestHandler( )
 {
-  mException = 0;
+  mException = nullptr;
   mHeadersSent = FALSE;
   mCaptureOutput = captureOutput;
 }
@@ -64,7 +64,7 @@ void QgsHttpRequestHandler::setHttpResponse( QByteArray *ba, const QString &form
 
 bool QgsHttpRequestHandler::responseReady() const
 {
-  return mHeaders.count() || mBody.size();
+  return !mHeaders.isEmpty() || !mBody.isEmpty();
 }
 
 bool QgsHttpRequestHandler::exceptionRaised() const
@@ -505,6 +505,7 @@ bool QgsHttpRequestHandler::startGetFeatureResponse( QByteArray* ba, const QStri
     format = "text/xml";
 
   setInfoFormat( format );
+  sendHeaders();
   appendBody( *ba );
   // Streaming
   sendResponse();
@@ -641,9 +642,9 @@ void QgsHttpRequestHandler::requestStringToParameterMap( const QString& request,
 QString QgsHttpRequestHandler::readPostBody() const
 {
   QgsMessageLog::logMessage( "QgsHttpRequestHandler::readPostBody" );
-  char* lengthString = 0;
+  char* lengthString = nullptr;
   int length = 0;
-  char* input = 0;
+  char* input = nullptr;
   QString inputString;
   QString lengthQString;
 
@@ -786,7 +787,7 @@ void QgsHttpRequestHandler::imageColors( QHash<QRgb, int>& colors, const QImage&
   int width = image.width();
   int height = image.height();
 
-  const QRgb* currentScanLine = 0;
+  const QRgb* currentScanLine = nullptr;
   QHash<QRgb, int>::iterator colorIt;
   for ( int i = 0; i < height; ++i )
   {
@@ -896,7 +897,10 @@ bool QgsHttpRequestHandler::minMaxRange( const QgsColorBox& colorBox, int& redRa
   int bMax = INT_MIN;
   int aMax = INT_MIN;
 
-  int currentRed = 0; int currentGreen = 0; int currentBlue = 0; int currentAlpha = 0;
+  int currentRed = 0;
+  int currentGreen = 0;
+  int currentBlue = 0;
+  int currentAlpha = 0;
 
   QgsColorBox::const_iterator colorBoxIt = colorBox.constBegin();
   for ( ; colorBoxIt != colorBox.constEnd(); ++colorBoxIt )

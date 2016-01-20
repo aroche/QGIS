@@ -43,7 +43,7 @@ static QgsExpressionContext _getExpressionContext( const void* context )
   QgsExpressionContext expContext;
   expContext << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
-  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::atlasScope( nullptr )
   << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() );
 
   const QgsVectorLayer* layer = ( const QgsVectorLayer* ) context;
@@ -63,13 +63,13 @@ QgsLabelingGui::QgsLabelingGui( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, 
     , mMapCanvas( mapCanvas )
     , mSettings( layerSettings )
     , mMode( NoLabels )
-    , mCharDlg( 0 )
-    , mQuadrantBtnGrp( 0 )
-    , mDirectSymbBtnGrp( 0 )
-    , mUpsidedownBtnGrp( 0 )
-    , mPlacePointBtnGrp( 0 )
-    , mPlaceLineBtnGrp( 0 )
-    , mPlacePolygonBtnGrp( 0 )
+    , mCharDlg( nullptr )
+    , mQuadrantBtnGrp( nullptr )
+    , mDirectSymbBtnGrp( nullptr )
+    , mUpsidedownBtnGrp( nullptr )
+    , mPlacePointBtnGrp( nullptr )
+    , mPlaceLineBtnGrp( nullptr )
+    , mPlacePolygonBtnGrp( nullptr )
     , mPreviewSize( 24 )
     , mMinPixelLimit( 0 )
     , mLoadSvgParams( false )
@@ -106,9 +106,13 @@ QgsLabelingGui::QgsLabelingGui( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, 
   mPointAngleSpinBox->setClearValue( 0.0 );
   mFontLetterSpacingSpinBox->setClearValue( 0.0 );
   mFontWordSpacingSpinBox->setClearValue( 0.0 );
+  mZIndexSpinBox->setClearValue( 0.0 );
 
   mObstacleTypeComboBox->addItem( tr( "Over the feature's interior" ), QgsPalLayerSettings::PolygonInterior );
   mObstacleTypeComboBox->addItem( tr( "Over the feature's boundary" ), QgsPalLayerSettings::PolygonBoundary );
+
+  mOffsetTypeComboBox->addItem( tr( "From point" ), QgsPalLayerSettings::FromPoint );
+  mOffsetTypeComboBox->addItem( tr( "From symbol bounds" ), QgsPalLayerSettings::FromSymbolBounds );
 
   mCharDlg = new QgsCharacterSelectorDialog( this );
 
@@ -243,8 +247,9 @@ QgsLabelingGui::QgsLabelingGui( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, 
   connect( chkLineAbove, SIGNAL( toggled( bool ) ), this, SLOT( updatePlacementWidgets() ) );
   connect( chkLineBelow, SIGNAL( toggled( bool ) ), this, SLOT( updatePlacementWidgets() ) );
 
-  // setup point placement button group (assigned enum id currently unused)
+  // setup point placement button group
   mPlacePointBtnGrp = new QButtonGroup( this );
+  mPlacePointBtnGrp->addButton( radPredefinedOrder, ( int )QgsPalLayerSettings::OrderedPositionsAroundPoint );
   mPlacePointBtnGrp->addButton( radAroundPoint, ( int )QgsPalLayerSettings::AroundPoint );
   mPlacePointBtnGrp->addButton( radOverPoint, ( int )QgsPalLayerSettings::OverPoint );
   mPlacePointBtnGrp->setExclusive( true );
@@ -334,6 +339,7 @@ void QgsLabelingGui::init()
   mLineDistanceSpnBx->setValue( lyr.dist );
   mLineDistanceUnitWidget->setUnit( lyr.distInMapUnits ? QgsSymbolV2::MapUnit : QgsSymbolV2::MM );
   mLineDistanceUnitWidget->setMapUnitScale( lyr.distMapUnitScale );
+  mOffsetTypeComboBox->setCurrentIndex( mOffsetTypeComboBox->findData( lyr.offsetType ) );
   mQuadrantBtnGrp->button(( int )lyr.quadOffset )->setChecked( true );
   mPointOffsetXSpinBox->setValue( lyr.xOffset );
   mPointOffsetYSpinBox->setValue( lyr.yOffset );
@@ -356,6 +362,9 @@ void QgsLabelingGui::init()
     case QgsPalLayerSettings::OverPoint:
       radOverPoint->setChecked( true );
       radOverCentroid->setChecked( true );
+      break;
+    case QgsPalLayerSettings::OrderedPositionsAroundPoint:
+      radPredefinedOrder->setChecked( true );
       break;
     case QgsPalLayerSettings::Line:
       radLineParallel->setChecked( true );
@@ -441,6 +450,8 @@ void QgsLabelingGui::init()
   mFontMaxPixelSpinBox->setValue( lyr.fontMaxPixelSize );
   mFontSizeUnitWidget->setUnit( lyr.fontSizeInMapUnits ? 1 : 0 );
   mFontSizeUnitWidget->setMapUnitScale( lyr.fontSizeMapUnitScale );
+
+  mZIndexSpinBox->setValue( lyr.zIndex );
 
   mRefFont = lyr.textFont;
   mFontSizeSpinBox->setValue( lyr.textFont.pointSizeF() );
@@ -632,6 +643,7 @@ QgsPalLayerSettings QgsLabelingGui::layerSettings()
   lyr.dist = mLineDistanceSpnBx->value();
   lyr.distInMapUnits = ( mLineDistanceUnitWidget->unit() == QgsSymbolV2::MapUnit );
   lyr.distMapUnitScale = mLineDistanceUnitWidget->getMapUnitScale();
+  lyr.offsetType = static_cast< QgsPalLayerSettings::OffsetType >( mOffsetTypeComboBox->itemData( mOffsetTypeComboBox->currentIndex() ).toInt() );
   lyr.quadOffset = ( QgsPalLayerSettings::QuadrantPosition )mQuadrantBtnGrp->checkedId();
   lyr.xOffset = mPointOffsetXSpinBox->value();
   lyr.yOffset = mPointOffsetYSpinBox->value();
@@ -655,6 +667,10 @@ QgsPalLayerSettings QgsLabelingGui::layerSettings()
            || ( curPlacementWdgt == pagePolygon && radOverCentroid->isChecked() ) )
   {
     lyr.placement = QgsPalLayerSettings::OverPoint;
+  }
+  else if ( curPlacementWdgt == pagePoint && radPredefinedOrder->isChecked() )
+  {
+    lyr.placement = QgsPalLayerSettings::OrderedPositionsAroundPoint;
   }
   else if (( curPlacementWdgt == pageLine && radLineParallel->isChecked() )
            || ( curPlacementWdgt == pagePolygon && radPolygonPerimeter->isChecked() )
@@ -786,6 +802,8 @@ QgsPalLayerSettings QgsLabelingGui::layerSettings()
   lyr.multilineAlign = ( QgsPalLayerSettings::MultiLineAlign ) mFontMultiLineAlignComboBox->currentIndex();
   lyr.preserveRotation = chkPreserveRotation->isChecked();
 
+  lyr.zIndex = mZIndexSpinBox->value();
+
   // data defined labeling
   // text style
   setDataDefinedProperty( mFontDDBtn, QgsPalLayerSettings::Family, lyr );
@@ -863,6 +881,7 @@ QgsPalLayerSettings QgsLabelingGui::layerSettings()
   // placement
   setDataDefinedProperty( mCentroidDDBtn, QgsPalLayerSettings::CentroidWhole, lyr );
   setDataDefinedProperty( mPointQuadOffsetDDBtn, QgsPalLayerSettings::OffsetQuad, lyr );
+  setDataDefinedProperty( mPointPositionOrderDDBtn, QgsPalLayerSettings::PredefinedPositionOrder, lyr );
   setDataDefinedProperty( mPointOffsetDDBtn, QgsPalLayerSettings::OffsetXY, lyr );
   setDataDefinedProperty( mPointOffsetUnitsDDBtn, QgsPalLayerSettings::OffsetUnits, lyr );
   setDataDefinedProperty( mLineDistanceDDBtn, QgsPalLayerSettings::LabelDistance, lyr );
@@ -892,6 +911,7 @@ QgsPalLayerSettings QgsLabelingGui::layerSettings()
   setDataDefinedProperty( mAlwaysShowDDBtn, QgsPalLayerSettings::AlwaysShow, lyr );
   setDataDefinedProperty( mIsObstacleDDBtn, QgsPalLayerSettings::IsObstacle, lyr );
   setDataDefinedProperty( mObstacleFactorDDBtn, QgsPalLayerSettings::ObstacleFactor, lyr );
+  setDataDefinedProperty( mZIndexDDBtn, QgsPalLayerSettings::ZIndex, lyr );
 
   return lyr;
 }
@@ -1093,6 +1113,14 @@ void QgsLabelingGui::populateDataDefinedButtons( QgsPalLayerSettings& s )
                                tr( "int<br>" ) + QLatin1String( "[<b>0</b>=Above Left|<b>1</b>=Above|<b>2</b>=Above Right|<br>"
                                                                 "<b>3</b>=Left|<b>4</b>=Over|<b>5</b>=Right|<br>"
                                                                 "<b>6</b>=Below Left|<b>7</b>=Below|<b>8</b>=Below Right]" ) );
+  mPointPositionOrderDDBtn->init( mLayer, s.dataDefinedProperty( QgsPalLayerSettings::PredefinedPositionOrder ),
+                                  QgsDataDefinedButton::String,
+                                  tr( "Comma separated list of placements in order of priority<br>" )
+                                  + QLatin1String( "[<b>TL</b>=Top left|<b>TSL</b>=Top, slightly left|<b>T</b>=Top middle|<br>"
+                                                   "<b>TSR</b>=Top, slightly right|<b>TR</b>=Top right|<br>"
+                                                   "<b>L</b>=Left|<b>R</b>=Right|<br>"
+                                                   "<b>BL</b>=Bottom left|<b>BSL</b>=Bottom, slightly left|<b>B</b>=Bottom middle|<br>"
+                                                   "<b>BSR</b>=Bottom, slightly right|<b>BR</b>=Bottom right]" ) );
   mPointOffsetDDBtn->init( mLayer, s.dataDefinedProperty( QgsPalLayerSettings::OffsetXY ),
                            QgsDataDefinedButton::AnyType, QgsDataDefinedButton::doubleXYDesc() );
   mPointOffsetUnitsDDBtn->init( mLayer, s.dataDefinedProperty( QgsPalLayerSettings::OffsetUnits ),
@@ -1168,6 +1196,8 @@ void QgsLabelingGui::populateDataDefinedButtons( QgsPalLayerSettings& s )
                           QgsDataDefinedButton::AnyType, QgsDataDefinedButton::boolDesc() );
   mObstacleFactorDDBtn->init( mLayer, s.dataDefinedProperty( QgsPalLayerSettings::ObstacleFactor ),
                               QgsDataDefinedButton::AnyType, tr( "double [0.0-10.0]" ) );
+  mZIndexDDBtn->init( mLayer, s.dataDefinedProperty( QgsPalLayerSettings::ZIndex ),
+                      QgsDataDefinedButton::AnyType, QgsDataDefinedButton::doubleDesc() );
 }
 
 void QgsLabelingGui::changeTextColor( const QColor &color )
@@ -1342,6 +1372,8 @@ void QgsLabelingGui::updatePlacementWidgets()
   bool showCentroidFrame = false;
   bool showQuadrantFrame = false;
   bool showFixedQuadrantFrame = false;
+  bool showPlacementPriorityFrame = false;
+  bool showOffsetTypeFrame = false;
   bool showOffsetFrame = false;
   bool showDistanceFrame = false;
   bool showRotationFrame = false;
@@ -1369,6 +1401,12 @@ void QgsLabelingGui::updatePlacementWidgets()
     showOffsetFrame = true;
     showRotationFrame = true;
   }
+  else if ( curWdgt == pagePoint && radPredefinedOrder->isChecked() )
+  {
+    showDistanceFrame = true;
+    showPlacementPriorityFrame = true;
+    showOffsetTypeFrame  = true;
+  }
   else if (( curWdgt == pageLine && radLineParallel->isChecked() )
            || ( curWdgt == pagePolygon && radPolygonPerimeter->isChecked() )
            || ( curWdgt == pageLine && radLineCurved->isChecked() ) )
@@ -1390,8 +1428,10 @@ void QgsLabelingGui::updatePlacementWidgets()
   mPlacementCentroidFrame->setVisible( showCentroidFrame );
   mPlacementQuadrantFrame->setVisible( showQuadrantFrame );
   mPlacementFixedQuadrantFrame->setVisible( showFixedQuadrantFrame );
+  mPlacementCartographicFrame->setVisible( showPlacementPriorityFrame );
   mPlacementOffsetFrame->setVisible( showOffsetFrame );
   mPlacementDistanceFrame->setVisible( showDistanceFrame );
+  mPlacementOffsetTypeFrame->setVisible( showOffsetTypeFrame );
   mPlacementRotationFrame->setVisible( showRotationFrame );
   mPlacementRepeatDistanceFrame->setVisible( curWdgt == pageLine || ( curWdgt == pagePolygon && radPolygonPerimeter->isChecked() ) );
   mPlacementMaxCharAngleFrame->setVisible( showMaxCharAngleFrame );

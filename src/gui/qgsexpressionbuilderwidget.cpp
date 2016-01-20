@@ -37,8 +37,8 @@
 QgsExpressionBuilderWidget::QgsExpressionBuilderWidget( QWidget *parent )
     : QWidget( parent )
     , mAutoSave( true )
-    , mLayer( NULL )
-    , highlighter( NULL )
+    , mLayer( nullptr )
+    , highlighter( nullptr )
     , mExpressionValid( false )
 {
   setupUi( this );
@@ -218,7 +218,7 @@ void QgsExpressionBuilderWidget::updateFunctionFileList( const QString& path )
 void QgsExpressionBuilderWidget::newFunctionFile( const QString& fileName )
 {
   QList<QListWidgetItem*> items = cmbFileNames->findItems( fileName, Qt::MatchExactly );
-  if ( items.count() > 0 )
+  if ( !items.isEmpty() )
     return;
 
   QString templatetxt;
@@ -269,7 +269,7 @@ void QgsExpressionBuilderWidget::on_expressionTree_doubleClicked( const QModelIn
 {
   QModelIndex idx = mProxyModel->mapToSource( index );
   QgsExpressionItem* item = dynamic_cast<QgsExpressionItem*>( mModel->itemFromIndex( idx ) );
-  if ( item == 0 )
+  if ( !item )
     return;
 
   // Don't handle the double click it we are on a header node.
@@ -615,6 +615,12 @@ QString QgsExpressionBuilderWidget::formatPreviewString( const QVariant& value )
     QgsFeature feat = value.value<QgsFeature>();
     return tr( "<i>&lt;feature: %1&gt;</i>" ).arg( feat.id() );
   }
+  else if ( value.canConvert< QgsExpression::Interval >() )
+  {
+    //result is a feature
+    QgsExpression::Interval interval = value.value<QgsExpression::Interval>();
+    return tr( "<i>&lt;interval: %1 days&gt;</i>" ).arg( interval.days() );
+  }
   else
   {
     QString previewString = value.toString();
@@ -817,3 +823,39 @@ QString QgsExpressionBuilderWidget::loadFunctionHelp( QgsExpressionItem* express
 
 
 
+
+
+QgsExpressionItemSearchProxy::QgsExpressionItemSearchProxy()
+{
+  setFilterCaseSensitivity( Qt::CaseInsensitive );
+}
+
+bool QgsExpressionItemSearchProxy::filterAcceptsRow( int source_row, const QModelIndex& source_parent ) const
+{
+  QModelIndex index = sourceModel()->index( source_row, 0, source_parent );
+  QgsExpressionItem::ItemType itemType = QgsExpressionItem::ItemType( sourceModel()->data( index, QgsExpressionItem::ItemTypeRole ).toInt() );
+
+  if ( itemType == QgsExpressionItem::Header )
+    return true;
+
+  return QSortFilterProxyModel::filterAcceptsRow( source_row, source_parent );
+}
+
+bool QgsExpressionItemSearchProxy::lessThan( const QModelIndex& left, const QModelIndex& right ) const
+{
+  int leftSort = sourceModel()->data( left, QgsExpressionItem::CustomSortRole ).toInt();
+  int rightSort = sourceModel()->data( right,  QgsExpressionItem::CustomSortRole ).toInt();
+  if ( leftSort != rightSort )
+    return leftSort < rightSort;
+
+  QString leftString = sourceModel()->data( left, Qt::DisplayRole ).toString();
+  QString rightString = sourceModel()->data( right, Qt::DisplayRole ).toString();
+
+  //ignore $ prefixes when sorting
+  if ( leftString.startsWith( '$' ) )
+    leftString = leftString.mid( 1 );
+  if ( rightString.startsWith( '$' ) )
+    rightString = rightString.mid( 1 );
+
+  return QString::localeAwareCompare( leftString, rightString ) < 0;
+}

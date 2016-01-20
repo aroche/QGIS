@@ -114,7 +114,7 @@ class GeometryPredicateSelectionPanel(BASE, WIDGET):
 
     def updatePredicates(self):
         if (isinstance(self.leftLayer, QgsVectorLayer)
-           and isinstance(self.rightLayer, QgsVectorLayer)):
+                and isinstance(self.rightLayer, QgsVectorLayer)):
             leftType = self.leftLayer.geometryType()
             rightType = self.rightLayer.geometryType()
             unusablePredicates = self.unusablePredicates[leftType][rightType]
@@ -147,7 +147,8 @@ class GeometryPredicateSelectionPanel(BASE, WIDGET):
         return values
 
     def setValue(self, values):
-        for predicate in ParameterGeometryPredicate.predicates:
-            widget = self.getWidget(predicate)
-            widget.setChecked(predicate in values)
+        if values:
+            for predicate in ParameterGeometryPredicate.predicates:
+                widget = self.getWidget(predicate)
+                widget.setChecked(predicate in values)
         return True

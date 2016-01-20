@@ -120,7 +120,7 @@ class QgsWmsProvider : public QgsRasterDataProvider
     * \param   capabilities   Optionally existing parsed capabilities for the given URI
     *
     */
-    QgsWmsProvider( QString const & uri = 0, const QgsWmsCapabilities* capabilities = 0 );
+    QgsWmsProvider( QString const & uri = nullptr, const QgsWmsCapabilities* capabilities = nullptr );
 
     //! Destructor
     virtual ~QgsWmsProvider();
@@ -237,7 +237,7 @@ class QgsWmsProvider : public QgsRasterDataProvider
      *
      * \note visibleExtent parameter added in 2.8
      */
-    QImage getLegendGraphic( double scale = 0.0, bool forceRefresh = false, const QgsRectangle * visibleExtent = 0 ) override;
+    QImage getLegendGraphic( double scale = 0.0, bool forceRefresh = false, const QgsRectangle * visibleExtent = nullptr ) override;
 
     /**
      * \class Get an image downloader for the raster legend
@@ -358,9 +358,6 @@ class QgsWmsProvider : public QgsRasterDataProvider
 
     /** \brief emit a signal to notify of a progress event */
     void progressChanged( int theProgress, int theTotalSteps );
-
-    /** \brief emit a signal to be caught by qgisapp and display a msg on status bar */
-    void statusChanged( QString const &  theStatusQString );
 
     void dataChanged();
 

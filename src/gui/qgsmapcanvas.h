@@ -20,11 +20,9 @@
 
 #include "qgsconfig.h"
 
-#include <list>
-#include <memory>
-#include <deque>
-
 #include "qgsexpressioncontext.h"
+#include "qgsfeature.h"
+#include "qgsmessagebar.h"
 #include "qgsrectangle.h"
 #include "qgspoint.h"
 #include "qgis.h"
@@ -113,7 +111,7 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
     enum WheelAction { WheelZoom, WheelZoomAndRecenter, WheelZoomToMouseCursor, WheelNothing };
 
     //! Constructor
-    QgsMapCanvas( QWidget * parent = 0, const char *name = 0 );
+    QgsMapCanvas( QWidget * parent = nullptr, const char *name = nullptr );
 
     //! Destructor
     ~QgsMapCanvas();
@@ -177,7 +175,7 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
     int mapUpdateInterval() const;
 
     //! @deprecated since 2.4 - there could be more than just one "map" items
-    QgsMapCanvasMap* map();
+    Q_DECL_DEPRECATED QgsMapCanvasMap* map();
 
     //! @deprecated since 2.4 - use mapSettings() for anything related to current renderer settings
     //// SIP: removed /Transfer/ because it crashes after few calls to iface.mapCanvas().mapRenderer().hasCrsTransformEnabled()
@@ -238,10 +236,15 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
 
     /** Zoom to the extent of the selected features of current (vector) layer.
       @param layer optionally specify different than current layer */
-    void zoomToSelected( QgsVectorLayer* layer = NULL );
+    void zoomToSelected( QgsVectorLayer* layer = nullptr );
+
+    /** Set canvas extent to the bounding box of a set of features
+        @param layer the vector layer
+        @param ids the feature ids*/
+    void zoomToFeatureIds( QgsVectorLayer* layer, const QgsFeatureIds& ids );
 
     /** Pan to the selected features of current (vector) layer keeping same extent. */
-    void panToSelected( QgsVectorLayer* layer = NULL );
+    void panToSelected( QgsVectorLayer* layer = nullptr );
 
     /** \brief Sets the map tool currently being used on the canvas */
     void setMapTool( QgsMapTool* mapTool );
@@ -282,14 +285,21 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
     //! return list of layers within map canvas.
     QList<QgsMapLayer*> layers() const;
 
-    /** Freeze/thaw the map canvas. This is used to prevent the canvas from
+    /**
+     * Freeze/thaw the map canvas. This is used to prevent the canvas from
      * responding to events while layers are being added/removed etc.
      * @param frz Boolean specifying if the canvas should be frozen (true) or
      * thawed (false). Default is true.
+     *
+     * TODO remove in QGIS 3
      */
     void freeze( bool frz = true );
 
-    /** Accessor for frozen status of canvas */
+    /**
+     * Accessor for frozen status of canvas
+     *
+     * TODO remove in QGIS 3
+     */
     bool isFrozen();
 
     //! Flag the canvas as dirty and needed a refresh
@@ -337,7 +347,7 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
 
     //! Zoom with the factor supplied. Factor > 1 zooms out, interval (0,1) zooms in
     //! If point is given, re-center on it
-    void zoomByFactor( double scaleFactor, const QgsPoint *center = 0 );
+    void zoomByFactor( double scaleFactor, const QgsPoint *center = nullptr );
 
     //! Zooms in/out with a given center
     void zoomWithCenter( int x, int y, bool zoomIn );
@@ -347,6 +357,9 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
 
     //! true if antialising is enabled
     bool antiAliasingEnabled() const { return mSettings.testFlag( QgsMapSettings::Antialiasing ); }
+
+    //! sets map tile rendering flag
+    void enableMapTileRendering( bool theFlag );
 
     //! Select which Qt class to render with
     //! @deprecated since 2.4 - does nothing because now we always render to QImage
@@ -443,7 +456,7 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
     void selectionChangedSlot();
 
     //! Save the convtents of the map canvas to disk as an image
-    void saveAsImage( const QString& theFileName, QPixmap * QPixmap = 0, const QString& = "PNG" );
+    void saveAsImage( const QString& theFileName, QPixmap * QPixmap = nullptr, const QString& = "PNG" );
 
     //! This slot is connected to the visibility change of one or more layers
     void layerStateChange();
@@ -584,6 +597,9 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
     //! @note added in 2.12
     void layerStyleOverridesChanged();
 
+    //! emit a message (usually to be displayed in a message bar)
+    void messageEmitted( const QString& title, const QString& message, QgsMessageBar::MessageLevel = QgsMessageBar::INFO );
+
   protected:
 #ifdef HAVE_TOUCH
     //! Overridden standard event to be gestures aware
@@ -622,6 +638,10 @@ class GUI_EXPORT QgsMapCanvas : public QGraphicsView
 
     //! called when panning is in action, reset indicates end of panning
     void moveCanvasContents( bool reset = false );
+
+    //! Zooms to feature extent. Adds a small margin around the extent
+    //! and does a pan if rect is empty (point extent)
+    void zoomToFeatureExtent( QgsRectangle& rect );
 
     //! called on resize or changed extent to notify canvas items to change their rectangle
     void updateCanvasItemPositions();
@@ -737,6 +757,7 @@ Q_NOWARN_DEPRECATED_POP
  *
  * This class can be removed within API cleanup when QgsMapRenderer will not be accessible from canvas API anymore.
  * Added in 2.4. This class is not a part of public API!
+ * @note not available in Python bindings
  */
 class QgsMapCanvasRendererSync : public QObject
 {

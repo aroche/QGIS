@@ -55,7 +55,7 @@ QgsVectorLayerImport::QgsVectorLayerImport( const QString &uri,
     , mProgress( progress )
 
 {
-  mProvider = NULL;
+  mProvider = nullptr;
 
   QgsProviderRegistry * pReg = QgsProviderRegistry::instance();
 
@@ -67,7 +67,7 @@ QgsVectorLayerImport::QgsVectorLayerImport( const QString &uri,
     return;
   }
 
-  createEmptyLayer_t * pCreateEmpty = ( createEmptyLayer_t * ) cast_to_fptr( myLib->resolve( "createEmptyLayer" ) );
+  createEmptyLayer_t * pCreateEmpty = reinterpret_cast< createEmptyLayer_t * >( cast_to_fptr( myLib->resolve( "createEmptyLayer" ) ) );
   if ( !pCreateEmpty )
   {
     delete myLib;
@@ -97,7 +97,7 @@ QgsVectorLayerImport::QgsVectorLayerImport( const QString &uri,
 
   QgsDebugMsg( "Created empty layer" );
 
-  QgsVectorDataProvider *vectorProvider = ( QgsVectorDataProvider* ) pReg->provider( providerKey, uri );
+  QgsVectorDataProvider *vectorProvider = dynamic_cast< QgsVectorDataProvider* >( pReg->provider( providerKey, uri ) );
   if ( !vectorProvider || !vectorProvider->isValid() || ( vectorProvider->capabilities() & QgsVectorDataProvider::AddFeatures ) == 0 )
   {
     mError = ErrInvalidLayer;
@@ -214,13 +214,11 @@ QgsVectorLayerImport::importLayer( QgsVectorLayer* layer,
                                    QProgressDialog *progress )
 {
   const QgsCoordinateReferenceSystem* outputCRS;
-  QgsCoordinateTransform* ct = 0;
+  QgsCoordinateTransform* ct = nullptr;
   bool shallTransform = false;
 
-  if ( layer == NULL )
-  {
+  if ( !layer )
     return ErrInvalidLayer;
-  }
 
   if ( destCRS && destCRS->isValid() )
   {
@@ -317,15 +315,11 @@ QgsVectorLayerImport::importLayer( QgsVectorLayer* layer,
 
   // Create our transform
   if ( destCRS )
-  {
     ct = new QgsCoordinateTransform( layer->crs(), *destCRS );
-  }
 
   // Check for failure
-  if ( ct == NULL )
-  {
+  if ( !ct )
     shallTransform = false;
-  }
 
   int n = 0;
 
@@ -367,7 +361,7 @@ QgsVectorLayerImport::importLayer( QgsVectorLayer* layer,
     {
       try
       {
-        if ( fet.geometry() )
+        if ( fet.constGeometry() )
         {
           fet.geometry()->transform( *ct );
         }

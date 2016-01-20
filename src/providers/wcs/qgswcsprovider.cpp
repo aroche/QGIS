@@ -56,8 +56,6 @@
 #include "cpl_conv.h"
 #include "cpl_string.h"
 
-#define TINY_VALUE  std::numeric_limits<double>::epsilon() * 20
-
 #if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 1800
 #define TO8F(x) (x).toUtf8().constData()
 #define FROM8(x) QString::fromUtf8(x)
@@ -68,7 +66,7 @@
 
 #define ERR(message) QGS_ERROR_MESSAGE(message,"WCS provider")
 #define SRVERR(message) QGS_ERROR_MESSAGE(message,"WCS server")
-#define ERROR(message) QgsError(message,"WCS provider")
+#define QGS_ERROR(message) QgsError(message,"WCS provider")
 
 static QString WCS_KEY = "wcs";
 static QString WCS_DESCRIPTION = "OGC Web Coverage Service version 1.0/1.1 data provider";
@@ -89,12 +87,12 @@ QgsWcsProvider::QgsWcsProvider( QString const &uri )
     , mHasSize( false )
     , mBandCount( 0 )
     , mCoverageCrs()
-    , mCachedMemFile( 0 )
-    , mCachedGdalDataset( 0 )
+    , mCachedMemFile( nullptr )
+    , mCachedGdalDataset( nullptr )
     , mCachedViewExtent( 0 )
     , mCachedViewWidth( 0 )
     , mCachedViewHeight( 0 )
-    , mCoordinateTransform( 0 )
+    , mCoordinateTransform( nullptr )
     , mExtentDirty( true )
     , mGetFeatureInfoUrlBase( "" )
     , mErrors( 0 )
@@ -169,7 +167,7 @@ QgsWcsProvider::QgsWcsProvider( QString const &uri )
     {
       setCoverageCrs( "EPSG:4326" );
     }
-    else if ( mCoverageSummary.supportedCrs.size() > 0 )
+    else if ( !mCoverageSummary.supportedCrs.isEmpty() )
     {
       setCoverageCrs( mCoverageSummary.supportedCrs.value( 0 ) );
     }
@@ -357,9 +355,9 @@ QgsWcsProvider::QgsWcsProvider( QString const &uri )
     //  QgsDebugMsg( QString( "noDataValue %1 is missing in nullValues from CoverageDescription" ).arg( myNoDataValue ) );
     //}
 
-    QgsDebugMsg( QString( "mSrcGdalDataType[%1] = %2" ).arg( i - 1 ).arg( mSrcGdalDataType[i-1] ) );
-    QgsDebugMsg( QString( "mGdalDataType[%1] = %2" ).arg( i - 1 ).arg( mGdalDataType[i-1] ) );
-    QgsDebugMsg( QString( "mSrcNoDataValue[%1] = %2" ).arg( i - 1 ).arg( mSrcNoDataValue[i-1] ) );
+    QgsDebugMsg( QString( "mSrcGdalDataType[%1] = %2" ).arg( i - 1 ).arg( mSrcGdalDataType.at( i - 1 ) ) );
+    QgsDebugMsg( QString( "mGdalDataType[%1] = %2" ).arg( i - 1 ).arg( mGdalDataType.at( i - 1 ) ) );
+    QgsDebugMsg( QString( "mSrcNoDataValue[%1] = %2" ).arg( i - 1 ).arg( mSrcNoDataValue.at( i - 1 ) ) );
 
     // Create and store color table
     // TODO: never tested because mapserver (6.0.3) does not support color tables
@@ -459,7 +457,7 @@ QgsWcsProvider::~QgsWcsProvider()
   if ( mCoordinateTransform )
   {
     delete mCoordinateTransform;
-    mCoordinateTransform = 0;
+    mCoordinateTransform = nullptr;
   }
 
 }
@@ -498,7 +496,7 @@ void QgsWcsProvider::setCoverageCrs( QString const & crs )
     if ( mCoordinateTransform )
     {
       delete mCoordinateTransform;
-      mCoordinateTransform = 0;
+      mCoordinateTransform = nullptr;
     }
 
     mExtentDirty = true;
@@ -597,7 +595,7 @@ void QgsWcsProvider::readBlock( int bandNo, QgsRectangle  const & viewExtent, in
         QgsDebugMsg( QString( "Couldn't allocate memory of %1 bytes" ).arg( size ) );
         return;
       }
-      GDALRasterIO( gdalBand, GF_Read, 0, 0, width, height, tmpData, width, height, ( GDALDataType ) mGdalDataType[bandNo-1], 0, 0 );
+      GDALRasterIO( gdalBand, GF_Read, 0, 0, width, height, tmpData, width, height, ( GDALDataType ) mGdalDataType.at( bandNo - 1 ), 0, 0 );
       for ( int i = 0; i < pixelHeight; i++ )
       {
         for ( int j = 0; j < pixelWidth; j++ )
@@ -611,13 +609,13 @@ void QgsWcsProvider::readBlock( int bandNo, QgsRectangle  const & viewExtent, in
     }
     else if ( width == pixelWidth && height == pixelHeight )
     {
-      GDALRasterIO( gdalBand, GF_Read, 0, 0, pixelWidth, pixelHeight, block, pixelWidth, pixelHeight, ( GDALDataType ) mGdalDataType[bandNo-1], 0, 0 );
+      GDALRasterIO( gdalBand, GF_Read, 0, 0, pixelWidth, pixelHeight, block, pixelWidth, pixelHeight, ( GDALDataType ) mGdalDataType.at( bandNo - 1 ), 0, 0 );
       QgsDebugMsg( tr( "Block read OK" ) );
     }
     else
     {
       // This should not happen, but it is better to give distorted result + warning
-      GDALRasterIO( gdalBand, GF_Read, 0, 0, width, height, block, pixelWidth, pixelHeight, ( GDALDataType ) mGdalDataType[bandNo-1], 0, 0 );
+      GDALRasterIO( gdalBand, GF_Read, 0, 0, width, height, block, pixelWidth, pixelHeight, ( GDALDataType ) mGdalDataType.at( bandNo - 1 ), 0, 0 );
       QgsMessageLog::logMessage( tr( "Received coverage has wrong size %1 x %2 (expected %3 x %4)" ).arg( width ).arg( height ).arg( pixelWidth ).arg( pixelHeight ), tr( "WCS" ) );
     }
   }
@@ -781,7 +779,7 @@ void QgsWcsProvider::getCache( int bandNo, QgsRectangle  const & viewExtent, int
   handler.blockingDownload();
 
   QgsDebugMsg( QString( "%1 bytes received" ).arg( mCachedData.size() ) );
-  if ( mCachedData.size() == 0 )
+  if ( mCachedData.isEmpty() )
   {
     QgsMessageLog::logMessage( tr( "No data received" ), tr( "WCS" ) );
     clearCache();
@@ -897,14 +895,14 @@ void QgsWcsProvider::clearCache()
   {
     QgsDebugMsg( "Close mCachedGdalDataset" );
     GDALClose( mCachedGdalDataset );
-    mCachedGdalDataset = 0;
+    mCachedGdalDataset = nullptr;
     QgsDebugMsg( "Closed" );
   }
   if ( mCachedMemFile )
   {
     QgsDebugMsg( "Close mCachedMemFile" );
     VSIFCloseL( mCachedMemFile );
-    mCachedMemFile = 0;
+    mCachedMemFile = nullptr;
     QgsDebugMsg( "Closed" );
   }
   QgsDebugMsg( "Clear mCachedData" );
@@ -1372,7 +1370,7 @@ QgsRasterIdentifyResult QgsWcsProvider::identify( const QgsPoint & thePoint, Qgs
 
   if ( theFormat != QgsRaster::IdentifyFormatValue )
   {
-    return QgsRasterIdentifyResult( ERROR( tr( "Format not supported" ) ) );
+    return QgsRasterIdentifyResult( QGS_ERROR( tr( "Format not supported" ) ) );
   }
 
   if ( !extent().contains( thePoint ) )
@@ -1493,7 +1491,7 @@ QgsRasterIdentifyResult QgsWcsProvider::identify( const QgsPoint & thePoint, Qgs
   if ( !mCachedGdalDataset ||
        !mCachedViewExtent.contains( thePoint ) )
   {
-    return QgsRasterIdentifyResult( ERROR( tr( "Read data error" ) ) );
+    return QgsRasterIdentifyResult( QGS_ERROR( tr( "Read data error" ) ) );
   }
 
   double x = thePoint.x();
@@ -1520,7 +1518,7 @@ QgsRasterIdentifyResult QgsWcsProvider::identify( const QgsPoint & thePoint, Qgs
     if ( err != CPLE_None )
     {
       QgsLogger::warning( "RasterIO error: " + QString::fromUtf8( CPLGetLastErrorMsg() ) );
-      return QgsRasterIdentifyResult( ERROR( tr( "RasterIO error: " ) + QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
+      return QgsRasterIdentifyResult( QGS_ERROR( tr( "RasterIO error: " ) + QString::fromUtf8( CPLGetLastErrorMsg() ) ) );
     }
 
     // Apply no data and user no data
@@ -1675,7 +1673,7 @@ QgsWcsDownloadHandler::QgsWcsDownloadHandler( const QUrl& url, QgsWcsAuthorizati
     : mNAM( new QgsNetworkAccessManager )
     , mAuth( auth )
     , mEventLoop( new QEventLoop )
-    , mCacheReply( 0 )
+    , mCacheReply( nullptr )
     , mCachedData( cachedData )
     , mWcsVersion( wcsVersion )
     , mCachedError( cachedError )
@@ -1707,7 +1705,7 @@ void QgsWcsDownloadHandler::blockingDownload()
 {
   mEventLoop->exec( QEventLoop::ExcludeUserInputEvents );
 
-  Q_ASSERT( mCacheReply == 0 );
+  Q_ASSERT( !mCacheReply );
 }
 
 void QgsWcsDownloadHandler::cacheReplyFinished()
@@ -1747,7 +1745,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
                                        mCacheReply->url().toString() ), tr( "WCS" ) );
 
       mCacheReply->deleteLater();
-      mCacheReply = 0;
+      mCacheReply = nullptr;
 
       finish();
       return;
@@ -1786,7 +1784,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
       }
 
       mCacheReply->deleteLater();
-      mCacheReply = 0;
+      mCacheReply = nullptr;
 
       finish();
       return;
@@ -1802,7 +1800,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
       {
         QgsMessageLog::logMessage( tr( "Cannot parse multipart response: %1" ).arg( parser.error() ), tr( "WCS" ) );
         mCacheReply->deleteLater();
-        mCacheReply = 0;
+        mCacheReply = nullptr;
 
         finish();
         return;
@@ -1812,7 +1810,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
       {
         QgsMessageLog::logMessage( tr( "Expected 2 parts, %1 received" ).arg( parser.parts() ), tr( "WCS" ) );
         mCacheReply->deleteLater();
-        mCacheReply = 0;
+        mCacheReply = nullptr;
 
         finish();
         return;
@@ -1847,7 +1845,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
         }
 
         mCacheReply->deleteLater();
-        mCacheReply = 0;
+        mCacheReply = nullptr;
 
         finish();
         return;
@@ -1877,7 +1875,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
     }
 
     mCacheReply->deleteLater();
-    mCacheReply = 0;
+    mCacheReply = nullptr;
 
     finish();
   }
@@ -1910,7 +1908,7 @@ void QgsWcsDownloadHandler::cacheReplyFinished()
     }
 
     mCacheReply->deleteLater();
-    mCacheReply = 0;
+    mCacheReply = nullptr;
 
     finish();
   }

@@ -19,14 +19,6 @@ class QgsRelation
 #include <qgsrelation.h>
 %End
   public:
-    /**
-     * Defines a relation between matchin fields of the two involved tables of a relation.
-     * Often, a relation is only defined by just one FieldPair with the name of the foreign key
-     * column of the referencing table as first element and the name of the primary key column
-     * of the referenced table as the second element.
-     *
-     */
-    typedef QPair< QString, QString > FieldPair;
 
     /**
      * Default constructor. Creates an invalid relation.
@@ -181,6 +173,22 @@ class QgsRelation
         sipRes->insert( pair.first, pair.second );
     }
 %End
+
+    /**
+     * Returns a list of attributes used to form the referenced fields
+     * (most likely primary key) on the referenced layer.
+     *
+     * @return A list of attributes
+     */
+    QgsAttributeList referencedFields() const;
+
+    /**
+     * Returns a list of attributes used to form the referencing fields
+     * (foreign key) on the referencing layer.
+     *
+     * @return A list of attributes
+     */
+    QgsAttributeList referencingFields() const;
 
     /**
      * Returns the validity of this relation. Don't use the information if it's not valid.

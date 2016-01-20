@@ -80,7 +80,7 @@ void QgsEffectStack::draw( QgsRenderContext &context )
   QList< QPicture* > results;
   for ( int i = mEffectList.count() - 1; i >= 0; --i )
   {
-    QgsPaintEffect* effect = mEffectList[i];
+    QgsPaintEffect* effect = mEffectList.at( i );
     if ( !effect->enabled() )
     {
       continue;
@@ -112,13 +112,13 @@ void QgsEffectStack::draw( QgsRenderContext &context )
     p.end();
 
     results << resultPic;
-    if ( mEffectList[i]->drawMode() != QgsPaintEffect::Render )
+    if ( mEffectList.at( i )->drawMode() != QgsPaintEffect::Render )
     {
       currentPic = resultPic;
     }
   }
   delete sourcePic;
-  sourcePic = 0;
+  sourcePic = nullptr;
 
   context.setPainter( destPainter );
 <<<<<<< HEAD
@@ -134,7 +134,7 @@ void QgsEffectStack::draw( QgsRenderContext &context )
     }
 
     QPicture* pic = results.takeLast();
-    if ( mEffectList[i]->drawMode() != QgsPaintEffect::Modifier )
+    if ( mEffectList.at( i )->drawMode() != QgsPaintEffect::Modifier )
     {
 <<<<<<< HEAD
       context.painter()->drawPicture( 0, 0, *pic );
@@ -249,7 +249,7 @@ bool QgsEffectStack::changeEffect( const int index, QgsPaintEffect *effect )
   if ( !effect )
     return false;
 
-  delete mEffectList[index];
+  delete mEffectList.at( index );
   mEffectList[index] = effect;
   return true;
 }
@@ -257,7 +257,7 @@ bool QgsEffectStack::changeEffect( const int index, QgsPaintEffect *effect )
 QgsPaintEffect *QgsEffectStack::takeEffect( const int index )
 {
   if ( index < 0 || index >= mEffectList.count() )
-    return NULL;
+    return nullptr;
 
   return mEffectList.takeAt( index );
 }
@@ -275,6 +275,6 @@ QgsPaintEffect *QgsEffectStack::effect( int index ) const
   }
   else
   {
-    return NULL;
+    return nullptr;
   }
 }

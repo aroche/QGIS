@@ -49,7 +49,7 @@ class GUI_EXPORT QgsFeatureListView : public QListView
      *
      * @param parent   owner
      */
-    explicit QgsFeatureListView( QWidget* parent = 0 );
+    explicit QgsFeatureListView( QWidget* parent = nullptr );
 
     /**
      * Destructor
@@ -141,6 +141,7 @@ class GUI_EXPORT QgsFeatureListView : public QListView
      */
     void displayExpressionChanged( const QString& expression );
 
+    //! @note not available in Python bindings
     void aboutToChangeEditSelection( bool& ok );
 
   public slots:

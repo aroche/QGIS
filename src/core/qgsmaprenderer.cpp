@@ -59,7 +59,7 @@ QgsMapRenderer::QgsMapRenderer()
 
   mOutputUnits = QgsMapRenderer::Millimeters;
 
-  mLabelingEngine = NULL;
+  mLabelingEngine = nullptr;
 }
 
 QgsMapRenderer::~QgsMapRenderer()
@@ -246,7 +246,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
     return;
   }
 
-  if ( mSize.width() == 1 && mSize.height() == 1 )
+  if ( qgsDoubleNear( mSize.width(), 1.0 ) && qgsDoubleNear( mSize.height(), 1.0 ) )
   {
     QgsDebugMsg( "size 1x1... not rendering" );
     return;
@@ -285,7 +285,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
     mRenderContext.setDrawEditingInformation( !mOverview );
 
   mRenderContext.setPainter( painter );
-  mRenderContext.setCoordinateTransform( 0 );
+  mRenderContext.setCoordinateTransform( nullptr );
   //this flag is only for stopping during the current rendering progress,
   //so must be false at every new render operation
   mRenderContext.setRenderingStopped( false );
@@ -315,15 +315,15 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
     }
   }
   double rasterScaleFactor = ( thePaintDevice->logicalDpiX() + thePaintDevice->logicalDpiY() ) / 2.0 / sceneDpi;
-  if ( mRenderContext.rasterScaleFactor() != rasterScaleFactor )
+  if ( !qgsDoubleNear( mRenderContext.rasterScaleFactor(), rasterScaleFactor ) )
   {
     mRenderContext.setRasterScaleFactor( rasterScaleFactor );
   }
-  if ( mRenderContext.scaleFactor() != scaleFactor )
+  if ( !qgsDoubleNear( mRenderContext.scaleFactor(), scaleFactor ) )
   {
     mRenderContext.setScaleFactor( scaleFactor );
   }
-  if ( mRenderContext.rendererScale() != mScale )
+  if ( !qgsDoubleNear( mRenderContext.rendererScale(), mScale ) )
   {
     //add map scale to render context
     mRenderContext.setRendererScale( mScale );
@@ -354,7 +354,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
     // cache painter
     QPainter * mypContextPainter = mRenderContext.painter();
     // Flattened image for drawing when a blending mode is set
-    QImage * mypFlattenedImage = 0;
+    QImage * mypFlattenedImage = nullptr;
 
     QString layerId = li.previous();
 
@@ -419,7 +419,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
       }
       else
       {
-        ct = NULL;
+        ct = nullptr;
       }
 
       mRenderContext.setCoordinateTransform( ct );
@@ -545,7 +545,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
         mypContextPainter->drawImage( 0, 0, *( mypFlattenedImage ) );
         mypContextPainter->restore();
         delete mypFlattenedImage;
-        mypFlattenedImage = 0;
+        mypFlattenedImage = nullptr;
       }
 
       disconnect( ml, SIGNAL( drawingProgress( int, int ) ), this, SLOT( onDrawingProgress( int, int ) ) );
@@ -596,7 +596,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
           }
           else
           {
-            ct = NULL;
+            ct = nullptr;
           }
 
           mRenderContext.setCoordinateTransform( ct );
@@ -619,7 +619,7 @@ void QgsMapRenderer::render( QPainter* painter, double* forceWidthScale )
   {
     // set correct extent
     mRenderContext.setExtent( mExtent );
-    mRenderContext.setCoordinateTransform( NULL );
+    mRenderContext.setCoordinateTransform( nullptr );
 
     mLabelingEngine->drawLabeling( mRenderContext );
     mLabelingEngine->exit();
@@ -939,14 +939,13 @@ void QgsMapRenderer::updateFullExtent()
 
   // iterate through the map layers and test each layers extent
   // against the current min and max values
-  QStringList::iterator it = mLayerSet.begin();
   QgsDebugMsg( QString( "Layer count: %1" ).arg( mLayerSet.count() ) );
-  while ( it != mLayerSet.end() )
+  Q_FOREACH ( const QString layerId, mLayerSet )
   {
-    QgsMapLayer * lyr = registry->mapLayer( *it );
-    if ( lyr == NULL )
+    QgsMapLayer * lyr = registry->mapLayer( layerId );
+    if ( !lyr )
     {
-      QgsDebugMsg( QString( "WARNING: layer '%1' not found in map layer registry!" ).arg( *it ) );
+      QgsDebugMsg( QString( "WARNING: layer '%1' not found in map layer registry!" ).arg( layerId ) );
     }
     else
     {
@@ -955,7 +954,6 @@ void QgsMapRenderer::updateFullExtent()
 
       if ( lyr->extent().isNull() )
       {
-        ++it;
         continue;
       }
 
@@ -967,7 +965,6 @@ void QgsMapRenderer::updateFullExtent()
       mFullExtent.unionRect( extent );
 
     }
-    ++it;
   }
 
   if ( mFullExtent.width() == 0.0 || mFullExtent.height() == 0.0 )
@@ -1095,12 +1092,12 @@ const QgsCoordinateTransform *QgsMapRenderer::transformation( const QgsMapLayer 
 {
   if ( !layer || !mDestCRS )
   {
-    return 0;
+    return nullptr;
   }
 
   if ( layer->crs().authid() == mDestCRS->authid() )
   {
-    return 0;
+    return nullptr;
   }
 
   QHash< QString, QgsLayerCoordinateTransform >::const_iterator ctIt = mLayerCoordinateTransformInfo.find( layer->id() );
@@ -1254,7 +1251,7 @@ const QgsMapSettings& QgsMapRenderer::mapSettings()
   // make sure the settings object is up-to-date
   mMapSettings.setExtent( extent() );
   mMapSettings.setOutputSize( outputSize() );
-  mMapSettings.setOutputDpi( outputDpi() != 0 ? outputDpi() : qt_defaultDpiX() );
+  mMapSettings.setOutputDpi( !qgsDoubleNear( outputDpi(), 0 ) ? outputDpi() : qt_defaultDpiX() );
   mMapSettings.setLayers( layerSet() );
   mMapSettings.setCrsTransformEnabled( hasCrsTransformEnabled() );
   mMapSettings.setDestinationCrs( destinationCrs() );

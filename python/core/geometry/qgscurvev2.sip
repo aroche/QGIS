@@ -6,6 +6,12 @@ class QgsCurveV2: public QgsAbstractGeometryV2
     public:
     QgsCurveV2();
     virtual ~QgsCurveV2();
+
+    virtual bool operator==( const QgsCurveV2& other ) const = 0;
+    virtual bool operator!=( const QgsCurveV2& other ) const = 0;
+
+    virtual QgsCurveV2* clone() const = 0;
+
     virtual QgsPointV2 startPoint() const = 0;
     virtual QgsPointV2 endPoint() const = 0;
     virtual bool isClosed() const;
@@ -29,10 +35,24 @@ class QgsCurveV2: public QgsAbstractGeometryV2
     virtual QgsCurveV2* reversed() const = 0 /Factory/;
 
     /** Returns a geometry without curves. Caller takes ownership*/
-    QgsAbstractGeometryV2* segmentize() const /Factory/;
+    virtual QgsCurveV2* segmentize() const /Factory/;
 
     virtual int vertexCount(int part = 0, int ring = 0) const;
     virtual int ringCount(int part = 0) const;
     virtual int partCount() const;
     virtual QgsPointV2 vertexAt( const QgsVertexId& id ) const;
+
+    /** Drops any Z dimensions which exist in the geometry.
+     * @returns true if Z values were present and have been removed
+     * @see dropMValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropZValue() = 0;
+
+    /** Drops any M values which exist in the geometry.
+     * @returns true if M values were present and have been removed
+     * @see dropZValue()
+     * @note added in QGIS 2.14
+     */
+    virtual bool dropMValue() = 0;
 };

@@ -27,6 +27,9 @@
 extern "C"
 {
 #include <grass/version.h>
+#if defined(_MSC_VER) && defined(M_PI_4)
+#undef M_PI_4 //avoid redefinition warning
+#endif
 #include <grass/gprojects.h>
 #include <grass/gis.h>
 #include <grass/dbmi.h>
@@ -195,7 +198,7 @@ void QgsGrassVectorMapLayer::load()
         {
           mHasTable = true;
           // Read attributes to the memory
-          while ( true )
+          for ( ;; )
           {
             int more;
 
@@ -713,7 +716,7 @@ void QgsGrassVectorMapLayer::addColumn( const QgsField &field, QString &error )
           QVariant value = mAttributes.value( cat ).value( index );
           QString valueString = quotedValue( value );
           QString query = QString( "UPDATE %1 SET %2 = %3 WHERE %4 = %5" )
-                          .arg( mFieldInfo->table ).arg( field.name() ).arg( valueString ).arg( keyColumnName() ).arg( cat );
+                          .arg( mFieldInfo->table, field.name(), valueString, keyColumnName() ).arg( cat );
           QString err;
           executeSql( query, err );
           if ( !err.isEmpty() )

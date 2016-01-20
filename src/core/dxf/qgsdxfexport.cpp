@@ -356,6 +356,7 @@ QgsDxfExport::QgsDxfExport()
     : mSymbologyScaleDenominator( 1.0 )
     , mSymbologyExport( NoSymbology )
     , mMapUnits( QGis::Meters )
+    , mLayerTitleAsName( false )
     , mSymbolLayerCounter( 0 )
     , mNextHandleId( DXF_HANDSEED )
     , mBlockCounter( 0 )
@@ -373,6 +374,7 @@ QgsDxfExport& QgsDxfExport::operator=( const QgsDxfExport & dxfExport )
   mSymbologyScaleDenominator = dxfExport.mSymbologyScaleDenominator;
   mSymbologyExport = dxfExport.mSymbologyExport;
   mMapUnits = dxfExport.mMapUnits;
+  mLayerTitleAsName = dxfExport.mLayerTitleAsName;
   mSymbolLayerCounter = 0; // internal counter
   mNextHandleId = 0;
   mBlockCounter = 0;
@@ -419,7 +421,7 @@ void QgsDxfExport::writeGroup( const QColor& color, int exactMatchCode, int rgbC
   int minDistAt = -1;
   int minDist = INT_MAX;
 
-  for ( int i = 1; i < ( int )( sizeof( mDxfColors ) / sizeof( *mDxfColors ) ) && minDist > 0; ++i )
+  for ( int i = 1; i < static_cast< int >( sizeof( mDxfColors ) / sizeof( *mDxfColors ) ) && minDist > 0; ++i )
   {
     int dist = color_distance( color.rgba(), i );
     if ( dist >= minDist )
@@ -716,7 +718,7 @@ void QgsDxfExport::writeTables()
     {
       if ( layerIt->second < 0 )
       {
-        layerNames << dxfLayerName( layerIt->first->name() );
+        layerNames << dxfLayerName( layerName( layerIt->first ) );
       }
       else
       {
@@ -831,7 +833,7 @@ void QgsDxfExport::writeBlocks()
       continue;
 
     // if point symbol layer and no data defined properties: write block
-    QgsSymbolV2RenderContext ctx( ct, QgsSymbolV2::MapUnit, slIt->second->alpha(), false, slIt->second->renderHints(), 0 );
+    QgsSymbolV2RenderContext ctx( ct, QgsSymbolV2::MapUnit, slIt->second->alpha(), false, slIt->second->renderHints(), nullptr );
     ml->startRender( ctx );
 
     // markers with data defined properties are inserted inline
@@ -862,7 +864,7 @@ void QgsDxfExport::writeBlocks()
     writeGroup( 1, "" );
 
     // maplayer 0 -> block receives layer from INSERT statement
-    ml->writeDxf( *this, mapUnitScaleFactor( mSymbologyScaleDenominator, ml->sizeUnit(), mMapUnits ), "0", &ctx, 0 );
+    ml->writeDxf( *this, mapUnitScaleFactor( mSymbologyScaleDenominator, ml->sizeUnit(), mMapUnits ), "0", &ctx, nullptr );
 
     writeGroup( 0, "ENDBLK" );
     writeHandle();
@@ -914,8 +916,8 @@ void QgsDxfExport::writeEntities()
   engine.setMapSettings( mapSettings );
 
   // iterate through the maplayers
-  QList< QPair< QgsVectorLayer*, int > >::iterator layerIt = mLayers.begin();
-  for ( ; layerIt != mLayers.end(); ++layerIt )
+  QList< QPair< QgsVectorLayer*, int > >::const_iterator layerIt = mLayers.constBegin();
+  for ( ; layerIt != mLayers.constEnd(); ++layerIt )
   {
     QgsVectorLayer* vl = layerIt->first;
     if ( !vl || !layerIsScaleBasedVisible( vl ) )
@@ -923,7 +925,7 @@ void QgsDxfExport::writeEntities()
       continue;
     }
 
-    QgsSymbolV2RenderContext sctx( ctx, QgsSymbolV2::MM, 1.0, false, 0, 0 );
+    QgsSymbolV2RenderContext sctx( ctx, QgsSymbolV2::MM, 1.0, false, 0, nullptr );
     QgsFeatureRendererV2* renderer = vl->rendererV2();
     if ( !renderer )
     {
@@ -944,7 +946,7 @@ void QgsDxfExport::writeEntities()
     if ( !lp->prepare( ctx, attributes ) )
     {
       engine.removeProvider( lp );
-      lp = 0;
+      lp = nullptr;
     }
 
     if ( mSymbologyExport == QgsDxfExport::SymbolLayerSymbology &&
@@ -967,12 +969,12 @@ void QgsDxfExport::writeEntities()
     while ( featureIt.nextFeature( fet ) )
     {
       ctx.expressionContext().setFeature( fet );
-      QString layerName( dxfLayerName( layerIt->second == -1 ? vl->name() : fet.attribute( layerIt->second ).toString() ) );
+      QString lName( dxfLayerName( layerIt->second == -1 ? layerName( vl ) : fet.attribute( layerIt->second ).toString() ) );
 
       sctx.setFeature( &fet );
       if ( mSymbologyExport == NoSymbology )
       {
-        addFeature( sctx, layerName, 0, 0 ); // no symbology at all
+        addFeature( sctx, lName, nullptr, nullptr ); // no symbology at all
       }
       else
       {
@@ -990,7 +992,7 @@ void QgsDxfExport::writeEntities()
             int nSymbolLayers = ( *symbolIt )->symbolLayerCount();
             for ( int i = 0; i < nSymbolLayers; ++i )
             {
-              addFeature( sctx, layerName, ( *symbolIt )->symbolLayer( i ), *symbolIt );
+              addFeature( sctx, lName, ( *symbolIt )->symbolLayer( i ), *symbolIt );
             }
           }
         }
@@ -1002,12 +1004,12 @@ void QgsDxfExport::writeEntities()
           {
             continue;
           }
-          addFeature( sctx, layerName, s->symbolLayer( 0 ), s );
+          addFeature( sctx, lName, s->symbolLayer( 0 ), s );
         }
 
         if ( lp )
         {
-          lp->registerDxfFeature( fet, ctx, layerName );
+          lp->registerDxfFeature( fet, ctx, lName );
         }
       }
     }
@@ -1039,7 +1041,7 @@ void QgsDxfExport::writeEntitiesSymbolLevels( QgsVectorLayer* layer )
   ctx.expressionContext() << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
   << QgsExpressionContextUtils::layerScope( layer );
-  QgsSymbolV2RenderContext sctx( ctx, QgsSymbolV2::MM, 1.0, false, 0, 0 );
+  QgsSymbolV2RenderContext sctx( ctx, QgsSymbolV2::MM, 1.0, false, 0, nullptr );
   renderer->startRender( ctx, layer->fields() );
 
   // get iterator
@@ -1057,7 +1059,7 @@ void QgsDxfExport::writeEntitiesSymbolLevels( QgsVectorLayer* layer )
 
   // fetch features
   QgsFeature fet;
-  QgsSymbolV2* featureSymbol = 0;
+  QgsSymbolV2* featureSymbol = nullptr;
   while ( fit.nextFeature( fet ) )
   {
     ctx.expressionContext().setFeature( fet );
@@ -3317,7 +3319,7 @@ void QgsDxfExport::writePoint( const QgsPoint& pt, const QString& layer, const Q
 #endif // 0
 
   // insert block or write point directly?
-  QHash< const QgsSymbolLayerV2*, QString >::const_iterator blockIt = mPointSymbolBlocks.find( symbolLayer );
+  QHash< const QgsSymbolLayerV2*, QString >::const_iterator blockIt = mPointSymbolBlocks.constFind( symbolLayer );
   if ( !symbolLayer || blockIt == mPointSymbolBlocks.constEnd() )
   {
     // write symbol directly here
@@ -3784,7 +3786,7 @@ QString QgsDxfExport::lineStyleFromSymbolLayer( const QgsSymbolLayerV2* symbolLa
     return lineStyleName;
   }
 
-  QHash< const QgsSymbolLayerV2*, QString >::const_iterator lineTypeIt = mLineStyles.find( symbolLayer );
+  QHash< const QgsSymbolLayerV2*, QString >::const_iterator lineTypeIt = mLineStyles.constFind( symbolLayer );
   if ( lineTypeIt != mLineStyles.constEnd() )
   {
     lineStyleName = lineTypeIt.value();
@@ -3800,7 +3802,7 @@ int QgsDxfExport::closestColorMatch( QRgb pixel )
 {
   int idx = 0;
   int current_distance = INT_MAX;
-  for ( size_t i = 1; i < sizeof( mDxfColors ) / sizeof( *mDxfColors ); ++i )
+  for ( int i = 1; i < static_cast< int >( sizeof( mDxfColors ) / sizeof( *mDxfColors ) ); ++i )
   {
     int dist = color_distance( pixel, i );
     if ( dist < current_distance )
@@ -3862,8 +3864,8 @@ QList< QPair< QgsSymbolLayerV2*, QgsSymbolV2* > > QgsDxfExport::symbolLayers( Qg
 {
   QList< QPair< QgsSymbolLayerV2*, QgsSymbolV2* > > symbolLayers;
 
-  QList< QPair< QgsVectorLayer*, int> >::iterator lIt = mLayers.begin();
-  for ( ; lIt != mLayers.end(); ++lIt )
+  QList< QPair< QgsVectorLayer*, int> >::const_iterator lIt = mLayers.constBegin();
+  for ( ; lIt != mLayers.constEnd(); ++lIt )
   {
     // cast to vector layer
     QgsVectorLayer* vl = lIt->first;
@@ -3956,7 +3958,7 @@ void QgsDxfExport::writeSymbolLayerLinetype( const QgsSymbolLayerV2* symbolLayer
 
   QgsSymbolV2::OutputUnit unit;
   QVector<qreal> customLinestyle = symbolLayer->dxfCustomDashPattern( unit );
-  if ( customLinestyle.size() > 0 )
+  if ( !customLinestyle.isEmpty() )
   {
     QString name = QString( "symbolLayer%1" ).arg( mSymbolLayerCounter++ );
     writeLinetype( name, customLinestyle, unit );
@@ -4098,7 +4100,7 @@ QString QgsDxfExport::dxfLayerName( const QString& name )
   layerName.replace( '=', '_' );
   layerName.replace( '\'', '_' );
 
-  return layerName;
+  return layerName.trimmed();
 }
 
 bool QgsDxfExport::layerIsScaleBasedVisible( const QgsMapLayer* layer ) const
@@ -4119,7 +4121,9 @@ QString QgsDxfExport::layerName( const QString &id, const QgsFeature &f ) const
   for ( ; layerIt != mLayers.constEnd(); ++layerIt )
   {
     if ( layerIt->first && layerIt->first->id() == id )
-      return dxfLayerName( layerIt->second < 0 ? layerIt->first->name() : f.attribute( layerIt->second ).toString() );
+    {
+      return dxfLayerName( layerIt->second < 0 ? layerName( layerIt->first ) : f.attribute( layerIt->second ).toString() );
+    }
   }
 
   return "0";
@@ -4133,10 +4137,10 @@ QString QgsDxfExport::dxfEncoding( const QString &name )
       continue;
 
     int i;
-    for ( i = 0; i < ( int )( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) && name != mDxfEncodings[i][1]; ++i )
+    for ( i = 0; i < static_cast< int >( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) && name != mDxfEncodings[i][1]; ++i )
       ;
 
-    if ( i == ( int )( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) )
+    if ( i == static_cast< int >( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) )
       continue;
 
     return mDxfEncodings[i][0];
@@ -4151,11 +4155,17 @@ QStringList QgsDxfExport::encodings()
   Q_FOREACH ( QByteArray codec, QTextCodec::availableCodecs() )
   {
     int i;
-    for ( i = 0; i < ( int )( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) && strcmp( codec.data(), mDxfEncodings[i][1] ) != 0; ++i )
+    for ( i = 0; i < static_cast< int >( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) && strcmp( codec.data(), mDxfEncodings[i][1] ) != 0; ++i )
       ;
 
-    if ( i < ( int )( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) )
+    if ( i < static_cast< int >( sizeof( mDxfEncodings ) / sizeof( *mDxfEncodings ) ) )
       encodings << codec.data();
   }
   return encodings;
+}
+
+QString QgsDxfExport::layerName( QgsVectorLayer *vl ) const
+{
+  Q_ASSERT( vl );
+  return mLayerTitleAsName && !vl->title().isEmpty() ? vl->title() : vl->name();
 }

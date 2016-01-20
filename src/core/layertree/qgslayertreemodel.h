@@ -52,7 +52,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
   public:
     //! Construct a new tree model with given layer tree (root node must not be null pointer).
     //! The root node is not transferred by the model.
-    explicit QgsLayerTreeModel( QgsLayerTreeGroup* rootNode, QObject *parent = 0 );
+    explicit QgsLayerTreeModel( QgsLayerTreeGroup* rootNode, QObject *parent = nullptr );
     ~QgsLayerTreeModel();
 
     // Implementation of virtual functions from QAbstractItemModel
@@ -120,6 +120,15 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     //! Return list of legend nodes attached to a particular layer node
     //! @note added in 2.6
     QList<QgsLayerTreeModelLegendNode*> layerLegendNodes( QgsLayerTreeLayer* nodeLayer );
+
+    /** Searches through the layer tree to find a legend node with a matching layer ID
+     * and rule key.
+     * @param layerId map layer ID
+     * @param ruleKey legend node rule key
+     * @returns QgsLayerTreeModelLegendNode if found
+     * @note added in QGIS 2.14
+     */
+    QgsLayerTreeModelLegendNode* findLegendNode( const QString& layerId, const QString& ruleKey ) const;
 
     //! Return pointer to the root node of the layer tree. Always a non-null pointer.
     QgsLayerTreeGroup* rootGroup() const;
@@ -274,6 +283,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     //! 1. tree legend representation is enabled in model (ShowLegendAsTree flag)
     //! 2. some legend nodes have non-null parent rule key (accessible via data(ParentRuleKeyRole) method)
     //! The tree structure (parents and children of each node) is extracted by analyzing nodes' parent rules.
+    //! @note not available in Python bindings
     struct LayerLegendTree
     {
       //! Pointer to parent for each active node. Top-level nodes have null parent. Pointers are not owned.
@@ -283,6 +293,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
     };
 
     //! Structure that stores all data associated with one map layer
+    //! @note not available in Python bindings
     struct LayerLegendData
     {
       //! Active legend nodes. May have been filtered.
@@ -295,6 +306,7 @@ class CORE_EXPORT QgsLayerTreeModel : public QAbstractItemModel
       LayerLegendTree* tree;
     };
 
+    //! @note not available in Python bindings
     void tryBuildLegendTree( LayerLegendData& data );
 
     //! Overrides of map layers' styles: key = layer ID, value = style XML.

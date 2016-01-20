@@ -40,6 +40,7 @@ QgsJoinDialog::QgsJoinDialog( QgsVectorLayer* layer, QList<QgsMapLayer*> already
 
   mTargetFieldComboBox->setLayer( mLayer );
 
+  mJoinLayerComboBox->setFilters( QgsMapLayerProxyModel::VectorLayer );
   mJoinLayerComboBox->setExceptedLayerList( alreadyJoinedLayers );
   connect( mJoinLayerComboBox, SIGNAL( layerChanged( QgsMapLayer* ) ), mJoinFieldComboBox, SLOT( setLayer( QgsMapLayer* ) ) );
   connect( mJoinLayerComboBox, SIGNAL( layerChanged( QgsMapLayer* ) ), this, SLOT( joinedLayerChanged( QgsMapLayer* ) ) );
@@ -78,7 +79,7 @@ void QgsJoinDialog::setJoinInfo( const QgsVectorJoinInfo& joinInfo )
   }
 
   QStringList* lst = joinInfo.joinFieldNamesSubset();
-  mUseJoinFieldsSubset->setChecked( lst && lst->count() > 0 );
+  mUseJoinFieldsSubset->setChecked( lst && !lst->isEmpty() );
   QAbstractItemModel* model = mJoinFieldsSubsetView->model();
   if ( model )
   {

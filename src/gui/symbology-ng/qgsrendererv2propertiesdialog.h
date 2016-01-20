@@ -21,6 +21,8 @@
 
 #include "ui_qgsrendererv2propsdialogbase.h"
 
+#include "qgsfeaturerequest.h"
+
 class QKeyEvent;
 
 class QgsVectorLayer;
@@ -52,6 +54,11 @@ class GUI_EXPORT QgsRendererV2PropertiesDialog : public QDialog, private Ui::Qgs
     void apply();
     void onOK();
 
+  private slots:
+    void showOrderByDialog();
+
+    void changeOrderBy( const QgsFeatureRequest::OrderBy& orderBy );
+
   protected:
 
     //! Reimplements dialog keyPress event so we can ignore it
@@ -66,6 +73,8 @@ class GUI_EXPORT QgsRendererV2PropertiesDialog : public QDialog, private Ui::Qgs
     QgsPaintEffect* mPaintEffect;
 
     QgsMapCanvas* mMapCanvas;
+
+    QgsFeatureRequest::OrderBy mOrderBy;
 };
 
 

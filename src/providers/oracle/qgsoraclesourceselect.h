@@ -22,6 +22,7 @@
 #include "qgsdbfilterproxymodel.h"
 #include "qgsoracletablemodel.h"
 #include "qgscontexthelp.h"
+#include "qgsoracleconnpool.h"
 
 #include <QMap>
 #include <QPair>
@@ -39,14 +40,14 @@ class QgsOracleSourceSelectDelegate : public QItemDelegate
     Q_OBJECT
 
   public:
-    explicit QgsOracleSourceSelectDelegate( QObject *parent = NULL )
+    explicit QgsOracleSourceSelectDelegate( QObject *parent = nullptr )
         : QItemDelegate( parent )
-        , mConn( 0 )
+        , mConn( nullptr )
     {}
 
     ~QgsOracleSourceSelectDelegate()
     {
-      setConn( 0 );
+      setConn( nullptr );
     }
 
     QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const;
@@ -56,7 +57,7 @@ class QgsOracleSourceSelectDelegate : public QItemDelegate
     void setConnectionInfo( const QgsDataSourceURI& connInfo ) { mConnInfo = connInfo; }
 
   protected:
-    void setConn( QgsOracleConn *conn ) const { if ( mConn ) mConn->disconnect();  mConn = conn; }
+    void setConn( QgsOracleConn *conn ) const { if ( mConn ) QgsOracleConnPool::instance()->releaseConnection( mConn ); mConn = conn; }
 
     QgsOracleConn* conn() const
     {

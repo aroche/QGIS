@@ -41,11 +41,11 @@ QgsGml::QgsGml(
     : QObject()
     , mTypeName( typeName )
     , mGeometryAttribute( geometryAttribute )
-    , mWkbType( NULL )
+    , mWkbType( nullptr )
     , mFinished( false )
-    , mCurrentFeature( 0 )
+    , mCurrentFeature( nullptr )
     , mFeatureCount( 0 )
-    , mCurrentWKB( NULL )
+    , mCurrentWKB( nullptr )
     , mCurrentWKBSize( 0 )
     , mDimension( 2 )
     , mCoorMode( QgsGml::coordinate )
@@ -75,7 +75,7 @@ int QgsGml::getFeatures( const QString& uri, QGis::WkbType* wkbType, QgsRectangl
   mUri = uri;
   mWkbType = wkbType;
 
-  XML_Parser p = XML_ParserCreateNS( NULL, NS_SEPARATOR );
+  XML_Parser p = XML_ParserCreateNS( nullptr, NS_SEPARATOR );
   XML_SetUserData( p, this );
   XML_SetElementHandler( p, QgsGml::start, QgsGml::end );
   XML_SetCharacterDataHandler( p, QgsGml::chars );
@@ -106,8 +106,8 @@ int QgsGml::getFeatures( const QString& uri, QGis::WkbType* wkbType, QgsRectangl
   connect( reply, SIGNAL( downloadProgress( qint64, qint64 ) ), this, SLOT( handleProgressEvent( qint64, qint64 ) ) );
 
   //find out if there is a QGIS main window. If yes, display a progress dialog
-  QProgressDialog* progressDialog = 0;
-  QWidget* mainWindow = 0;
+  QProgressDialog* progressDialog = nullptr;
+  QWidget* mainWindow = nullptr;
   QWidgetList topLevelWidgets = qApp->topLevelWidgets();
   for ( QWidgetList::iterator it = topLevelWidgets.begin(); it != topLevelWidgets.end(); ++it )
   {
@@ -135,7 +135,7 @@ int QgsGml::getFeatures( const QString& uri, QGis::WkbType* wkbType, QgsRectangl
       atEnd = 1;
     }
     QByteArray readData = reply->readAll();
-    if ( readData.size() > 0 )
+    if ( !readData.isEmpty() )
     {
       if ( XML_Parse( p, readData.constData(), readData.size(), atEnd ) == 0 )
       {
@@ -188,7 +188,7 @@ int QgsGml::getFeatures( const QByteArray &data, QGis::WkbType* wkbType, QgsRect
   mWkbType = wkbType;
   mExtent.setMinimal();
 
-  XML_Parser p = XML_ParserCreateNS( NULL, NS_SEPARATOR );
+  XML_Parser p = XML_ParserCreateNS( nullptr, NS_SEPARATOR );
   XML_SetUserData( p, this );
   XML_SetElementHandler( p, QgsGml::start, QgsGml::end );
   XML_SetCharacterDataHandler( p, QgsGml::chars );
@@ -381,8 +381,10 @@ void QgsGml::endElement( const XML_Char* el )
     Q_ASSERT( mCurrentFeature );
     if ( mCurrentWKBSize > 0 )
     {
-      mCurrentFeature->setGeometryAndOwnership( mCurrentWKB, mCurrentWKBSize );
-      mCurrentWKB = 0;
+      QgsGeometry *g = new QgsGeometry();
+      g->fromWkb( mCurrentWKB, mCurrentWKBSize );
+      mCurrentFeature->setGeometry( g );
+      mCurrentWKB = nullptr;
     }
     else if ( !mCurrentExtent.isEmpty() )
     {
@@ -390,7 +392,7 @@ void QgsGml::endElement( const XML_Char* el )
     }
     else
     {
-      mCurrentFeature->setGeometry( 0 );
+      mCurrentFeature->setGeometry( nullptr );
     }
     mCurrentFeature->setValid( true );
 
@@ -399,7 +401,7 @@ void QgsGml::endElement( const XML_Char* el )
     {
       mIdMap.insert( mCurrentFeature->id(), mCurrentFeatureId );
     }
-    mCurrentFeature = 0;
+    mCurrentFeature = nullptr;
     ++mFeatureCount;
     mParseModeStack.pop();
   }
@@ -411,7 +413,7 @@ void QgsGml::endElement( const XML_Char* el )
       //error
     }
 
-    if ( pointList.count() == 0 )
+    if ( pointList.isEmpty() )
       return;  // error
 
     if ( theParseMode == QgsGml::geometry )
@@ -429,7 +431,7 @@ void QgsGml::endElement( const XML_Char* el )
     }
     else //multipoint, add WKB as fragment
     {
-      unsigned char* wkb = 0;
+      unsigned char* wkb = nullptr;
       int wkbSize = 0;
       QList<unsigned char*> wkbList;
       QList<int> wkbSizeList;
@@ -472,7 +474,7 @@ void QgsGml::endElement( const XML_Char* el )
     }
     else //multiline, add WKB as fragment
     {
-      unsigned char* wkb = 0;
+      unsigned char* wkb = nullptr;
       int wkbSize = 0;
       QList<unsigned char*> wkbList;
       QList<int> wkbSizeList;
@@ -499,7 +501,7 @@ void QgsGml::endElement( const XML_Char* el )
     {
       //error
     }
-    unsigned char* wkb = 0;
+    unsigned char* wkb = nullptr;
     int wkbSize = 0;
     if ( getRingWKB( &wkb, &wkbSize, pointList ) != 0 )
     {
@@ -551,7 +553,7 @@ void QgsGml::endElement( const XML_Char* el )
 void QgsGml::characters( const XML_Char* chars, int len )
 {
   //save chars in mStringCash attribute mode or coordinate mode
-  if ( mParseModeStack.size() == 0 )
+  if ( mParseModeStack.isEmpty() )
   {
     return;
   }
@@ -566,7 +568,7 @@ void QgsGml::characters( const XML_Char* chars, int len )
 void QgsGml::setAttribute( const QString& name, const QString& value )
 {
   //find index with attribute name
-  QMap<QString, QPair<int, QgsField> >::const_iterator att_it = mThematicAttributes.find( name );
+  QMap<QString, QPair<int, QgsField> >::const_iterator att_it = mThematicAttributes.constFind( name );
   if ( att_it != mThematicAttributes.constEnd() )
   {
     QVariant var;
@@ -593,7 +595,7 @@ void QgsGml::setAttribute( const QString& name, const QString& value )
 int QgsGml::readEpsgFromAttribute( int& epsgNr, const XML_Char** attr ) const
 {
   int i = 0;
-  while ( attr[i] != NULL )
+  while ( attr[i] )
   {
     if ( strcmp( attr[i], "srsName" ) == 0 )
     {
@@ -624,7 +626,7 @@ int QgsGml::readEpsgFromAttribute( int& epsgNr, const XML_Char** attr ) const
 QString QgsGml::readAttribute( const QString& attributeName, const XML_Char** attr ) const
 {
   int i = 0;
-  while ( attr[i] != NULL )
+  while ( attr[i] )
   {
     if ( attributeName.compare( attr[i] ) == 0 )
     {
@@ -978,8 +980,8 @@ void QgsGml::calculateExtentFromFeatures()
     return;
   }
 
-  QgsFeature* currentFeature = 0;
-  const QgsGeometry* currentGeometry = 0;
+  QgsFeature* currentFeature = nullptr;
+  const QgsGeometry* currentGeometry = nullptr;
   bool bboxInitialised = false; //gets true once bbox has been set to the first geometry
 
   for ( int i = 0; i < mFeatures.size(); ++i )
